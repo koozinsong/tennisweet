@@ -742,7 +742,7 @@
     // 선수 필터 (모바일에서 내 경기만 보기)
     const sel = $('#sel-me'); const cur = state.meFilter || '';
     const inSched = new Set(ms.flatMap(matchPeople));
-    sel.innerHTML = `<option value="">전체 경기</option>${state.players.filter((p) => inSched.has(p.id)).map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)} 경기만</option>`).join('')}`;
+    sel.innerHTML = `<option value="">전체 경기</option>${state.players.filter((p) => inSched.has(p.id)).sort((a, b) => a.name.localeCompare(b.name, 'ko')).map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)} 경기만</option>`).join('')}`;
     const unitOpts = (selId) => `<option value="">(미정)</option>${sch.unitIds.map((id) => `<option value="${esc(id)}" ${id === selId ? 'selected' : ''}>${esc(unitName(unitById(id) || { playerIds: [] }))}</option>`).join('')}`;
     const slotOpts = (selI) => Array.from({ length: nSlots }, (_, i) => `<option value="${i}" ${i === selI ? 'selected' : ''}>${slotTime(i)}</option>`).join('');
     const courtOpts = (selC) => Array.from({ length: s.courts }, (_, i) => `<option value="${i + 1}" ${i + 1 === selC ? 'selected' : ''}>${i + 1}코트</option>`).join('');
@@ -898,8 +898,18 @@
     }
     return Object.values(rows).sort((x, y) => y.w - x.w || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.p - y.p);
   }
+  /** 방문자용 순위: 3위까지만 (상세 순위는 관리자 화면) */
+  function podiumHtml(list, title, nameOf = (id) => unitName(unitById(id) || { playerIds: [] })) {
+    const played = list.filter((r) => r.p > 0);
+    if (!played.length) return `<h3>${esc(title)}</h3><p class="hint">아직 입력된 경기 결과가 없습니다. 결과가 게시되면 상위 3명이 표시됩니다.</p>`;
+    const top = list.slice(0, 3); const medal = ['🥇', '🥈', '🥉'];
+    return `<h3>${esc(title)} <span class="sub">(승 → 득실차 → 득게임)</span></h3>
+      <ol class="podium">${top.map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(nameOf(r.id))}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 득실 ${r.gf - r.ga >= 0 ? '+' : ''}${r.gf - r.ga}</span></li>`).join('')}</ol>
+      <p class="hint">전체 순위는 대회 종료 후 공개됩니다. 경기 수·승패 상세는 관리자 화면에서 볼 수 있습니다.</p>`;
+  }
   function renderStandings() {
     const view = $('#standings-view'); const sch = state.schedule;
+    if (sch && isRot() && viewOnly) { view.innerHTML = podiumHtml(rotationStandings(), '개인 순위'); return; }
     if (sch && isRot()) {
       const list = rotationStandings(); const games = {}; sch.matches.forEach((m) => [...sideIds(m, 'a'), ...sideIds(m, 'b')].forEach((id) => (games[id] = (games[id] || 0) + 1)));
       view.innerHTML = '<div class="table-wrap">' + `<h3>개인 순위 <span class="sub">(승 → 득실차 → 득게임)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">득게임</th><th class="num">실게임</th><th class="num">득실차</th></tr></thead><tbody>
@@ -916,6 +926,7 @@
         m.bPlayers.filter((id) => rows[id]).forEach((id) => { const r = rows[id]; r.p++; r.gf += o.bg; r.ga += o.ag; if (o.winner === 'b') r.w++; else if (o.winner === 'a') r.l++; else r.d++; }); }
       const games = {}; sch.matches.forEach((m) => [...(m.aPlayers || []), ...(m.bPlayers || [])].forEach((id) => (games[id] = (games[id] || 0) + 1)));
       const list = Object.values(rows).filter((r) => games[r.id]).sort((x, y) => y.w - x.w || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf);
+      if (viewOnly) return podiumHtml(list, '개인 기록 상위 3명', (id) => pname(id));
       return `<h3>개인 기록</h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th>팀</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">득실차</th></tr></thead><tbody>
         ${list.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(pname(r.id))}</td><td class="sub">${esc(teamOf[r.id] || '')}</td><td class="num">${games[r.id]}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.gf - r.ga}</td></tr>`).join('')}</tbody></table>`;
     })() : '';

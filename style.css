@@ -326,3 +326,13 @@ body.view-only .cover-grid button.only-view { display: block; grid-column: span 
 .image-wrap img { display: block; width: 100%; height: auto; }
 a.btn-like { display: inline-block; border: 1px solid var(--court-deep); background: var(--court); color: #fff; padding: 7px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; }
 .capturing .no-print, .capturing .actions, .capturing .banner { display: none !important; }
+
+/* ---- 방문자 순위 포디움 (3위까지) ---- */
+.podium { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 8px; }
+.podium li { display: grid; grid-template-columns: 40px 1fr auto; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--rule); background: #fff; }
+.podium li.p1 { background: linear-gradient(90deg, #fff8dc, #fff); border-color: #e6d28a; }
+.podium li.p2 { background: linear-gradient(90deg, #f3f4f6, #fff); }
+.podium li.p3 { background: linear-gradient(90deg, #f8ede4, #fff); }
+.podium .medal { font-size: 24px; }
+.podium .pname { font-weight: 800; font-size: 18px; }
+.podium .pstat { font-family: var(--display); font-size: 16px; color: var(--muted); }
