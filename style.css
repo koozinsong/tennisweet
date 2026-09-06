@@ -187,3 +187,6 @@ body.view-only p.only-view { display: block; }
 body.view-only #tbl-players { min-width: 0; }
 body.view-only td.only-editor, body.view-only th.only-editor { display: none; }
 body.view-only footer .only-view { display: inline; }
+#tbl-players select.cell[data-field=gender] { min-width: 64px; }
+#tbl-players input.cell[data-field=ntrp] { min-width: 64px; }
+#tbl-players { min-width: 860px; }
