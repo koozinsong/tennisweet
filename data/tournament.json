@@ -158,7 +158,8 @@
     "endTime": "22:00",
     "matchMinutes": 30,
     "breakMinutes": 0,
-    "minWomenDoubles": 1
+    "minWomenDoubles": 1,
+    "maxGames": 6
   },
   "units": [
     {
@@ -498,8 +499,8 @@
   "results": {
     "4pijli0": [
       {
-        "a": "",
-        "b": ""
+        "a": "6",
+        "b": "3"
       }
     ],
     "3bbkj5t": [
@@ -582,6 +583,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-09-06T14:09:25.668Z",
-  "ghTokenEnc": "XOuhRZWqYoZhbj0L.8Gpa97fBvuqRdAVpMbD0oqs7i95ezPP3y1oDOfaTK7NamWbt3JvjbSQI0p4AnwLfhlawPPZJj7+Gt2qshHcWbJVRAfWRlg9LskoKybuouZvWshBkpavfevqkcsiv5Bi88JBdQRTrzAuaj4VMUQ=="
+  "publishedAt": "2026-09-06T14:11:27.512Z",
+  "ghTokenEnc": "IM9LyzGVYy5v04FV.y43hHgilZ9DAd+yjHBakEoqDWXDJh/YMSELJh77edxGFuKY7fuPqU9Ne5Wq+3IGM+HRy8NFlI3x3QEda60xOgZ5pzViA4zs47/MX4D38Hg0PL/xH1p2THW86jG4cZglc9MTSpgdJ9ro/zNcvrw=="
 }
