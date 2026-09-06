@@ -377,7 +377,7 @@
   function matchType(m) {
     const a = m.aPlayers, b = m.bPlayers; if (!a || !b || a.some((x) => !x) || b.some((x) => !x)) return null;
     const ta = pairType(a[0], a[1]), tb = pairType(b[0], b[1]);
-    return { label: ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`, mismatch: ta !== tb };
+    return { label: ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`, mismatch: ta !== tb, code: ta === tb ? ta.toLowerCase() : '' };
   }
   const toMin = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
   const slotStartMin = (s, i) => toMin(s.startTime || '09:00') + i * (s.matchMinutes + s.breakMinutes);
@@ -758,7 +758,7 @@
       }
       return `<select class="ed" data-mid="${esc(m.id)}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>${m.phase === 'ko' && m[side + 'Manual'] ? '<div class="sub">수동 지정</div>' : ''}`;
     };
-    let html = '';
+    let html = '<div class="legend"><span class="tag type fm">혼복</span><span class="tag type mm">남복</span><span class="tag type ff">여복</span><span class="sub">카드 왼쪽 띠 색도 같은 뜻</span></div>';
     for (let slot = 0; slot < nSlots; slot++) {
       let rows = ms.filter((m) => m.slot === slot);
       if (cur) rows = rows.filter((m) => matchPeople(m).includes(cur));
@@ -773,10 +773,10 @@
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
         const clearBtn = !viewOnly && r.some((x) => x.a !== '' || x.b !== '') ? `<button class="small clear-score" data-clear="${esc(m.id)}" title="이 경기 점수 지우기">지우기</button>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
-        const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
+        const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type ' + mt.code}">${esc(mt.label)}</span>` : '';
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
         const mine = ''; // '내 경기' 필터는 목록 자체를 걸러서 보여주므로 별도 강조 불필요
-        html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}" data-card="${esc(m.id)}">
+        html += `<div class="mcard ${mt && !mt.mismatch ? 't-' + mt.code : ''} ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}" data-card="${esc(m.id)}">
           <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
           <div class="mbody"><div class="side side-a ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side side-b ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
           <div class="mfoot">${scores}<span class="res">${res}</span>${clearBtn}</div></div>`;

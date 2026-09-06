@@ -25,6 +25,10 @@
   --danger: #b3423a;
   --danger-bg: #fdeceb;
   --warn-bg: #fff6cc;
+  /* 복식 종류 색: 혼복 퍼플 / 남복 블루 / 여복 로즈 */
+  --fm: #4b2a7b; --fm-bg: #ece4f7;
+  --mm: #1d4a8f; --mm-bg: #dfe8f7;
+  --ff: #b03060; --ff-bg: #fbe3ec;
   --display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", system-ui, sans-serif;
   --body: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
   --radius: 10px;
@@ -156,7 +160,10 @@ select.me { max-width: 260px; }
 
 .match-cards { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
 .mcard { position: relative; border: 1px solid var(--rule); border-left: 5px solid var(--court); border-radius: 8px; background: #fff; padding: 10px 12px 10px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); }
-.mcard.decided { border-left-color: var(--court-deep); }
+.mcard.t-fm { border-left-color: var(--fm); }
+.mcard.t-mm { border-left-color: var(--mm); }
+.mcard.t-ff { border-left-color: var(--ff); }
+.mcard.decided .mhead .court { color: var(--court-deep); }
 .mcard.mine { border-left-color: var(--accent); background: #faf7ff; box-shadow: 0 0 0 2px rgba(75,42,123,.25), var(--shadow); }
 .mcard.conflict { border-color: var(--danger); border-left-color: var(--danger); background: var(--danger-bg); }
 .slot.past .mcard:not(.decided) { border-left-color: var(--rule); background: #fbfaf6; box-shadow: none; }
@@ -181,7 +188,11 @@ select.me { max-width: 260px; }
 .score .colon { font-family: var(--display); font-weight: 700; font-size: 22px; color: var(--muted); }
 .sub { font-size: 12px; color: var(--muted); }
 .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 10px; background: #eeede6; color: var(--court-ink); margin-right: 2px; letter-spacing: .02em; }
-.tag.type { background: var(--accent-tint); color: var(--accent-deep); }
+.tag.type { background: var(--accent-tint); color: var(--accent-deep); font-size: 12px; padding: 2px 9px; }
+.tag.type.fm { background: var(--fm-bg); color: var(--fm); }
+.tag.type.mm { background: var(--mm-bg); color: var(--mm); }
+.tag.type.ff { background: var(--ff-bg); color: var(--ff); }
+.legend { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 4px 0 10px; }
 .tag.bad { background: var(--danger-bg); color: var(--danger); }
 .tag.extra { background: var(--warn-bg); color: #7a5b00; }
 .tbd { color: var(--muted); font-style: italic; }
