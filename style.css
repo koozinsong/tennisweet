@@ -306,3 +306,5 @@ body.view-only .cover-grid button.only-view { display: block; grid-column: span 
 @media print { .cover { display: none !important; } }
 #form-player [name=ntrp] { flex: 0 0 100px; min-width: 0; }
 #form-player [name=name] { flex: 1 1 160px; }
+.mfoot .clear-score { margin-left: auto; color: var(--muted); }
+.mfoot .clear-score:hover { color: var(--danger); border-color: var(--danger); }

@@ -722,6 +722,7 @@
           <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" aria-label="${esc(sideName(m, 'a') || 'A')} 게임 수" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
           <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" aria-label="${esc(sideName(m, 'b') || 'B')} 게임 수" ${canInput ? '' : 'disabled'}></div>`).join('');
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
+        const clearBtn = !viewOnly && r.some((x) => x.a !== '' || x.b !== '') ? `<button class="small clear-score" data-clear="${esc(m.id)}" title="이 경기 점수 지우기">지우기</button>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
         const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
@@ -729,7 +730,7 @@
         html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}" data-card="${esc(m.id)}">
           <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
           <div class="mbody"><div class="side side-a ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side side-b ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
-          <div class="mfoot">${scores}<span class="res">${res}</span></div></div>`;
+          <div class="mfoot">${scores}<span class="res">${res}</span>${clearBtn}</div></div>`;
       }
       html += '</div></div>';
     }
@@ -775,6 +776,9 @@
     card.querySelector('.side-a')?.classList.toggle('w', o.winner === 'a');
     card.querySelector('.side-b')?.classList.toggle('w', o.winner === 'b');
     const res = card.querySelector('.res'); if (res) res.innerHTML = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
+    const r = getResult(m.id); const has = r.some((x) => x.a !== '' || x.b !== ''); let cb = card.querySelector('.clear-score');
+    if (has && !cb && !viewOnly) { cb = document.createElement('button'); cb.className = 'small clear-score'; cb.dataset.clear = m.id; cb.title = '이 경기 점수 지우기'; cb.textContent = '지우기'; card.querySelector('.mfoot').appendChild(cb); }
+    if (!has && cb) cb.remove();
     renderStandings(); renderGamesSummary(state.schedule.matches.filter((x) => !x.bye));
   }
   $('#schedule-view').addEventListener('input', (e) => { // 타이핑 즉시 저장 (포커스 이동 전에 게시해도 반영)
@@ -797,11 +801,25 @@
     commit();
   });
   $('#schedule-view').addEventListener('click', (e) => {
+    const clr = e.target.closest('button[data-clear]');
+    if (clr) {
+      const m = state.schedule?.matches.find((x) => x.id === clr.dataset.clear); if (!m) return;
+      getResult(m.id).forEach((x) => { x.a = ''; x.b = ''; });
+      $$(`#schedule-view .mcard[data-card="${CSS.escape(m.id)}"] .score input`).forEach((inp) => (inp.value = ''));
+      save(); refreshCard(m); scheduleAutoPublish(); return;
+    }
     const del = e.target.closest('button[data-del-match]'); if (!del) return;
     if (!confirm('이 경기를 삭제할까요?')) return;
     state.schedule.matches = state.schedule.matches.filter((m) => m.id !== del.dataset.delMatch); delete state.results[del.dataset.delMatch]; commit();
   });
   $('#chk-edit').addEventListener('change', (e) => { state.editMode = e.target.checked; commit(); });
+  $('#btn-clear-results')?.addEventListener('click', () => {
+    if (!state.schedule) return;
+    const n = Object.values(state.results).flat().filter((x) => x.a !== '' || x.b !== '').length;
+    if (!n) { toast('지울 기록이 없습니다'); return; }
+    if (!confirm(`입력된 점수 ${n}건을 모두 지웁니다. 일정은 그대로 남습니다. 계속할까요?`)) return;
+    state.results = {}; commit(); toast('기록을 모두 지웠습니다 · 게시하기를 눌러야 반영됩니다');
+  });
   $('#btn-add-match').addEventListener('click', () => { state.schedule.matches.push(isRot() ? { id: uid(), phase: 'extra', slot: totalSlots() - 1, court: 1, aIds: [null, null], bIds: [null, null] } : state.settings.mode === 'team' ? { id: uid(), phase: 'rr', group: 0, round: 0, slot: totalSlots() - 1, court: 1, aId: null, bId: null, aPlayers: [null, null], bPlayers: [null, null] } : { id: uid(), phase: 'extra', slot: totalSlots() - 1, court: 1, aId: null, bId: null }); commit(); });
   $('#btn-add-slot').addEventListener('click', () => { state.schedule.extraSlots = (state.schedule.extraSlots || 0) + 1; commit(); });
   $('#btn-compact').addEventListener('click', () => {
