@@ -314,5 +314,4 @@ body.view-only .cover-grid button.only-view { display: block; grid-column: span 
 .image-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--rule); border-radius: 8px; background: #f6f5f0; }
 .image-wrap img { display: block; width: 100%; height: auto; }
 a.btn-like { display: inline-block; border: 1px solid var(--court-deep); background: var(--court); color: #fff; padding: 7px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; }
-@media (hover: none) and (pointer: coarse) { .desktop-only { display: none !important; } }
 .capturing .no-print, .capturing .actions, .capturing .banner { display: none !important; }
