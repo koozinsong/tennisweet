@@ -128,16 +128,22 @@
   function renderPlayers() {
     const act = state.players.filter((p) => p.active).length;
     $('#players-title').textContent = `선수 명단 (${state.players.length}명, 참가 ${act}명)`;
+    if (viewOnly) {
+      $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
+        <td>${i + 1}</td><td>${p.active ? '✅' : '—'}</td><td><b>${esc(p.name)}</b></td><td>${p.gender === 'M' ? '남' : p.gender === 'F' ? '여' : ''}</td>
+        <td class="only-editor"></td><td>${esc(p.from || '')}</td><td>${esc(p.until || '')}</td><td class="only-editor"></td><td class="sub">${esc(p.note || '')}</td><td></td></tr>`).join('');
+      return;
+    }
     $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
-      <td>${i + 1}</td><td><input type="checkbox" data-pid="${p.id}" ${p.active ? 'checked' : ''} ${viewOnly ? 'disabled' : ''}></td>
-      <td><input class="cell" data-pid="${p.id}" data-field="name" value="${esc(p.name)}" ${viewOnly ? 'disabled' : ''}></td>
-      <td><select class="cell" data-pid="${p.id}" data-field="gender" ${viewOnly ? 'disabled' : ''}><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
+      <td>${i + 1}</td><td><input type="checkbox" data-pid="${p.id}" ${p.active ? 'checked' : ''}></td>
+      <td><input class="cell" data-pid="${p.id}" data-field="name" value="${esc(p.name)}"></td>
+      <td><select class="cell" data-pid="${p.id}" data-field="gender"><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
       <td class="only-editor">${adminKey ? `<input class="cell" type="number" step="0.5" min="1" max="7" data-pid="${p.id}" data-field="ntrp" value="${esc(ntrp.get(p.id) || '')}">` : '<span class="tbd">🔒</span>'}</td>
-      <td><input class="cell" type="time" data-pid="${p.id}" data-field="from" value="${esc(p.from || '')}" ${viewOnly ? 'disabled' : ''}></td>
-      <td><input class="cell" type="time" data-pid="${p.id}" data-field="until" value="${esc(p.until || '')}" ${viewOnly ? 'disabled' : ''}></td>
-      <td><input class="cell" data-pid="${p.id}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px" ${viewOnly ? 'disabled' : ''}></td>
-      <td><input class="cell" data-pid="${p.id}" data-field="note" value="${esc(p.note)}" ${viewOnly ? 'disabled' : ''}></td>
-      <td>${viewOnly ? '' : `<button class="small" data-del="${p.id}">삭제</button>`}</td></tr>`).join('');
+      <td><input class="cell" type="time" data-pid="${p.id}" data-field="from" value="${esc(p.from || '')}"></td>
+      <td><input class="cell" type="time" data-pid="${p.id}" data-field="until" value="${esc(p.until || '')}"></td>
+      <td class="only-editor"><input class="cell" data-pid="${p.id}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px"></td>
+      <td><input class="cell" data-pid="${p.id}" data-field="note" value="${esc(p.note)}"></td>
+      <td><button class="small" data-del="${p.id}">삭제</button></td></tr>`).join('');
   }
 
   // ================= ② 대회 설정 =================

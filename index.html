@@ -34,7 +34,8 @@
 <!-- ============ ① 선수 ============ -->
 <section id="tab-players" class="tab active">
   <h2 id="players-title">선수 명단</h2>
-  <p class="hint">기본 명단은 저장소의 <code>data/tournament.json</code> 게시본에서 불러오며, 편집 모드에서 추가·수정한 내용은 이 브라우저에 저장됩니다. 셀을 클릭하면 바로 수정할 수 있습니다. <b>합류 시각</b>을 비우면 대회 시작부터 참가합니다. <b>NTRP</b> 는 관리자 로그인 시에만 표시되며 파일에도 암호화되어 저장됩니다. <b>같은팀 묶음</b>에 같은 표시(예: A)를 넣은 선수들은 항상 한 팀에 배정됩니다.</p>
+  <p class="hint only-view">참가 선수 명단입니다. 합류 시각은 그 시각부터 경기에 배정됨을 뜻합니다.</p>
+  <p class="hint only-editor">기본 명단은 저장소의 <code>data/tournament.json</code> 게시본에서 불러오며, 편집 모드에서 추가·수정한 내용은 이 브라우저에 저장됩니다. 셀을 클릭하면 바로 수정할 수 있습니다. <b>합류 시각</b>을 비우면 대회 시작부터 참가합니다. <b>NTRP</b> 는 관리자 로그인 시에만 표시되며 파일에도 암호화되어 저장됩니다. <b>같은팀 묶음</b>에 같은 표시(예: A)를 넣은 선수들은 항상 한 팀에 배정됩니다 (관리자에게만 표시).</p>
   <form id="form-player" class="row">
     <input name="name" placeholder="이름" required>
     <select name="gender" style="max-width:90px"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>
@@ -52,15 +53,15 @@
     </form>
   </details>
   <div class="table-wrap"><table class="list" id="tbl-players">
-    <thead><tr><th>#</th><th>참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th>같은팀 묶음</th><th>메모</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th class="only-editor">같은팀 묶음</th><th>메모</th><th></th></tr></thead>
     <tbody></tbody>
   </table></div>
-  <div class="row">
+  <div class="row only-editor">
     <button id="btn-players-all">전원 참가</button>
     <button id="btn-players-none">전원 불참</button>
     <span class="hint">참가 체크된 선수만 팀 구성에 포함됩니다.</span>
   </div>
-  <div class="row">
+  <div class="row only-editor">
     <button class="btn-regen primary">🔄 팀 배정·일정 다시 생성</button>
     <span class="hint">선수 추가·삭제·참가 여부·합류 시각을 바꾼 뒤 누르면 팀과 일정을 새로 만듭니다 (입력된 결과는 지워집니다).</span>
   </div>
@@ -107,7 +108,7 @@
 
     <div class="span2 row">
       <button type="submit" class="primary">저장하고 다음 →</button>
-      <span class="hint">경기 구분·종목을 바꾸면 팀 구성을 다시 해야 합니다.</span>
+      <span class="hint only-editor">경기 구분·종목을 바꾸면 팀 구성을 다시 해야 합니다.</span>
     </div>
   </form>
 </section>
@@ -115,10 +116,10 @@
 <!-- ============ ③ 팀 구성 ============ -->
 <section id="tab-units" class="tab">
   <h2 id="units-title">팀 구성</h2>
-  <p class="hint" id="units-hint"></p>
+  <p class="hint only-editor" id="units-hint"></p>
   <div class="row" id="units-tools"></div>
   <div id="units-view"></div>
-  <div class="row">
+  <div class="row only-editor">
     <button id="btn-generate" class="primary">전체 일정 생성 →</button>
     <span class="hint" id="gen-hint"></span>
   </div>

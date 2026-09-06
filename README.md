@@ -30,4 +30,4 @@ python3 -m http.server 8080
 `http://localhost:8080` 접속.
 
 ## 배포
-`main` 에 push 하면 `.github/workflows/pages.yml` 이 GitHub Pages 를 활성화하고 배포합니다.
+`main` 에 push 하면 `.github/workflows/pages.yml` 이 사이트를 `gh-pages` 브랜치로 게시하고, GitHub Pages 가 그 브랜치를 서빙합니다. (Settings → Pages 의 Source 가 `gh-pages` / root 인지 한 번만 확인)
