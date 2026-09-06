@@ -916,6 +916,33 @@
     e.target.value = '';
   });
   $('#btn-print').addEventListener('click', () => window.print());
+  // ---- 이미지 저장 (모바일: 인쇄 대신) ----
+  function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error('스크립트 로드 실패')); document.head.appendChild(sc); }); }
+  let lastImageBlob = null;
+  async function saveImage() {
+    const btn = $('#btn-image'); const label = btn.textContent; btn.disabled = true; btn.textContent = '만드는 중…';
+    try {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      const target = $('.tab.active') || $('main');
+      const name = (state.settings.name || '테니스윗') + ' · ' + ($('.tabs button.active')?.textContent.replace(/^[①-⑤]\s*/, '') || '');
+      // 캡처용 헤더를 임시로 붙임
+      const head = document.createElement('div'); head.className = 'capture-head'; head.style.cssText = 'padding:10px 14px;font-weight:800;font-size:18px;color:#07452a;'; head.textContent = name + (state.publishedAt ? `  (${new Date(state.publishedAt).toLocaleString('ko-KR')} 게시)` : '');
+      target.prepend(head); document.body.classList.add('capturing');
+      const canvas = await window.html2canvas(target, { scale: Math.min(2, window.devicePixelRatio || 1) * 1.5, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: Math.max(720, target.scrollWidth) });
+      document.body.classList.remove('capturing'); head.remove();
+      const blob = await new Promise((r) => canvas.toBlob(r, 'image/png')); lastImageBlob = blob;
+      const url = URL.createObjectURL(blob);
+      const file = new File([blob], 'tennisweet.png', { type: 'image/png' });
+      const canShare = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+      const img = $('#image-out'); img.src = url; $('#image-download').href = url; $('#image-download').download = `${(state.settings.name || 'tennisweet').replace(/\s+/g, '_')}.png`;
+      $('#image-share').hidden = !canShare; $('#image-modal').hidden = false;
+      if (canShare) { $('#image-share').onclick = async () => { try { await navigator.share({ files: [file], title: name }); } catch {} }; }
+    } catch (e) { alert('이미지를 만들지 못했습니다: ' + e.message); document.body.classList.remove('capturing'); $('.capture-head')?.remove(); }
+    finally { btn.disabled = false; btn.textContent = label; }
+  }
+  $('#btn-image')?.addEventListener('click', saveImage);
+  $('#image-close')?.addEventListener('click', () => { $('#image-modal').hidden = true; });
+  $('#image-modal')?.addEventListener('click', (e) => { if (e.target.id === 'image-modal') $('#image-modal').hidden = true; });
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('모든 설정·참가자·결과를 지웁니다. 계속할까요? (먼저 내보내기를 권장)')) return;
     state = emptyState(); save(); forgetToken(); render(); showTab('players');
