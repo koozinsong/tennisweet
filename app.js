@@ -822,7 +822,7 @@
     const nm = (id, lbl) => unitById(id) ? esc(unitName(unitById(id))) : `<span class="tbd">${esc(lbl || '미정')}</span>`;
     const card = (m) => {
       const o = matchOutcome(m); const r = getResult(m.id);
-      const sc = (side) => m.bye ? '' : r.map((s) => s[side] === '' ? '-' : s[side]).join(' ');
+      const sc = (side) => m.bye ? '' : r.map((s) => s[side] === '' ? '-' : esc(s[side])).join(' ');
       return `<div class="match"><div class="lbl">${esc(koLabel(m))}${m.bye ? ' · 부전승' : m.slot != null ? ` · ${slotTime(m.slot)} ${m.court}코트` : ''}</div>
         <div class="${o.winner === 'a' ? 'w' : ''}"><span>${nm(m.aId, m.aLabel)}</span><span>${sc('a')}</span></div>
         <div class="${o.winner === 'b' ? 'w' : ''}"><span>${m.bye ? '<span class="tbd">부전승</span>' : nm(m.bId, m.bLabel)}</span><span>${sc('b')}</span></div></div>`;
@@ -889,14 +889,20 @@
   const ghHeaders = (tok) => ({ Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
   const b64utf8 = (str) => b64(new TextEncoder().encode(str));
   /** 한 브랜치에 파일 커밋 (있으면 sha 포함 갱신, 없으면 생성). 409/422 충돌 시 sha 재조회 후 1회 재시도 */
-  async function ghPutFile(tok, branch, content, message) {
+  /** opts.base = 이 작업본이 기준으로 삼은 게시본의 publishedAt. 원본의 publishedAt 이 그보다 새로우면(다른 기기 게시) CONFLICT — opts.overwrite 면 무시 */
+  async function ghPutFile(tok, branch, content, message, opts = {}) {
     const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    const utf8 = (b64s) => new TextDecoder().decode(unb64(b64s.replace(/\n/g, '')));
     for (let attempt = 0; attempt < 2; attempt++) {
       const cur = await fetch(`${url}?ref=${branch}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' });
       if (cur.status === 401) throw Object.assign(new Error('AUTH'), { status: 401 });
       if (cur.status === 403) { const b = await cur.json().catch(() => ({})); if (/rate limit|abuse|secondary/i.test(b.message || '')) throw new Error(`GitHub 요청 제한 (잠시 후 다시 시도): ${b.message}`); throw Object.assign(new Error('AUTH'), { status: 403 }); }
       if (cur.status !== 200 && cur.status !== 404) throw new Error(`${branch} 조회 실패 (${cur.status})`);
-      const sha = cur.status === 200 ? (await cur.json()).sha : undefined;
+      const curBody = cur.status === 200 ? await cur.json() : null; const sha = curBody?.sha;
+      if (opts.base !== undefined && !opts.overwrite && curBody?.content) { // 충돌 검사 (원본 기준)
+        let remotePub = null; try { remotePub = JSON.parse(utf8(curBody.content)).publishedAt || null; } catch {}
+        if (remotePub && remotePub !== opts.base && (!opts.base || Date.parse(remotePub) > Date.parse(opts.base))) throw Object.assign(new Error('CONFLICT'), { remote: remotePub });
+      }
       const res = await fetch(url, { method: 'PUT', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message, content: b64utf8(content), branch, ...(sha ? { sha } : {}) }) });
       if (res.ok) return await res.json();
       const body = await res.json().catch(() => ({}));
@@ -909,7 +915,7 @@
   }
   let publishing = false;
   const bannerAdmin = (extra) => { const el = $('#view-banner-text'); if (el) el.textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · ${extra}`; };
-  async function publish(retry = 0) {
+  async function publish(retry = 0, overwrite = false) {
     if (publishing) return; publishing = true; // 중복 클릭 즉시 차단
     const btn = $('#btn-publish'); const label = btn.textContent; btn.disabled = true; btn.textContent = '게시 중…';
     let again = false;
@@ -918,35 +924,32 @@
       if (!state.schedule && !confirm('아직 일정표가 없습니다. 선수·설정만 게시할까요?')) return;
       let tok = await loadToken();
       if (!tok) { tok = await askToken(); if (!tok) { toast('게시를 취소했습니다 (토큰 없음)'); return; } await saveToken(tok); }
-      // 다른 기기에서 그 사이 게시했으면(서버 게시본이 내 작업본의 기준보다 새로움) 덮어쓰기 전에 확인
-      const cur = await loadPublished();
-      const tCur = Date.parse(cur?.publishedAt || ''), tBase = Date.parse(state.publishedAt || '');
-      if (!isNaN(tCur) && (isNaN(tBase) || tCur > tBase + 1000) && cur.publishedAt !== state.publishedAt) {
-        if (!confirm(`서버 게시본(${new Date(cur.publishedAt).toLocaleString('ko-KR')})이 이 작업본의 기준보다 새롭습니다. 다른 기기에서 게시한 내용을 지금 작업본으로 덮어쓸까요?\n(취소 후 '게시본 불러오기'로 최신을 받아 다시 편집할 수 있습니다)`)) { toast('게시를 취소했습니다'); return; }
-      }
       const publishedAt = new Date().toISOString();
       const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, publishedAt };
       const content = JSON.stringify(out, null, 2) + '\n';
       const msg = `게시: ${state.settings.name || '대회'} · ${new Date(publishedAt).toLocaleString('ko-KR')}`;
       const results = []; let mainOk = false;
       for (const br of GH.branches) {
-        try { await ghPutFile(tok, br, content, msg); results.push(`${br} ✓`); if (br === 'main') mainOk = true; }
+        try { await ghPutFile(tok, br, content, msg, br === 'main' ? { base: state.basePublishedAt || null, overwrite } : {}); results.push(`${br} ✓`); if (br === 'main') mainOk = true; }
         catch (e) {
           if (br === 'main') throw e; // 원본 실패 = 게시 실패
           results.push(`${br} ✗ ${e.message === 'AUTH' || e.message === 'NOPERM' ? '권한 없음' : e.message}`); // 서빙 사본 실패는 Actions 배포(1~2분)로 대체됨
         }
       }
-      if (mainOk) { state.publishedAt = publishedAt; save(); } // 작업본 = 게시본 (새 게시본 확인창 방지)
+      if (mainOk) { state.publishedAt = publishedAt; state.basePublishedAt = publishedAt; save(); } // 작업본 = 게시본 (새 게시본 확인창 방지)
       toast(`게시 완료 · ${results.join(' · ')}`, 5000);
       bannerAdmin(`방금 게시함 ${new Date(publishedAt).toLocaleTimeString('ko-KR')} · 방문자 화면은 1분 안에 자동 갱신`);
     } catch (e) {
-      if (e.message === 'AUTH' || e.message === 'NOPERM') {
+      if (e.message === 'CONFLICT') { // 원본(main)에 내 기준보다 새로운 게시본이 있음 = 다른 기기에서 게시함
+        const when = e.remote ? new Date(e.remote).toLocaleString('ko-KR') : '알 수 없음';
+        if (confirm(`저장소에 더 새로운 게시본(${when})이 있습니다. 다른 기기에서 게시한 내용을 지금 작업본으로 덮어쓸까요?\n(취소 후 '게시본 불러오기'로 최신을 받아 다시 편집할 수 있습니다)`)) { again = true; overwrite = true; } else toast('게시를 취소했습니다');
+      } else if (e.message === 'AUTH' || e.message === 'NOPERM') {
         forgetToken();
         const t2 = await askToken(e.message === 'AUTH' ? '토큰이 거부되었습니다 (만료·오타). 새 토큰을 넣어 주세요.' : '이 토큰으로는 저장소에 쓸 수 없습니다 (Repository access 에 koozinsong/tennisweet, Contents: Read and write 필요). 새 토큰을 넣어 주세요.');
-        if (t2 && retry < 1) { await saveToken(t2); again = true; } else toast('게시를 취소했습니다');
+        if (t2 && retry < 2) { await saveToken(t2); again = true; } else toast('게시를 취소했습니다');
       } else alert('게시 실패: ' + e.message + '\n(내보내기 → data/tournament.json 교체 → push 로도 게시할 수 있습니다)');
     } finally { publishing = false; btn.disabled = false; btn.textContent = label; }
-    if (again) return publish(retry + 1);
+    if (again) return publish(retry + 1, overwrite);
   }
   $('#btn-publish').addEventListener('contextmenu', (e) => { e.preventDefault(); if (confirm('저장된 GitHub 토큰을 삭제할까요? 다음 게시 때 다시 묻습니다.')) { forgetToken(); toast('토큰을 삭제했습니다'); } }); // 우클릭/길게 누르기 = 토큰 삭제
   $('#btn-publish').addEventListener('click', publish);
@@ -961,9 +964,16 @@
       for (const src of [m.aFrom, m.bFrom]) if (src && bad(src.id)) throw new Error('경기 참조 id 형식 오류');
     }
     for (const k of Object.keys(data.results || {})) if (bad(k)) throw new Error('결과 id 형식 오류');
+    // 화면에 그대로 들어가는 숫자 필드·스코어는 형식을 강제 (문자열 주입 차단)
+    const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : d);
+    for (const m of data.schedule?.matches || []) { for (const k of ['slot', 'court', 'round', 'group', 'koRound', 'koSize', 'koIndex']) if (m[k] != null) m[k] = num(m[k]); if (m.phase != null && !/^[a-z]{1,10}$/.test(String(m.phase))) m.phase = 'extra'; }
+    for (const arr of Object.values(data.results || {})) if (Array.isArray(arr)) for (const r of arr) { for (const k of ['a', 'b']) r[k] = /^\d{1,3}$/.test(String(r?.[k] ?? '')) ? String(r[k]) : ''; }
+    if (data.schedule) { data.schedule.extraSlots = num(data.schedule.extraSlots); data.schedule.advance = num(data.schedule.advance); if (data.schedule.seed != null) data.schedule.seed = num(data.schedule.seed); }
     return data;
   }
   const normalize = (data) => ({ ...emptyState(), ...assertIds(data), settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, editMode: false });
+  /** 게시본을 작업본으로 삼을 때: 기준 버전(basePublishedAt)을 그 게시본의 publishedAt 으로 */
+  const fromPublished = (pub) => { const st = normalize(pub); st.basePublishedAt = pub.publishedAt || null; return st; };
   function enterViewOnly(text) {
     viewOnly = true; document.body.classList.add('view-only');
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
@@ -974,7 +984,7 @@
   $('#btn-load-published').addEventListener('click', async () => {
     const pub = await loadPublished(); if (!pub) { alert('게시본(data/tournament.json)을 찾을 수 없습니다.'); return; }
     if (!confirm('게시본을 불러와 현재 작업본을 덮어씁니다. 계속할까요?')) return;
-    state = normalize(pub); await decryptAll(); commit();
+    state = fromPublished(pub); await decryptAll(); commit();
   });
 
   window.tennisweet = { getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
@@ -1008,11 +1018,11 @@
     document.body.classList.add('editor');
     let saved = storage.load();
     // 게시본이 작업본보다 새로우면(다른 기기·Claude 에서 게시) 작업본을 게시본으로 교체할지 확인
-    const tp = Date.parse(published?.publishedAt || ''), ts = Date.parse(saved?.savedAt || '');
-    if (saved && published && !isNaN(tp) && (isNaN(ts) || tp > ts + 5000) && published.publishedAt !== saved.publishedAt) {
+    // 작업본의 기준 버전(basePublishedAt)과 서버 게시본이 다르면 = 다른 기기에서 게시됨
+    if (saved && published?.publishedAt && saved.basePublishedAt !== published.publishedAt) {
       if (confirm(`저장소의 게시본(${new Date(published.publishedAt).toLocaleString('ko-KR')})이 이 브라우저의 작업본보다 새롭습니다.\n게시본을 불러올까요? (취소하면 기존 작업본을 계속 편집)`)) saved = null;
     }
-    state = saved ? normalize(saved) : published ? normalize(published) : emptyState();
+    state = saved ? normalize(saved) : published ? fromPublished(published) : emptyState();
     if (!saved) save(); // 게시본을 작업본으로 복사
     $('#view-banner').hidden = false; $('#view-banner').classList.add('editor-banner');
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
