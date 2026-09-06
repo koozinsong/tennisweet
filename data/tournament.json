@@ -264,89 +264,44 @@
     "advance": 0,
     "matches": [
       {
-        "id": "ca5jylo",
+        "id": "zp0z82q",
         "phase": "rot",
         "round": 0,
         "slot": 0,
         "court": 1,
         "aIds": [
-          "p:t4lcpvt",
-          "p:lvcpucm"
+          "p:243v8q3",
+          "p:nba8nn1"
         ],
         "bIds": [
           "p:k45yesm",
-          "p:nba8nn1"
+          "p:h0teikh"
         ]
       },
       {
-        "id": "54vayon",
+        "id": "pqbae0q",
         "phase": "rot",
         "round": 1,
         "slot": 1,
         "court": 1,
         "aIds": [
-          "p:243v8q3",
+          "p:t4lcpvt",
           "p:lvcpucm"
         ],
         "bIds": [
-          "p:t4lcpvt",
-          "p:h0teikh"
+          "p:243v8q3",
+          "p:fm3bdg7"
         ]
       },
       {
-        "id": "3jw2vgj",
+        "id": "ckypmn6",
         "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 1,
         "aIds": [
           "p:k45yesm",
-          "p:ibws5ld"
-        ],
-        "bIds": [
-          "p:t5tmwl5",
-          "p:uzqomod"
-        ]
-      },
-      {
-        "id": "3r8um4t",
-        "phase": "rot",
-        "round": 2,
-        "slot": 2,
-        "court": 2,
-        "aIds": [
-          "p:fm3bdg7",
           "p:45sqltb"
-        ],
-        "bIds": [
-          "p:smnajd5",
-          "p:lvcpucm"
-        ]
-      },
-      {
-        "id": "c1wf19z",
-        "phase": "rot",
-        "round": 2,
-        "slot": 2,
-        "court": 3,
-        "aIds": [
-          "p:h0teikh",
-          "p:nba8nn1"
-        ],
-        "bIds": [
-          "p:6kn0dof",
-          "p:rw9ebrx"
-        ]
-      },
-      {
-        "id": "gtez638",
-        "phase": "rot",
-        "round": 3,
-        "slot": 3,
-        "court": 1,
-        "aIds": [
-          "p:t4lcpvt",
-          "p:rw9ebrx"
         ],
         "bIds": [
           "p:t5tmwl5",
@@ -354,14 +309,59 @@
         ]
       },
       {
-        "id": "3fqgv2h",
+        "id": "rbldvyy",
+        "phase": "rot",
+        "round": 2,
+        "slot": 2,
+        "court": 2,
+        "aIds": [
+          "p:rw9ebrx",
+          "p:smnajd5"
+        ],
+        "bIds": [
+          "p:ibws5ld",
+          "p:uzqomod"
+        ]
+      },
+      {
+        "id": "senoy6e",
+        "phase": "rot",
+        "round": 2,
+        "slot": 2,
+        "court": 3,
+        "aIds": [
+          "p:fm3bdg7",
+          "p:lvcpucm"
+        ],
+        "bIds": [
+          "p:nba8nn1",
+          "p:h0teikh"
+        ]
+      },
+      {
+        "id": "ej1vfxf",
+        "phase": "rot",
+        "round": 3,
+        "slot": 3,
+        "court": 1,
+        "aIds": [
+          "p:t4lcpvt",
+          "p:smnajd5"
+        ],
+        "bIds": [
+          "p:k45yesm",
+          "p:rw9ebrx"
+        ]
+      },
+      {
+        "id": "mgzj2pj",
         "phase": "rot",
         "round": 3,
         "slot": 3,
         "court": 2,
         "aIds": [
-          "p:k45yesm",
-          "p:smnajd5"
+          "p:t5tmwl5",
+          "p:uzqomod"
         ],
         "bIds": [
           "p:243v8q3",
@@ -369,29 +369,44 @@
         ]
       },
       {
-        "id": "ggu2c2z",
+        "id": "e6auvz5",
         "phase": "rot",
         "round": 3,
         "slot": 3,
         "court": 3,
         "aIds": [
-          "p:fm3bdg7",
-          "p:nba8nn1"
+          "p:lvcpucm",
+          "p:fm3bdg7"
         ],
         "bIds": [
-          "p:uzqomod",
+          "p:6kn0dof",
           "p:45sqltb"
         ]
       },
       {
-        "id": "o80ye0s",
+        "id": "ezodcb0",
         "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 1,
         "aIds": [
           "p:t5tmwl5",
-          "p:rw9ebrx"
+          "p:smnajd5"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:h0teikh"
+        ]
+      },
+      {
+        "id": "069cju7",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 2,
+        "aIds": [
+          "p:k45yesm",
+          "p:6kn0dof"
         ],
         "bIds": [
           "p:243v8q3",
@@ -399,78 +414,63 @@
         ]
       },
       {
-        "id": "5jh3w95",
-        "phase": "rot",
-        "round": 4,
-        "slot": 4,
-        "court": 2,
-        "aIds": [
-          "p:fm3bdg7",
-          "p:smnajd5"
-        ],
-        "bIds": [
-          "p:6kn0dof",
-          "p:nba8nn1"
-        ]
-      },
-      {
-        "id": "u3x87vr",
+        "id": "73jktau",
         "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 3,
         "aIds": [
-          "p:ibws5ld",
-          "p:h0teikh"
+          "p:rw9ebrx",
+          "p:ibws5ld"
         ],
         "bIds": [
-          "p:lvcpucm",
+          "p:nba8nn1",
           "p:45sqltb"
         ]
       },
       {
-        "id": "ho9xlzy",
+        "id": "o02mcu6",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 1,
         "aIds": [
-          "p:k45yesm",
+          "p:t4lcpvt",
           "p:fm3bdg7"
         ],
         "bIds": [
-          "p:243v8q3",
-          "p:rw9ebrx"
+          "p:t5tmwl5",
+          "p:ibws5ld"
         ]
       },
       {
-        "id": "0ifd99l",
+        "id": "67stiu0",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 2,
         "aIds": [
-          "p:t4lcpvt",
-          "p:smnajd5"
+          "p:nba8nn1",
+          "p:lvcpucm"
         ],
         "bIds": [
-          "p:t5tmwl5",
-          "p:h0teikh"
+          "p:rw9ebrx",
+          "p:45sqltb"
         ]
       },
       {
-        "id": "uq4ebcw",
+        "id": "gvea1kd",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 3,
         "aIds": [
           "p:6kn0dof",
-          "p:45sqltb"
+          "p:uzqomod"
         ],
         "bIds": [
-          "p:uzqomod",
-          "p:ibws5ld"
+          "p:smnajd5",
+          "p:h0teikh"
         ]
       }
     ],
@@ -494,5 +494,5 @@
     ]
   },
   "results": {},
-  "publishedAt": "2026-09-06T12:10:15.460Z"
+  "publishedAt": "2026-09-06T12:28:29.824Z"
 }

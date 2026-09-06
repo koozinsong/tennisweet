@@ -198,3 +198,6 @@ body.view-only footer .only-view { display: inline; }
 .chip.lo { background: #fff3cd; color: #7a5b00; }
 @media print { #games-summary { page-break-inside: avoid; } }
 .banner.editor-banner { background: #e6f4ea; border-color: #bfdcc8; color: var(--green-dark); }
+.chip small.tc { margin-left: 4px; color: var(--muted); }
+table.summary tr.hi td { background: #f1f8f3; }
+table.summary tr.lo td { background: #fff8e1; }
