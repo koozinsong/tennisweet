@@ -807,16 +807,7 @@
     viewOnly = true; document.body.classList.add('view-only');
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
   }
-  async function adminLogin() {
-    const pw = prompt('관리자 비밀번호'); if (pw == null) return;
-    if (!(await unlockAdmin(pw))) { alert('비밀번호가 틀렸습니다.'); return; }
-    sessionStorage.setItem(PW_KEY, pw);
-    // 게시본을 내 브라우저로 가져와 편집 모드 시작 (로컬 작업본이 있으면 그것을 우선)
-    const local = storage.load();
-    if (local && !confirm('이 브라우저에 이전 작업본이 있습니다. 작업본을 계속 편집할까요?\n(취소: 현재 화면의 게시본으로 덮어쓰기)')) storage.save({ ...state, editMode: false });
-    else if (!local) storage.save({ ...state, editMode: false });
-    localStorage.setItem(EDITOR_FLAG, '1'); location.hash = ''; location.reload();
-  }
+  function adminLogin() { location.href = 'admin.html'; } // 관리자 페이지(비밀번호 입력 화면)로 이동
   $('#btn-editor').addEventListener('click', adminLogin);
   $('#btn-leave-editor').addEventListener('click', () => { localStorage.removeItem(EDITOR_FLAG); sessionStorage.removeItem(PW_KEY); location.reload(); });
   $('#btn-load-published').addEventListener('click', async () => {
@@ -838,12 +829,12 @@
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 없습니다. 관리자로 로그인해 시작하세요.');
       render(); showTab(state.schedule ? 'schedule' : 'players');
-      if (new URLSearchParams(location.search).has('admin')) setTimeout(adminLogin, 100); // admin.html 진입 시 바로 로그인
       return;
     }
     document.body.classList.add('editor');
     const saved = storage.load();
     state = saved ? normalize(saved) : published ? normalize(published) : emptyState();
+    if (!saved) save(); // 첫 로그인: 게시본을 작업본으로 복사
     adminKey = await deriveKey(pw); await decryptAll();
     render(); showTab('players');
   })();
