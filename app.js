@@ -417,7 +417,8 @@
           const teamCost = ((meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4) * 10;
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
-            const cost = teamCost + x.cost + y.cost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
+            const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 12; // NTRP 균형(기본)
+            const cost = teamCost + x.cost + y.cost + balCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
         }
@@ -478,8 +479,10 @@
       const W = Wav.slice(0, wT).map((p) => p.id), M = Mav.slice(0, kSel * 4 - wT).map((p) => p.id);
       const kk = Math.floor((W.length + M.length) / 4); if (kk < 1) continue;
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
+      // NTRP 균형(기본): 양쪽 조 NTRP 합 차이에 벌점. 관리자 키가 없어 NTRP 를 모르면 0 이라 영향 없음
+      const nsum = (a, b) => ntrpOf(a) + ntrpOf(b);
       let best = null, bestCost = Infinity;
-      for (let t = 0; t < 300; t++) {
+      for (let t = 0; t < 600; t++) {
         // 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치, 남복은 그 반대 (골고루)
         const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (rng() - 0.5) * 0.5); const courts = [];
         let ff = wantFF ? 1 : 0; while (w.length - ff * 4 > 2 * (kk - ff)) ff++; // 혼복 코트로 다 못 담으면 여복 코트 수 증가
@@ -491,6 +494,7 @@
         for (const [a1, a2, b1, b2] of courts) {
           cost += 3 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0));
           for (const x of [a1, a2]) for (const y of [b1, b2]) cost += opp[key(x, y)] || 0;
+          cost += Math.abs(nsum(a1, a2) - nsum(b1, b2)) * 4; // NTRP 0.5 차이 = 벌점 2
         }
         if (cost < bestCost) { bestCost = cost; best = courts; if (cost === 0) break; }
       }
