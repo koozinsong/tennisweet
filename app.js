@@ -217,21 +217,28 @@
         const list = shuffle(blocks[bk]).sort((a, b) => ntrpOf(b.id) - ntrpOf(a.id));
         const inBlock = Array(n).fill(0);
         let hasF = false;
-        const order = () => [...Array(n).keys()].sort((x, y) => cnt[x] - cnt[y] || inBlock[x] - inBlock[y] || (hasF ? fem[x] - fem[y] : 0) || avg(x) - avg(y) || Math.random() - 0.5);
+        const order = () => [...Array(n).keys()].sort((x, y) => (hasF ? fem[x] - fem[y] : 0) || cnt[x] - cnt[y] || inBlock[x] - inBlock[y] || avg(x) - avg(y) || Math.random() - 0.5);
         // 같은팀 묶음: 같은 구간의 묶음 멤버끼리 먼저 짝 → 나머지는 강+약 짝
         const pairs = [];
         for (const tg of [...new Set(list.map((p) => p.tag).filter(Boolean))]) {
           const mem = list.filter((p) => p.tag === tg);
           while (mem.length >= 2) { const a = mem.shift(), b = mem.shift(); pairs.push([a, b]); list.splice(list.indexOf(a), 1); list.splice(list.indexOf(b), 1); }
         }
-        while (list.length >= 2) pairs.push([list.shift(), list.pop()]); const single = list[0];
+        // 여성은 남성과 짝지어(혼합 짝) 팀에 배정 → 여성 수가 팀마다 고르게 나뉘어 여복·혼복 편성이 가능
+        const women = list.filter((p) => p.gender === 'F'), men = list.filter((p) => p.gender !== 'F');
+        while (women.length && men.length) pairs.push([men.shift(), women.pop()]);
+        const rest = [...men, ...women].sort((a, b) => ntrpOf(b.id) - ntrpOf(a.id));
+        while (rest.length >= 2) pairs.push([rest.shift(), rest.pop()]); const single = rest[0];
         for (const [hi, lo] of pairs) {
           hasF = hi.gender === 'F' || lo.gender === 'F';
           const forced = teamFor([hi, lo], null);
           const t = forced ?? order()[0];
           const wouldMax = cnt[t] + 2, minOther = Math.min(...cnt.filter((_, i) => i !== t));
           if (forced != null || bi === 0 || wouldMax - minOther <= 1) { put(t, hi); put(t, lo); inBlock[t] += 2; mark(t, [hi, lo]); }
-          else { const [t1, t2] = order(); put(t1, hi); inBlock[t1]++; mark(t1, [hi]); put(t2, lo); inBlock[t2]++; mark(t2, [lo]); }
+          else { // 짝을 가를 때는 여성부터 여성 수 적은 팀에, 남성은 그다음 팀에
+            const [w, m] = hi.gender === 'F' ? [hi, lo] : [lo, hi];
+            hasF = w.gender === 'F'; const t1 = order()[0]; put(t1, w); inBlock[t1]++; mark(t1, [w]);
+            hasF = false; const t2 = order().find((x) => x !== t1) ?? t1; put(t2, m); inBlock[t2]++; mark(t2, [m]); }
         }
         if (single) { hasF = single.gender === 'F'; const t = teamFor([single], order()[0]); put(t, single); inBlock[t]++; mark(t, [single]); }
       });
@@ -326,6 +333,15 @@
   function nextPow2(n) { let p = 1; while (p < n) p *= 2; return p; }
   function roundName(size) { return size === 2 ? '결승' : size === 4 ? '준결승' : `${size}강`; }
 
+  const gOf = (id) => (playerById(id)?.gender === 'F' ? 'F' : 'M');
+  const pairType = (a, b) => [gOf(a), gOf(b)].sort().join(''); // 'FF' 여복 / 'FM' 혼복 / 'MM' 남복
+  const TYPE_LABEL = { FF: '여복', FM: '혼복', MM: '남복' };
+  /** 경기 종류 (양쪽 조가 모두 정해졌을 때). mismatch=true 면 규칙 위반 */
+  function matchType(m) {
+    const a = m.aPlayers, b = m.bPlayers; if (!a || !b || a.some((x) => !x) || b.some((x) => !x)) return null;
+    const ta = pairType(a[0], a[1]), tb = pairType(b[0], b[1]);
+    return { label: ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`, mismatch: ta !== tb };
+  }
   const toMin = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
   const slotStartMin = (s, i) => toMin(s.startTime || '09:00') + i * (s.matchMinutes + s.breakMinutes);
   function maxSlots(s) { const end = toMin(s.endTime); if (end == null) return Infinity; const start = toMin(s.startTime || '09:00'); return Math.max(0, Math.floor((end - start + s.breakMinutes) / (s.matchMinutes + s.breakMinutes))); }
@@ -347,32 +363,34 @@
       const usedP = new Set(); const usedT = {};
       const availOf = (t) => t.playerIds.filter((id) => !usedP.has(id) && playerById(id) && playerAvailable(playerById(id), s, slot));
       for (let c = 1; c <= s.courts; c++) {
-        // 팀 쌍 선택: 이 슬롯 미사용 팀 우선, 대전 횟수 적은 순
+        // 각 팀의 후보 조(경기 수 적은 선수 우선, 파트너 중복 벌점) → 남복/여복/혼복 종류가 같은 조합만 허용
+        const candPairs = (t) => {
+          const cand = availOf(t).sort((a, b) => played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || Math.random() - 0.5).slice(0, 8);
+          const out = [];
+          for (let i = 0; i < cand.length; i++) for (let j = i + 1; j < cand.length; j++)
+            out.push({ p: [cand[i], cand[j]], type: pairType(cand[i], cand[j]), cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 6 });
+          return out;
+        };
         let best = null, bestCost = Infinity;
         for (let i = 0; i < teams.length; i++) for (let j = i + 1; j < teams.length; j++) {
           const A = teams[i], B = teams[j];
-          if (availOf(A).length < 2 || availOf(B).length < 2) continue;
-          const cost = (meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4 + Math.random();
-          if (cost < bestCost) { bestCost = cost; best = [A, B]; }
+          const pa = candPairs(A), pb = candPairs(B); if (!pa.length || !pb.length) continue;
+          const teamCost = ((meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4) * 10;
+          for (const x of pa) for (const y of pb) {
+            if (x.type !== y.type) continue;
+            const cost = teamCost + x.cost + y.cost + Math.random();
+            if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
+          }
         }
         if (!best) break;
-        const pickPair = (t) => {
-          const cand = availOf(t).sort((a, b) => played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || Math.random() - 0.5).slice(0, 6);
-          let bp = null, bc = Infinity;
-          for (let i = 0; i < cand.length; i++) for (let j = i + 1; j < cand.length; j++) {
-            const cost = (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 6 + Math.random();
-            if (cost < bc) { bc = cost; bp = [cand[i], cand[j]]; }
-          }
-          return bp;
-        };
-        const [A, B] = best; const pa = pickPair(A), pb = pickPair(B);
+        const [A, B, pa, pb] = best;
         matches.push({ id: uid(), phase: 'rr', group: 0, round: slot, slot, court: c, aId: A.id, bId: B.id, aPlayers: pa, bPlayers: pb });
         meet[key(A.id, B.id)] = (meet[key(A.id, B.id)] || 0) + 1; usedT[A.id] = (usedT[A.id] || 0) + 1; usedT[B.id] = (usedT[B.id] || 0) + 1;
         [pa, pb].forEach(([x, y]) => { partner[key(x, y)] = (partner[key(x, y)] || 0) + 1; });
         [...pa, ...pb].forEach((id) => { usedP.add(id); played[id]++; lastPlayed[id] = slot; });
       }
     }
-    if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 각 팀에 같은 시각 참석 가능 선수가 2명 이상인지 확인하세요.');
+    if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 각 팀에 같은 시각 참석 가능 선수가 2명 이상이고, 남복·여복·혼복 중 맞출 수 있는 조합이 있는지 확인하세요.');
     return { groups: [teams.map((t) => t.id)], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: teams.map((t) => t.id) };
   }
   /** 복식 로테이션: 슬롯마다 가용 선수 중 경기 수 적은 순으로 코트×4 명 선발, 파트너·상대 중복 최소 조합 */
@@ -393,6 +411,7 @@
         const arr = shuffle([...pick]); let cost = 0;
         for (let c = 0; c < k; c++) {
           const [a1, a2, b1, b2] = arr.slice(c * 4, c * 4 + 4);
+          if (pairType(a1, a2) !== pairType(b1, b2)) cost += 1000; // 남복/여복/혼복 불일치
           cost += 3 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0));
           for (const x of [a1, a2]) for (const y of [b1, b2]) cost += opp[key(x, y)] || 0;
         }
@@ -400,6 +419,7 @@
       }
       for (let c = 0; c < k; c++) {
         const [a1, a2, b1, b2] = best.slice(c * 4, c * 4 + 4);
+        if (pairType(a1, a2) !== pairType(b1, b2)) continue; // 맞출 수 없는 조합은 편성하지 않음
         matches.push({ id: uid(), phase: 'rot', round, slot, court: c + 1, aIds: ['p:' + a1, 'p:' + a2], bIds: ['p:' + b1, 'p:' + b2] });
         partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1;
         for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1;
@@ -610,10 +630,12 @@
           <input type="number" min="0" inputmode="numeric" data-mid="${m.id}" data-i="${i}" data-side="a" value="${esc(sub.a)}" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
           <input type="number" min="0" inputmode="numeric" data-mid="${m.id}" data-i="${i}" data-side="b" value="${esc(sub.b)}" ${canInput ? '' : 'disabled'}></div>`).join('');
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
-        const warn = bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '';
+        const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
+        const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
+        const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
         const mine = cur && matchPeople(m).includes(cur) ? 'mine' : '';
-        html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) ? 'conflict' : ''} ${mine}">
-          <div class="mhead">${edit ? `<select class="ed" data-mid="${m.id}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${m.id}" data-f="court">${courtOpts(m.court)}</select>` : `<b>${m.court}코트</b>`} ${phaseTag(m)} ${warn}${edit ? `<button class="small x" data-del-match="${m.id}">삭제</button>` : ''}</div>
+        html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}">
+          <div class="mhead">${edit ? `<select class="ed" data-mid="${m.id}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${m.id}" data-f="court">${courtOpts(m.court)}</select>` : `<b>${m.court}코트</b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${m.id}">삭제</button>` : ''}</div>
           <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs">vs</div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
           <div class="mfoot">${scores}${res}</div></div>`;
       }

@@ -190,3 +190,5 @@ body.view-only footer .only-view { display: inline; }
 #tbl-players select.cell[data-field=gender] { min-width: 64px; }
 #tbl-players input.cell[data-field=ntrp] { min-width: 64px; }
 #tbl-players { min-width: 860px; }
+.tag.type { background: #e3ecf7; color: #2b4f7e; }
+.tag.bad { background: #fdecea; color: var(--danger); }
