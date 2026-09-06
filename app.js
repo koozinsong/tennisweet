@@ -16,7 +16,7 @@
   const storage = {
     key: 'tennisweet.v2',
     load() { try { const raw = localStorage.getItem(this.key); return raw ? JSON.parse(raw) : null; } catch { return null; } },
-    save(s) { try { localStorage.setItem(this.key, JSON.stringify(s)); } catch {} },
+    save(s) { try { s.savedAt = new Date().toISOString(); localStorage.setItem(this.key, JSON.stringify(s)); } catch {} },
   };
   // ================= 관리자 인증 + NTRP 암호화 (AES-GCM, PBKDF2) =================
   const ADMIN_SALT = 'tennisweet-v1';
@@ -835,9 +835,15 @@
       return;
     }
     document.body.classList.add('editor');
-    const saved = storage.load();
+    let saved = storage.load();
+    // 게시본이 작업본보다 새로우면(다른 기기·Claude 에서 게시) 작업본을 게시본으로 교체할지 확인
+    if (saved && published && published.publishedAt && (!saved.savedAt || published.publishedAt > saved.savedAt)) {
+      if (confirm(`저장소의 게시본(${new Date(published.publishedAt).toLocaleString('ko-KR')})이 이 브라우저의 작업본보다 새롭습니다.\n게시본을 불러올까요? (취소하면 기존 작업본을 계속 편집)`)) saved = null;
+    }
     state = saved ? normalize(saved) : published ? normalize(published) : emptyState();
-    if (!saved) save(); // 첫 로그인: 게시본을 작업본으로 복사
+    if (!saved) save(); // 게시본을 작업본으로 복사
+    $('#view-banner').hidden = false; $('#view-banner').classList.add('editor-banner');
+    $('#view-banner-text').textContent = `✏️ 관리자 모드 · 이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 게시하려면 내보내기 → data/tournament.json 교체 → push`;
     adminKey = await deriveKey(pw); await decryptAll();
     render(); showTab('players');
   })();
