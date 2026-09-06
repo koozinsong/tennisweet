@@ -8,7 +8,7 @@
   const DEFAULT_SETTINGS = {
     name: '', date: '', mode: 'rotation', discipline: 'doubles', teamCount: 2,
     format: 'groups', groupCount: 2, advance: 2, thirdPlace: true,
-    courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1,
+    courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1, maxGames: 6,
   };
   const emptyState = () => ({ players: [], settings: { ...DEFAULT_SETTINGS }, units: [], schedule: null, results: {}, editMode: false });
 
@@ -189,8 +189,8 @@
     const fd = new FormData(formSettings); const s = { ...state.settings };
     for (const [k, v] of fd.entries()) s[k] = v;
     s.thirdPlace = fd.get('thirdPlace') === 'on';
-    for (const k of ['minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
-    s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
+    for (const k of ['maxGames', 'minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
+    s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.maxGames = Math.max(1, s.maxGames || 6); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
     return s;
   }
   function updateSettingsVisibility() {
@@ -719,8 +719,8 @@
       for (const m of rows) {
         const o = matchOutcome(m); const r = getResult(m.id); const canInput = sideIds(m, 'a').length && sideIds(m, 'b').length && !viewOnly;
         const scores = r.map((sub, i) => `<div class="score">${n > 1 ? `<span class="sub">${i + 1}</span>` : ''}
-          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" aria-label="${esc(sideName(m, 'a') || 'A')} 게임 수" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
-          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" aria-label="${esc(sideName(m, 'b') || 'B')} 게임 수" ${canInput ? '' : 'disabled'}></div>`).join('');
+          <input type="number" min="0" max="${s.maxGames || 6}" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" aria-label="${esc(sideName(m, 'a') || 'A')} 게임 수" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
+          <input type="number" min="0" max="${s.maxGames || 6}" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" aria-label="${esc(sideName(m, 'b') || 'B')} 게임 수" ${canInput ? '' : 'disabled'}></div>`).join('');
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
         const clearBtn = !viewOnly && r.some((x) => x.a !== '' || x.b !== '') ? `<button class="small clear-score" data-clear="${esc(m.id)}" title="이 경기 점수 지우기">지우기</button>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
@@ -781,14 +781,15 @@
     if (!has && cb) cb.remove();
     renderStandings(); renderGamesSummary(state.schedule.matches.filter((x) => !x.bye));
   }
+  const clampScore = (el) => { const mx = state.settings.maxGames || 6; if (el.value !== '' && Number(el.value) > mx) el.value = String(mx); if (el.value !== '' && Number(el.value) < 0) el.value = '0'; return el.value; };
   $('#schedule-view').addEventListener('input', (e) => { // 타이핑 즉시 저장 (포커스 이동 전에 게시해도 반영)
     const el = e.target; if (!el.dataset?.side) return;
     const m = state.schedule?.matches.find((x) => x.id === el.dataset.mid); if (!m) return;
-    getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; save();
+    getResult(m.id)[+el.dataset.i][el.dataset.side] = clampScore(el); save();
   });
   $('#schedule-view').addEventListener('change', (e) => {
     const el = e.target; const m = state.schedule?.matches.find((x) => x.id === el.dataset.mid); if (!m) return;
-    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; save(); refreshCard(m); scheduleAutoPublish(); return; }
+    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = clampScore(el); save(); refreshCard(m); scheduleAutoPublish(); return; }
     const f = el.dataset.f;
     if (f === 'slot') m.slot = +el.value; else if (f === 'court') m.court = +el.value;
     else if (/^[ab]\d$/.test(f)) { m[f[0] + 'Ids'][+f[1]] = el.value || null; }
