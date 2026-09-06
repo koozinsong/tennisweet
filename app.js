@@ -47,7 +47,11 @@
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
   const uid = () => Math.random().toString(36).slice(2, 9);
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  // 생성용 난수: 매 생성마다 새 시드(mulberry32). 시드는 schedule.seed 에 저장되어 같은 판을 구분·재현할 수 있다
+  let rng = Math.random;
+  function seedRng(seed) { let a = seed >>> 0; rng = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+  const newSeed = () => ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0) % 1000000;
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   function save() { if (!viewOnly) storage.save(state); }
   function commit() { save(); render(); }
 
@@ -220,7 +224,7 @@
         const list = shuffle(blocks[bk]).sort((a, b) => ntrpOf(b.id) - ntrpOf(a.id));
         const inBlock = Array(n).fill(0);
         let hasF = false;
-        const order = () => [...Array(n).keys()].sort((x, y) => (hasF ? fem[x] - fem[y] : 0) || cnt[x] - cnt[y] || inBlock[x] - inBlock[y] || avg(x) - avg(y) || Math.random() - 0.5);
+        const order = () => [...Array(n).keys()].sort((x, y) => (hasF ? fem[x] - fem[y] : 0) || cnt[x] - cnt[y] || inBlock[x] - inBlock[y] || avg(x) - avg(y) || rng() - 0.5);
         // 같은팀 묶음: 같은 구간의 묶음 멤버끼리 먼저 짝 → 나머지는 강+약 짝
         const pairs = [];
         for (const tg of [...new Set(list.map((p) => p.tag).filter(Boolean))]) {
@@ -313,6 +317,7 @@
     if (mode && mode !== state.settings.mode) { state.settings.mode = mode; state.units = []; }
     if (mode === 'team' && !state.settings.endTime) { alert('팀전은 종료 시각이 필요합니다 (② 대회 설정).'); return; }
     try {
+      seedRng(newSeed());
       if (state.settings.mode === 'team') autoBuild(state.settings.teamCount || 2);
       else if (isRot()) ensureRotationUnits();
       else if (!state.units.length) autoBuild();
@@ -357,7 +362,8 @@
     return (from == null || from <= t0) && (until == null || until >= t1);
   }
   /** 팀전: 시간대마다 코트별로 팀 대 팀 복식 1경기. 대전 횟수 적은 팀끼리, 경기 수 적은 선수부터, 파트너 중복 최소 */
-  function generateTeam(s, teams) {
+  function generateTeam(s, teams, seed = newSeed()) {
+    seedRng(seed);
     if (teams.length < 2) throw new Error('팀이 2개 이상 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (② 대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
@@ -373,7 +379,7 @@
         // 각 팀의 후보 조(경기 수 적은 선수 우선, 파트너 중복 벌점) → 남복/여복/혼복 종류가 같은 조합만 허용
         const restedLast = (id) => slot > 0 && lastPlayed[id] < slot - 1 && playerAvailable(playerById(id), s, slot - 1); // 직전 시간대 휴식 → 최우선
         const candPairs = (t) => {
-          const cand = availOf(t).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || Math.random() - 0.5).slice(0, 8);
+          const cand = availOf(t).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || rng() - 0.5).slice(0, 8);
           const out = [];
           for (let i = 0; i < cand.length; i++) for (let j = i + 1; j < cand.length; j++)
           {
@@ -391,7 +397,7 @@
           const teamCost = ((meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4) * 10;
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
-            const cost = teamCost + x.cost + y.cost + Math.random() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
+            const cost = teamCost + x.cost + y.cost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
         }
@@ -405,10 +411,11 @@
       }
     }
     if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 각 팀에 같은 시각 참석 가능 선수가 2명 이상이고, 남복·여복·혼복 중 맞출 수 있는 조합이 있는지 확인하세요.');
-    return { groups: [teams.map((t) => t.id)], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: teams.map((t) => t.id) };
+    return { groups: [teams.map((t) => t.id)], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: teams.map((t) => t.id), seed };
   }
   /** 복식 로테이션: 슬롯마다 가용 선수 중 경기 수 적은 순으로 코트×4 명 선발, 파트너·상대 중복 최소 조합 */
-  function generateRotation(s) {
+  function generateRotation(s, seed = newSeed()) {
+    seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (② 대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
@@ -454,7 +461,7 @@
       let best = null, bestCost = Infinity;
       for (let t = 0; t < 300; t++) {
         // 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치, 남복은 그 반대 (골고루)
-        const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (Math.random() - 0.5) * 0.5); const courts = [];
+        const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (rng() - 0.5) * 0.5); const courts = [];
         let ff = wantFF ? 1 : 0; while (w.length - ff * 4 > 2 * (kk - ff)) ff++; // 혼복 코트로 다 못 담으면 여복 코트 수 증가
         for (let c = 0; c < ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
         while (w.length >= 2) courts.push([w.pop(), m.pop(), w.pop(), m.pop()]);
@@ -478,7 +485,7 @@
       round++;
     }
     if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 합류 시각과 종료 시각을 확인하세요.');
-    return { groups: [], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: ps.map((p) => 'p:' + p.id) };
+    return { groups: [], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: ps.map((p) => 'p:' + p.id), seed };
   }
   function generate(s, units) {
     const ids = units.map((u) => u.id);
@@ -720,7 +727,7 @@
     const sorted = [...ps].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || (teamOf[a.id] || '').localeCompare(teamOf[b.id] || '') || a.name.localeCompare(b.name));
     const team = state.settings.mode === 'team';
     const cell = (v, cls) => `<td class="num ${cls || ''}">${v || '-'}</td>`;
-    box.innerHTML = `<h3>인당 경기 수 <span class="sub">(최소 ${min} · 최대 ${max} · 총 ${ms.length}경기)</span></h3>
+    box.innerHTML = `<h3>인당 경기 수 <span class="sub">(최소 ${min} · 최대 ${max} · 총 ${ms.length}경기${state.schedule?.seed != null ? ` · 생성 #${state.schedule.seed}` : ''})</span></h3>
       <div class="table-wrap"><table class="stand summary"><thead><tr><th>선수</th>${team ? '<th>팀</th>' : ''}<th>합류</th><th class="num">경기</th><th class="num">남복</th><th class="num">여복</th><th class="num">혼복</th><th>비고</th></tr></thead><tbody>
       ${sorted.map((p) => { const g = games[p.id] || 0; const t = tc[p.id] || {}; return `<tr class="${g === max && max !== min ? 'hi' : ''} ${g === min && max !== min ? 'lo' : ''}">
         <td><b>${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}</td>${team ? `<td class="sub">${esc(teamOf[p.id] || '')}</td>` : ''}<td class="sub">${esc(p.from || '')}${p.until ? '~' + esc(p.until) : ''}</td>
