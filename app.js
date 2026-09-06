@@ -1029,7 +1029,7 @@
   }
   function adminLogin() { location.href = 'admin.html?t=' + Date.now(); } // 관리자 페이지로 이동 (캐시된 옛 페이지 방지)
   $('#btn-editor').addEventListener('click', adminLogin);
-  $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); forgetToken(); location.href = './'; }); // 로그아웃 시 토큰도 삭제 (공용 기기 대비)
+  $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); location.href = './'; }); // 토큰은 암호화된 채 브라우저에 남김 (초기화·게시 버튼 우클릭으로 삭제)
   $('#btn-load-published').addEventListener('click', async () => {
     const pub = await loadPublished(); if (!pub) { alert('게시본(data/tournament.json)을 찾을 수 없습니다.'); return; }
     if (!confirm('게시본을 불러와 현재 작업본을 덮어씁니다. 계속할까요?')) return;
