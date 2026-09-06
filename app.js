@@ -346,7 +346,10 @@
     } catch (err) { alert(err.message); return; }
     save(); showTab('schedule');
   }
-  $$('.btn-regen').forEach((b) => b.addEventListener('click', () => regenerateAll(b.dataset.mode)));
+  $$('.btn-regen').forEach((b) => b.addEventListener('click', () => {
+    const all = $$('.btn-regen'); const labels = all.map((x) => x.textContent); all.forEach((x) => { x.disabled = true; x.textContent = '생성 중…'; });
+    setTimeout(() => { try { regenerateAll(b.dataset.mode); } finally { all.forEach((x, i) => { x.disabled = false; x.textContent = labels[i]; }); } }, 30);
+  }));
   $$('.inp-minff').forEach((el) => el.addEventListener('change', () => { state.settings.minWomenDoubles = Math.max(0, parseInt(el.value, 10) || 0); save(); render(); }));
 
   // ================= 일정 생성 =================
@@ -387,7 +390,7 @@
     if (teams.length < 2) throw new Error('팀이 2개 이상 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (② 대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
-    const played = {}, lastPlayed = {}, partner = {}, meet = {}, fmCnt = {}, mmCnt = {};
+    const played = {}, lastPlayed = {}, partner = {}, opp = {}, meet = {}, fmCnt = {}, mmCnt = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     teams.forEach((t) => t.playerIds.forEach((id) => { played[id] = 0; lastPlayed[id] = -1; fmCnt[id] = 0; mmCnt[id] = 0; }));
     let ffDone = 0; const minFF = s.minWomenDoubles || 0;
@@ -406,7 +409,7 @@
             const tp = pairType(cand[i], cand[j]);
             // 남복·혼복 골고루: 이 종류를 이미 많이 한 남성이면 벌점, 적게 했으면 가점
             const mix = [cand[i], cand[j]].filter((id) => gOf(id) === 'M').reduce((c, id) => c + (tp === 'FM' ? fmCnt[id] - mmCnt[id] : tp === 'MM' ? mmCnt[id] - fmCnt[id] : 0), 0) * 4;
-            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 6 + mix - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) });
+            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 40 + mix - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) });
           }
           return out;
         };
@@ -418,7 +421,8 @@
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
             const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 12; // NTRP 균형(기본)
-            const cost = teamCost + x.cost + y.cost + balCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
+            let oppCost = 0; for (const u of x.p) for (const v of y.p) oppCost += 30 * (opp[key(u, v)] || 0); // 같은 상대 반복 회피
+            const cost = teamCost + x.cost + y.cost + balCost + oppCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
         }
@@ -427,6 +431,7 @@
         matches.push({ id: uid(), phase: 'rr', group: 0, round: slot, slot, court: c, aId: A.id, bId: B.id, aPlayers: pa, bPlayers: pb });
         meet[key(A.id, B.id)] = (meet[key(A.id, B.id)] || 0) + 1; usedT[A.id] = (usedT[A.id] || 0) + 1; usedT[B.id] = (usedT[B.id] || 0) + 1;
         [pa, pb].forEach(([x, y]) => { partner[key(x, y)] = (partner[key(x, y)] || 0) + 1; });
+        for (const u of pa) for (const v of pb) opp[key(u, v)] = (opp[key(u, v)] || 0) + 1;
         const tpm = pairType(pa[0], pa[1]); if (tpm === 'FF') ffDone++;
         [...pa, ...pb].forEach((id) => { usedP.add(id); played[id]++; lastPlayed[id] = slot; if (tpm === 'FM') fmCnt[id]++; else if (tpm === 'MM') mmCnt[id]++; });
       }
@@ -435,7 +440,36 @@
     return { groups: [teams.map((t) => t.id)], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: teams.map((t) => t.id), seed };
   }
   /** 복식 로테이션: 슬롯마다 가용 선수 중 경기 수 적은 순으로 코트×4 명 선발, 파트너·상대 중복 최소 조합 */
+  /** 여러 번 생성해 [상대·파트너 중복 → 연속 휴식 → 경기 수 편차 → NTRP 불균형] 이 가장 적은 판을 고른다 */
   function generateRotation(s, seed = newSeed()) {
+    let best = null, bestScore = Infinity, lastErr = null;
+    for (let k = 0; k < 60; k++) {
+      const sd = (seed + k * 7919) % 1000000;
+      try {
+        const sch = generateRotationOnce(s, sd);
+        const sc = scheduleScore(sch);
+        if (sc < bestScore) { bestScore = sc; best = sch; }
+        if (sc === 0) break;
+      } catch (e) { lastErr = e; }
+    }
+    if (!best) throw lastErr || new Error('배정 가능한 경기가 없습니다.');
+    return best;
+  }
+  function scheduleScore(sch) {
+    const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const pc = {}, oc = {}, games = {};
+    const ids = (side) => side.map((x) => (x.startsWith('p:') ? x.slice(2) : x));
+    for (const m of sch.matches) {
+      const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]);
+      if (A.length === 2) pc[k2(A[0], A[1])] = (pc[k2(A[0], A[1])] || 0) + 1; if (B.length === 2) pc[k2(B[0], B[1])] = (pc[k2(B[0], B[1])] || 0) + 1;
+      for (const x of A) for (const y of B) oc[k2(x, y)] = (oc[k2(x, y)] || 0) + 1;
+      for (const x of [...A, ...B]) games[x] = (games[x] || 0) + 1;
+    }
+    const rep = (o) => Object.values(o).reduce((a, v) => a + Math.max(0, v - 1), 0);
+    const g = Object.values(games); const spread = g.length ? Math.max(...g) - Math.min(...g) : 0;
+    let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
+    return rep(oc) * 100 + rep(pc) * 100 + spread * 30 + ntrpDiff * 4;
+  }
+  function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (② 대회 설정).');
@@ -481,22 +515,29 @@
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       // NTRP 균형(기본): 양쪽 조 NTRP 합 차이에 벌점. 관리자 키가 없어 NTRP 를 모르면 0 이라 영향 없음
       const nsum = (a, b) => ntrpOf(a) + ntrpOf(b);
+      const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); return cost + Math.abs(nsum(a1, a2) - nsum(b1, b2)) * 4; };
+      const totalCost = (cs) => cs.reduce((a, c) => a + courtCost(c), 0);
       let best = null, bestCost = Infinity;
-      for (let t = 0; t < 600; t++) {
-        // 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치, 남복은 그 반대 (골고루)
+      for (let t = 0; t < 40; t++) {
+        // 무작위 초기 배치: 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치
         const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (rng() - 0.5) * 0.5); const courts = [];
         let ff = wantFF ? 1 : 0; while (w.length - ff * 4 > 2 * (kk - ff)) ff++; // 혼복 코트로 다 못 담으면 여복 코트 수 증가
         for (let c = 0; c < ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
         while (w.length >= 2) courts.push([w.pop(), m.pop(), w.pop(), m.pop()]);
         while (courts.length < kk && m.length >= 4) courts.push([m.pop(), m.pop(), m.pop(), m.pop()]);
         if (courts.some((c) => c.some((x) => x == null))) continue;
-        let cost = 0;
-        for (const [a1, a2, b1, b2] of courts) {
-          cost += 3 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0));
-          for (const x of [a1, a2]) for (const y of [b1, b2]) cost += opp[key(x, y)] || 0;
-          cost += Math.abs(nsum(a1, a2) - nsum(b1, b2)) * 4; // NTRP 0.5 차이 = 벌점 2
+        // 교환 탐색: 같은 성별의 두 자리를 바꿔 비용이 줄면 채택 (파트너·상대 중복, NTRP 불균형 감소)
+        const slots = []; courts.forEach((c, ci) => c.forEach((_, pi) => slots.push([ci, pi])));
+        let cost = totalCost(courts);
+        for (let it = 0; it < 400 && cost > 0; it++) {
+          const [c1, p1] = slots[Math.floor(rng() * slots.length)], [c2, p2] = slots[Math.floor(rng() * slots.length)];
+          if (c1 === c2 && p1 === p2) continue;
+          const x = courts[c1][p1], y = courts[c2][p2]; if (gOf(x) !== gOf(y)) continue; // 성별이 같아야 종류(남복/여복/혼복) 유지
+          courts[c1][p1] = y; courts[c2][p2] = x;
+          const nc = totalCost(courts);
+          if (nc <= cost) cost = nc; else { courts[c1][p1] = x; courts[c2][p2] = y; }
         }
-        if (cost < bestCost) { bestCost = cost; best = courts; if (cost === 0) break; }
+        if (cost < bestCost) { bestCost = cost; best = courts.map((c) => [...c]); if (cost === 0) break; }
       }
       if (!best) continue;
       best.forEach(([a1, a2, b1, b2], c) => {
@@ -759,6 +800,16 @@
     const slotsOf = {}; ms.forEach((m) => matchPeople(m).filter(Boolean).forEach((id) => (slotsOf[id] ??= new Set()).add(m.slot)));
     const nSlotsAll = totalSlots(); const dblRest = {};
     for (const p of ps) { let run = 0; for (let i = 0; i < nSlotsAll; i++) { if (!playerAvailable(p, state.settings, i)) { run = 0; continue; } if (slotsOf[p.id]?.has(i)) run = 0; else { run++; if (run >= 2) dblRest[p.id] = (dblRest[p.id] || 0) + 1; } } }
+    // 파트너·상대 중복 검사
+    const pc = {}, oc = {}; const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
+    ms.forEach((m) => { const A = m.aPlayers || (m.aIds || []).map((id) => unitById(id)?.playerIds[0]), B = m.bPlayers || (m.bIds || []).map((id) => unitById(id)?.playerIds[0]); if (!A || !B || A.some((x) => !x) || B.some((x) => !x)) return;
+      if (A.length === 2) pc[k2(A[0], A[1])] = (pc[k2(A[0], A[1])] || 0) + 1; if (B.length === 2) pc[k2(B[0], B[1])] = (pc[k2(B[0], B[1])] || 0) + 1;
+      for (const x of A) for (const y of B) oc[k2(x, y)] = (oc[k2(x, y)] || 0) + 1; });
+    const repP = Object.entries(pc).filter(([, v]) => v > 1).map(([k]) => k.split('|').map(pname).join('·'));
+    const repOPairs = Object.entries(oc).filter(([, v]) => v > 1).map(([k, v]) => ({ ids: k.split('|'), v }));
+    const repO = repOPairs.map(({ ids, v }) => ids.map(pname).join(' vs ') + (v > 2 ? ` ×${v}` : ''));
+    const womenOnly = repOPairs.length > 0 && repOPairs.every(({ ids }) => ids.every((id) => gOf(id) === 'F'));
+    const nWomen = ps.filter((p) => p.gender === 'F').length;
     const sorted = [...ps].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || (teamOf[a.id] || '').localeCompare(teamOf[b.id] || '') || a.name.localeCompare(b.name));
     const team = state.settings.mode === 'team';
     const cell = (v, cls) => `<td class="num ${cls || ''}">${v || '-'}</td>`;
@@ -768,7 +819,8 @@
         <td><b>${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}</td>${team ? `<td class="sub">${esc(teamOf[p.id] || '')}</td>` : ''}<td class="sub">${esc(p.from || '')}${p.until ? '~' + esc(p.until) : ''}</td>
         <td class="num"><b>${g}</b></td>${cell(t.남복)}${cell(t.여복)}${cell(t.혼복)}<td class="sub">${dblRest[p.id] ? '⚠ 2회 연속 휴식' : ''}</td></tr>`; }).join('')}</tbody></table></div>
       ${max - min > 1 ? '<p class="hint">경기 수 차이가 2 이상입니다. 합류 시각 차이 때문이면 정상이며, 그렇지 않으면 현장 편집으로 조정하세요.</p>' : ''}
-      ${Object.keys(dblRest).length ? '<p class="hint">⚠ 표시: 참석 가능한 시간대에 2회 연속 쉬는 구간이 있습니다. 인원·성별 구성상 불가피한 경우(예: 19시대 코트 1면)가 아니면 다시 생성하거나 현장 편집으로 조정하세요.</p>' : ''}`;
+      ${Object.keys(dblRest).length ? '<p class="hint">⚠ 표시: 참석 가능한 시간대에 2회 연속 쉬는 구간이 있습니다. 인원·성별 구성상 불가피한 경우(예: 19시대 코트 1면)가 아니면 다시 생성하거나 현장 편집으로 조정하세요.</p>' : ''}
+      <p class="hint">${repP.length ? `⚠ 같은 파트너 2회: ${esc(repP.join(', '))}` : '✓ 같은 파트너 반복 없음'} · ${repO.length ? `⚠ 같은 상대 2회 이상: ${esc(repO.join(', '))}` : '✓ 같은 상대 반복 없음'}${womenOnly ? ` <span class="sub">(여성 ${nWomen}명이 혼복·여복으로만 만나는 구성상 여성끼리 중복은 불가피)</span>` : ''}</p>`;
   }
   $('#sel-me').addEventListener('change', (e) => { state.meFilter = e.target.value; renderSchedule(); });
   setInterval(() => { if (state.schedule && !document.hidden && slotStatus(0) !== '' || (state.schedule && [...Array(totalSlots()).keys()].some((i) => slotStatus(i)))) renderSchedule(); }, 60000); // 당일 '진행 중' 표시 갱신
