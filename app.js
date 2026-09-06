@@ -65,7 +65,10 @@
     const ds = new DecompressionStream('deflate-raw');
     return await new Response(new Blob([bytes]).stream().pipeThrough(ds)).text();
   }
+  function typeViolations() { return (state.schedule?.matches || []).filter((m) => m.aPlayers && matchType(m)?.mismatch); }
+  function assertTypesOk() { const v = typeViolations(); if (!v.length) return true; alert(`경기 종류가 일치하지 않는 경기가 ${v.length}건 있습니다 (⚠ 종류 불일치). 먼저 수정해 주세요.`); return false; }
   async function makeShareLink() {
+    if (!assertTypesOk()) return;
     const snap = { ...state, editMode: false, sharedAt: new Date().toISOString() };
     const enc = await compress(JSON.stringify(snap));
     const url = `${location.origin}${location.pathname}#s=${encodeURIComponent(enc)}`;
@@ -613,8 +616,10 @@
       if (m[side + 'Ids']) return m[side + 'Ids'].map((id, i) => `<select class="ed" data-mid="${m.id}" data-f="${side}${i}">${unitOpts(id)}</select>`).join('');
       if (m[side + 'Players']) {
         const team = unitById(m[side + 'Id']); const pool = team ? team.playerIds : state.players.map((p) => p.id);
-        const popts = (selP) => `<option value="">(미정)</option>${pool.map((id) => `<option value="${id}" ${id === selP ? 'selected' : ''}>${esc(pname(id))}</option>`).join('')}`;
-        return `<select class="ed" data-mid="${m.id}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>` + m[side + 'Players'].map((id, i) => `<select class="ed" data-mid="${m.id}" data-f="p${side}${i}">${popts(id)}</select>`).join('');
+        // 나머지 3명이 정해져 있으면 남복·여복·혼복 종류가 유지되는 선수만 선택지에 표시
+        const okFor = (i, cand) => { const t = { aPlayers: [...m.aPlayers], bPlayers: [...m.bPlayers] }; t[side + 'Players'][i] = cand; const mt = matchType(t); return !mt || !mt.mismatch; };
+        const popts = (selP, i) => `<option value="">(미정)</option>${pool.filter((id) => id === selP || okFor(i, id)).map((id) => `<option value="${id}" ${id === selP ? 'selected' : ''}>${esc(pname(id))}</option>`).join('')}`;
+        return `<select class="ed" data-mid="${m.id}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>` + m[side + 'Players'].map((id, i) => `<select class="ed" data-mid="${m.id}" data-f="p${side}${i}">${popts(id, i)}</select>`).join('');
       }
       return `<select class="ed" data-mid="${m.id}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>${m.phase === 'ko' && m[side + 'Manual'] ? '<div class="sub">수동 지정</div>' : ''}`;
     };
@@ -650,7 +655,11 @@
     const f = el.dataset.f;
     if (f === 'slot') m.slot = +el.value; else if (f === 'court') m.court = +el.value;
     else if (/^[ab]\d$/.test(f)) { m[f[0] + 'Ids'][+f[1]] = el.value || null; }
-    else if (/^p[ab]\d$/.test(f)) { m[f[1] + 'Players'][+f[2]] = el.value || null; }
+    else if (/^p[ab]\d$/.test(f)) {
+      const arr = m[f[1] + 'Players']; const prev = arr[+f[2]]; arr[+f[2]] = el.value || null;
+      const mt = matchType(m);
+      if (mt?.mismatch) { arr[+f[2]] = prev; alert('경기 종류(남복·여복·혼복)는 양쪽 조가 반드시 같아야 합니다.\n' + mt.label + ' 조합은 편성할 수 없습니다.'); render(); return; }
+    }
     else if (f === 'a' || f === 'b') { const v = el.value || null; if (m.phase === 'ko') m[f + 'Manual'] = v; else { m[f + 'Id'] = v; if (m[f + 'Players']) m[f + 'Players'] = [null, null]; } }
     commit();
   });
@@ -735,6 +744,7 @@
   // ================= 상단 액션 =================
   $('#btn-share').addEventListener('click', makeShareLink);
   $('#btn-export').addEventListener('click', () => {
+    if (!assertTypesOk()) return;
     const out = { ...state, editMode: false, publishedAt: new Date().toISOString() };
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
