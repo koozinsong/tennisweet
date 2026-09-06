@@ -84,7 +84,6 @@
   // ================= 탭 =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
   function showTab(name) {
-    if (name === 'players' && viewOnly) { adminLogin(); return; } // 선수 정보는 관리자 전용
     $$('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
     render();
@@ -771,8 +770,7 @@
     if (!editor) {
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 없습니다. 관리자로 로그인해 시작하세요.');
-      $('.tabs button[data-tab=players]').textContent = '① 선수 🔒';
-      render(); showTab(state.schedule ? 'schedule' : 'units'); return;
+      render(); showTab(state.schedule ? 'schedule' : 'players'); return;
     }
     document.body.classList.add('editor');
     const saved = storage.load();

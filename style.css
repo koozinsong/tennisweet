@@ -177,3 +177,9 @@ select.me { max-width: 240px; }
 #tbl-players input.cell[data-field=name] { min-width: 90px; }
 #tbl-players input.cell[type=time] { min-width: 110px; }
 #tbl-players input.cell[data-field=note] { min-width: 100px; }
+
+/* 보기 모드 선수 표: 입력처럼 보이지 않게 */
+body.view-only #tbl-players input.cell, body.view-only #tbl-players select.cell { border-color: transparent; background: transparent; color: var(--ink); opacity: 1; -webkit-text-fill-color: var(--ink); }
+body.view-only #tbl-players select.cell { appearance: none; -webkit-appearance: none; }
+body.view-only #tbl-players input[type=checkbox] { opacity: 1; }
+body.view-only #tbl-players th:last-child, body.view-only #tbl-players td:last-child { display: none; }
