@@ -1,0 +1,497 @@
+{
+  "players": [
+    {
+      "id": "h0teikh",
+      "name": "송국진",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "q/Inhl0ExqolPJlm.6xzLqkVVf5snEik9Zm79lbw=",
+      "tag": "A"
+    },
+    {
+      "id": "t4lcpvt",
+      "name": "고서영",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "/7QVqmlKwJ6yD7pv.9N+hvqeTDJVQtVZ8zDuYKDo="
+    },
+    {
+      "id": "lvcpucm",
+      "name": "박상용",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "zQWgxyUmCi/v6wso.//X4ZwdVKD8WW2XyKUNtDVQ=",
+      "tag": "A"
+    },
+    {
+      "id": "ibws5ld",
+      "name": "박석환",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "v75paDceEg4qpU4y.4Zh7uL1squxcwZDAaPg3ZQo="
+    },
+    {
+      "id": "nba8nn1",
+      "name": "윤성환",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "I23VQuVJv2iYNnN7.eoqpPVJ84wviq4a/DbUeS8DVvA=="
+    },
+    {
+      "id": "k45yesm",
+      "name": "이정선",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "GWOaOipowreiXCqH.NJtN1SYKaPyma+/Vfllk5QI="
+    },
+    {
+      "id": "243v8q3",
+      "name": "김지선",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "MmgGUgKedjy/0W+0.n2Lo/M+/M/WIwggq9YGU/94="
+    },
+    {
+      "id": "rw9ebrx",
+      "name": "이석우",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "FLAWyizemY1ELplL.jlODDEwdLiDERlQubqmHfeXFrw=="
+    },
+    {
+      "id": "smnajd5",
+      "name": "윤성민",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "bhWz1UbA72FJxjvW.B5Pbl5uYs5N7LP6ACW8MP50="
+    },
+    {
+      "id": "uzqomod",
+      "name": "이상학",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "DIBLGsgmo9ohoLdz.lC3SZAhUowv9qwmiCx+kHxyL/A=="
+    },
+    {
+      "id": "t5tmwl5",
+      "name": "정다운",
+      "gender": "F",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "bknZRYYQqYV8Q0EG.xikqKoMMQmnIICo2xgL+QO7eQA=="
+    },
+    {
+      "id": "45sqltb",
+      "name": "정배근",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "lzae9CnxgNGASQWh.f5ct8/Z4zoMSpXjGhc8zXCE="
+    },
+    {
+      "id": "6kn0dof",
+      "name": "승철홍",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "S2kK7QciBSscRIuf.ZDj9TCktPwrUHxhL3zyX2vY="
+    },
+    {
+      "id": "fm3bdg7",
+      "name": "이원근",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "aQM5m5TeGvlYMMb2.JwFIdR4HLH44xG5stm4q7tg="
+    }
+  ],
+  "settings": {
+    "name": "2026년 3분기 테니스윗 대회",
+    "date": "2026-09-11",
+    "mode": "team",
+    "discipline": "doubles",
+    "teamCount": 2,
+    "format": "groups",
+    "groupCount": 2,
+    "advance": 2,
+    "thirdPlace": true,
+    "courts": 3,
+    "startTime": "19:00",
+    "endTime": "22:00",
+    "matchMinutes": 30,
+    "breakMinutes": 0
+  },
+  "units": [
+    {
+      "id": "k2e1hvz",
+      "name": "1팀",
+      "playerIds": [
+        "lvcpucm",
+        "h0teikh",
+        "t4lcpvt",
+        "nba8nn1",
+        "6kn0dof",
+        "smnajd5",
+        "rw9ebrx"
+      ]
+    },
+    {
+      "id": "x3x3lb0",
+      "name": "2팀",
+      "playerIds": [
+        "243v8q3",
+        "k45yesm",
+        "fm3bdg7",
+        "ibws5ld",
+        "45sqltb",
+        "uzqomod",
+        "t5tmwl5"
+      ]
+    }
+  ],
+  "schedule": {
+    "groups": [
+      [
+        "k2e1hvz",
+        "x3x3lb0"
+      ]
+    ],
+    "advance": 0,
+    "matches": [
+      {
+        "id": "2hndlom",
+        "phase": "rr",
+        "group": 0,
+        "round": 0,
+        "slot": 0,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "t4lcpvt",
+          "nba8nn1"
+        ],
+        "bPlayers": [
+          "k45yesm",
+          "243v8q3"
+        ]
+      },
+      {
+        "id": "uwrkexr",
+        "phase": "rr",
+        "group": 0,
+        "round": 0,
+        "slot": 0,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "h0teikh",
+          "lvcpucm"
+        ],
+        "bPlayers": [
+          "fm3bdg7",
+          "ibws5ld"
+        ]
+      },
+      {
+        "id": "uaeftph",
+        "phase": "rr",
+        "group": 0,
+        "round": 1,
+        "slot": 1,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "h0teikh",
+          "nba8nn1"
+        ],
+        "bPlayers": [
+          "k45yesm",
+          "ibws5ld"
+        ]
+      },
+      {
+        "id": "at9ktjs",
+        "phase": "rr",
+        "group": 0,
+        "round": 1,
+        "slot": 1,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "t4lcpvt",
+          "lvcpucm"
+        ],
+        "bPlayers": [
+          "243v8q3",
+          "fm3bdg7"
+        ]
+      },
+      {
+        "id": "y7d5m6b",
+        "phase": "rr",
+        "group": 0,
+        "round": 2,
+        "slot": 2,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "smnajd5",
+          "6kn0dof"
+        ],
+        "bPlayers": [
+          "45sqltb",
+          "uzqomod"
+        ]
+      },
+      {
+        "id": "ffys2jc",
+        "phase": "rr",
+        "group": 0,
+        "round": 2,
+        "slot": 2,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "rw9ebrx",
+          "nba8nn1"
+        ],
+        "bPlayers": [
+          "t5tmwl5",
+          "k45yesm"
+        ]
+      },
+      {
+        "id": "ims9pju",
+        "phase": "rr",
+        "group": 0,
+        "round": 2,
+        "slot": 2,
+        "court": 3,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "h0teikh",
+          "t4lcpvt"
+        ],
+        "bPlayers": [
+          "243v8q3",
+          "ibws5ld"
+        ]
+      },
+      {
+        "id": "xw616k0",
+        "phase": "rr",
+        "group": 0,
+        "round": 3,
+        "slot": 3,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "rw9ebrx",
+          "6kn0dof"
+        ],
+        "bPlayers": [
+          "t5tmwl5",
+          "45sqltb"
+        ]
+      },
+      {
+        "id": "0fd0i8w",
+        "phase": "rr",
+        "group": 0,
+        "round": 3,
+        "slot": 3,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "smnajd5",
+          "lvcpucm"
+        ],
+        "bPlayers": [
+          "uzqomod",
+          "fm3bdg7"
+        ]
+      },
+      {
+        "id": "xb727y0",
+        "phase": "rr",
+        "group": 0,
+        "round": 3,
+        "slot": 3,
+        "court": 3,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "t4lcpvt",
+          "nba8nn1"
+        ],
+        "bPlayers": [
+          "243v8q3",
+          "k45yesm"
+        ]
+      },
+      {
+        "id": "j9pa0k9",
+        "phase": "rr",
+        "group": 0,
+        "round": 4,
+        "slot": 4,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "smnajd5",
+          "rw9ebrx"
+        ],
+        "bPlayers": [
+          "uzqomod",
+          "t5tmwl5"
+        ]
+      },
+      {
+        "id": "ub02rkt",
+        "phase": "rr",
+        "group": 0,
+        "round": 4,
+        "slot": 4,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "6kn0dof",
+          "h0teikh"
+        ],
+        "bPlayers": [
+          "45sqltb",
+          "ibws5ld"
+        ]
+      },
+      {
+        "id": "ylezjpl",
+        "phase": "rr",
+        "group": 0,
+        "round": 4,
+        "slot": 4,
+        "court": 3,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "lvcpucm",
+          "nba8nn1"
+        ],
+        "bPlayers": [
+          "fm3bdg7",
+          "k45yesm"
+        ]
+      },
+      {
+        "id": "52z76na",
+        "phase": "rr",
+        "group": 0,
+        "round": 5,
+        "slot": 5,
+        "court": 1,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "rw9ebrx",
+          "h0teikh"
+        ],
+        "bPlayers": [
+          "uzqomod",
+          "ibws5ld"
+        ]
+      },
+      {
+        "id": "v9qxv7b",
+        "phase": "rr",
+        "group": 0,
+        "round": 5,
+        "slot": 5,
+        "court": 2,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "smnajd5",
+          "t4lcpvt"
+        ],
+        "bPlayers": [
+          "45sqltb",
+          "243v8q3"
+        ]
+      },
+      {
+        "id": "42ttbtd",
+        "phase": "rr",
+        "group": 0,
+        "round": 5,
+        "slot": 5,
+        "court": 3,
+        "aId": "k2e1hvz",
+        "bId": "x3x3lb0",
+        "aPlayers": [
+          "6kn0dof",
+          "lvcpucm"
+        ],
+        "bPlayers": [
+          "t5tmwl5",
+          "fm3bdg7"
+        ]
+      }
+    ],
+    "qualifiers": 0,
+    "extraSlots": 0,
+    "unitIds": [
+      "k2e1hvz",
+      "x3x3lb0"
+    ]
+  },
+  "results": {},
+  "publishedAt": "2026-09-06T10:34:13.764Z"
+}

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>테니스윗 분기 대회 일정표</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🎾 테니스윗 <span id="hdr-title">분기 대회 일정표</span></div>
+  <nav class="tabs">
+    <button data-tab="players" class="active">① 선수</button>
+    <button data-tab="setup">② 대회 설정</button>
+    <button data-tab="units">③ 팀 구성</button>
+    <button data-tab="schedule">④ 일정표</button>
+    <button data-tab="standings">⑤ 순위·대진</button>
+  </nav>
+  <div class="actions">
+    <button id="btn-editor" class="only-view primary-light">🔐 관리자</button>
+    <button id="btn-share" class="only-editor" title="현재 상태를 링크에 담아 공유">🔗 공유 링크</button>
+    <button id="btn-load-published" class="only-editor" title="저장소 게시본으로 되돌리기">게시본 불러오기</button>
+    <button id="btn-export" class="only-editor" title="tournament.json 저장 → data/ 에 넣고 push">내보내기</button>
+    <button id="btn-import" class="only-editor" title="JSON 파일 불러오기">가져오기</button>
+    <input type="file" id="file-import" accept="application/json" hidden>
+    <button id="btn-print">인쇄</button>
+    <button id="btn-reset" class="danger only-editor">초기화</button>
+    <button id="btn-leave-editor" class="only-editor" title="읽기 전용 게시본 보기로">보기 모드</button>
+  </div>
+</header>
+<div id="view-banner" class="banner" hidden><span id="view-banner-text"></span></div>
+
+<main>
+<!-- ============ ① 선수 ============ -->
+<section id="tab-players" class="tab active">
+  <h2 id="players-title">선수 명단</h2>
+  <p class="hint">기본 명단은 저장소의 <code>data/tournament.json</code> 게시본에서 불러오며, 편집 모드에서 추가·수정한 내용은 이 브라우저에 저장됩니다. 셀을 클릭하면 바로 수정할 수 있습니다. <b>합류 시각</b>을 비우면 대회 시작부터 참가합니다. <b>NTRP</b> 는 관리자만 볼 수 있으며 파일에도 암호화되어 저장됩니다. <b>같은팀 묶음</b>에 같은 표시(예: A)를 넣은 선수들은 항상 한 팀에 배정됩니다.</p>
+  <form id="form-player" class="row">
+    <input name="name" placeholder="이름" required>
+    <select name="gender" style="max-width:90px"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>
+    <input name="ntrp" class="only-editor" type="number" step="0.5" min="1" max="7" placeholder="NTRP" style="max-width:100px">
+    <label class="inline">합류 <input name="from" type="time" style="max-width:120px"></label>
+    <label class="inline">퇴장 <input name="until" type="time" style="max-width:120px"></label>
+    <input name="note" placeholder="메모">
+    <button type="submit" class="primary">추가</button>
+  </form>
+  <details>
+    <summary>여러 명 한 번에 추가</summary>
+    <form id="form-bulk" class="row">
+      <textarea name="bulk" rows="4" placeholder="한 줄에 한 명:  이름, 성별(남/여), NTRP, 합류시각(예 20:00)   — 이름만 써도 됩니다"></textarea>
+      <button type="submit">일괄 추가</button>
+    </form>
+  </details>
+  <div class="table-wrap"><table class="list" id="tbl-players">
+    <thead><tr><th>#</th><th>참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th>같은팀 묶음</th><th>메모</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="row">
+    <button id="btn-players-all">전원 참가</button>
+    <button id="btn-players-none">전원 불참</button>
+    <span class="hint">참가 체크된 선수만 팀 구성에 포함됩니다.</span>
+  </div>
+  <div class="row">
+    <button class="btn-regen primary">🔄 팀 배정·일정 다시 생성</button>
+    <span class="hint">선수 추가·삭제·참가 여부·합류 시각을 바꾼 뒤 누르면 팀과 일정을 새로 만듭니다 (입력된 결과는 지워집니다).</span>
+  </div>
+</section>
+
+<!-- ============ ② 대회 설정 ============ -->
+<section id="tab-setup" class="tab">
+  <h2>대회 설정</h2>
+  <form id="form-settings" class="grid2">
+    <label>대회명 <input name="name" placeholder="2026년 3분기 테니스윗 대회"></label>
+    <label>대회 날짜 <input name="date" type="date"></label>
+
+    <fieldset class="span2">
+      <legend>경기 구분</legend>
+      <label class="radio"><input type="radio" name="mode" value="team" checked> 팀전 — 합류 시각·급수를 고려해 팀을 나누고, 매 시간대 팀 대 팀 복식을 코트별로 배정 (팀 승수 + 개인 기록 집계)</label>
+      <label class="radio"><input type="radio" name="mode" value="individual"> 개인전 — 선수 개인(단식) 또는 고정 복식조가 하나의 참가 단위</label>
+      <label class="radio"><input type="radio" name="mode" value="rotation"> 복식 로테이션 개인전 — 매 경기 파트너·상대를 바꿔 가며 개인 승패 집계 (시차 합류·홀수 인원 가능)</label>
+    </fieldset>
+
+    <label id="lbl-disc">종목
+      <select name="discipline">
+        <option value="doubles">복식</option>
+        <option value="singles">단식</option>
+      </select>
+    </label>
+
+    <fieldset class="span2" id="fs-format">
+      <legend>대회 방식</legend>
+      <label class="radio"><input type="radio" name="format" value="groups" checked> 조별 풀리그 → 본선 토너먼트</label>
+      <label class="radio"><input type="radio" name="format" value="rr"> 전체 풀리그</label>
+      <label class="radio"><input type="radio" name="format" value="ko"> 토너먼트 (단판 탈락)</label>
+    </fieldset>
+
+    <label id="lbl-teamcount">팀 수 <input name="teamCount" type="number" min="2" value="2"></label>
+    <label id="lbl-groups">조 수 <input name="groupCount" type="number" min="1" value="2"></label>
+    <label id="lbl-advance">조별 본선 진출 수 <input name="advance" type="number" min="1" value="2"></label>
+    <label class="check span2" id="lbl-third"><input type="checkbox" name="thirdPlace" checked> 3·4위전 진행</label>
+
+    <label>코트 수 <input name="courts" type="number" min="1" value="2"></label>
+    <label>경기 시작 시각 <input name="startTime" type="time" value="09:00"></label>
+    <label>종료 시각 <input name="endTime" type="time"> <span class="hint">비우면 제한 없음. 로테이션은 이 시각까지 라운드를 채웁니다.</span></label>
+    <label>경기당 소요 시간(분) <input name="matchMinutes" type="number" min="5" step="5" value="30"></label>
+    <label>경기 간 휴식(분) <input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
+
+    <div class="span2 row">
+      <button type="submit" class="primary">저장하고 다음 →</button>
+      <span class="hint">경기 구분·종목을 바꾸면 팀 구성을 다시 해야 합니다.</span>
+    </div>
+  </form>
+</section>
+
+<!-- ============ ③ 팀 구성 ============ -->
+<section id="tab-units" class="tab">
+  <h2 id="units-title">팀 구성</h2>
+  <p class="hint" id="units-hint"></p>
+  <div class="row" id="units-tools"></div>
+  <div id="units-view"></div>
+  <div class="row">
+    <button id="btn-generate" class="primary">전체 일정 생성 →</button>
+    <span class="hint" id="gen-hint"></span>
+  </div>
+</section>
+
+<!-- ============ ④ 일정표 ============ -->
+<section id="tab-schedule" class="tab">
+  <div class="print-header">
+    <h1 id="print-title"></h1>
+    <p id="print-meta"></p>
+  </div>
+  <h2>경기 일정표</h2>
+  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor">🔄 팀 배정·일정 다시 생성</button></div>
+  <div class="row no-print">
+    <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
+    <button id="btn-add-match" class="small" hidden>+ 경기 추가</button>
+    <button id="btn-add-slot" class="small" hidden>+ 시간대 추가</button>
+    <button id="btn-compact" class="small" hidden>빈 시간대 정리</button>
+  </div>
+  <p class="hint only-editor">스코어 칸에 게임 수를 입력하면 순위가 자동 갱신됩니다. ⚠ 표시는 같은 시간대에 겹치는 참가자 또는 코트 중복입니다.</p>
+  <div id="schedule-view"></div>
+</section>
+
+<!-- ============ ⑤ 순위·대진 ============ -->
+<section id="tab-standings" class="tab">
+  <h2>순위표</h2>
+  <div id="standings-view"></div>
+  <h2 id="bracket-title">토너먼트 대진</h2>
+  <div id="bracket-view"></div>
+</section>
+</main>
+
+<footer>테니스윗 · 게시본은 저장소 <code>data/tournament.json</code>, 편집 내용은 이 브라우저에만 저장됩니다. 게시하려면 <b>내보내기</b> → data/ 교체 → push.</footer>
+<script src="app.js"></script>
+</body>
+</html>
