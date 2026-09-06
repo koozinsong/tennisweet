@@ -102,6 +102,7 @@
     <button class="btn-regen primary" data-mode="rotation">🎾 개인전 생성</button>
     <button class="btn-regen primary" data-mode="team">👥 팀전 생성</button>
     <label class="inline">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
+    <label class="inline" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
     <span class="hint">현재 선수 명단(참가 체크·합류 시각)으로 일정을 새로 만듭니다. 팀전은 팀 배정도 함께 합니다. 입력된 결과는 지워집니다.</span>
   </div>
 </section>
@@ -173,7 +174,7 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
+  <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label><label class="inline only-editor" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
     <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>

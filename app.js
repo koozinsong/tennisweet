@@ -333,17 +333,20 @@
   /** 선수 변경 후 원클릭: 팀(또는 복식조) 재배정 + 일정 재생성 */
   function regenerateAll(mode) {
     const label = { rotation: '개인전', team: '팀전' }[mode] || '';
+    const seedIn = $$('.inp-seed').map((el) => el.value.trim()).find((v) => v !== ''); // 생성 번호 지정 시 재현
+    const seed = seedIn !== undefined && /^\d{1,6}$/.test(seedIn) ? +seedIn : newSeed();
     if (state.schedule && Object.keys(state.results).length && !confirm(`입력된 결과와 현장 수정 내용이 모두 지워집니다. ${label} 일정을 다시 생성할까요?`)) return;
     if (mode && mode !== state.settings.mode) { state.settings.mode = mode; state.units = []; }
     if (mode === 'team' && !state.settings.endTime) { alert('팀전은 종료 시각이 필요합니다 (② 대회 설정).'); return; }
     try {
-      seedRng(newSeed());
+      seedRng(seed);
       if (state.settings.mode === 'team') autoBuild(state.settings.teamCount || 2);
       else if (isRot()) ensureRotationUnits();
       else if (!state.units.length) autoBuild();
-      state.schedule = isRot() ? generateRotation(state.settings) : state.settings.mode === 'team' ? generateTeam(state.settings, state.units.filter((u) => u.playerIds.length)) : generate(state.settings, state.units.filter((u) => u.playerIds.length));
+      state.schedule = isRot() ? generateRotation(state.settings, seed) : state.settings.mode === 'team' ? generateTeam(state.settings, state.units.filter((u) => u.playerIds.length), seed) : generate(state.settings, state.units.filter((u) => u.playerIds.length));
       state.results = {};
     } catch (err) { alert(err.message); return; }
+    $$('.inp-seed').forEach((el) => (el.value = '')); // 다음 생성은 다시 무작위
     save(); showTab('schedule');
   }
   $$('.btn-regen').forEach((b) => b.addEventListener('click', () => {
@@ -453,6 +456,7 @@
       } catch (e) { lastErr = e; }
     }
     if (!best) throw lastErr || new Error('배정 가능한 경기가 없습니다.');
+    best.seed = seed; // 재현용: 이 번호로 다시 생성하면 같은 판
     return best;
   }
   function scheduleScore(sch) {
