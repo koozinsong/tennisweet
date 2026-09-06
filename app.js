@@ -80,7 +80,7 @@
   function assertTypesOk() { const v = typeViolations(); if (!v.length) return true; alert(`경기 종류가 일치하지 않는 경기가 ${v.length}건 있습니다 (⚠ 종류 불일치). 먼저 수정해 주세요.`); return false; }
   async function makeShareLink() {
     if (!assertTypesOk()) return;
-    const snap = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, sharedAt: new Date().toISOString() };
+    const snap = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, sharedAt: new Date().toISOString() };
     const enc = await compress(JSON.stringify(snap));
     const url = `${location.origin}${location.pathname}#s=${encodeURIComponent(enc)}`;
     try { await navigator.clipboard.writeText(url); alert(`공유 링크가 복사되었습니다 (${Math.round(url.length / 1024)}KB).\n카톡 등으로 전달하면 누구나 일정·결과를 읽기 전용으로 볼 수 있습니다.\n결과가 바뀌면 다시 공유하세요.`); }
@@ -878,7 +878,7 @@
   $('#btn-share').addEventListener('click', makeShareLink);
   $('#btn-export').addEventListener('click', () => {
     if (!assertTypesOk()) return;
-    const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, publishedAt: new Date().toISOString() };
+    const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, publishedAt: new Date().toISOString() };
     state.publishedAt = out.publishedAt; save(); // 이 파일을 게시하면 작업본과 같은 게시본으로 인식
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -915,6 +915,12 @@
   async function loadToken() { const enc = localStorage.getItem(TOKEN_KEY); if (!enc || !adminKey) return null; try { return await decStr(enc); } catch { return null; } }
   async function saveToken(tok) { localStorage.setItem(TOKEN_KEY, await encStr(tok.trim())); }
   function forgetToken() { localStorage.removeItem(TOKEN_KEY); }
+  /** 게시본에 암호화되어 실린 토큰(ghTokenEnc)을 이 기기에 가져옴 — 관리자 비밀번호만 있으면 다른 기기에서도 바로 게시 가능 */
+  async function syncTokenFromPublished(pub) {
+    if (!adminKey || !pub?.ghTokenEnc || localStorage.getItem(TOKEN_KEY)) return false;
+    try { const tok = await decStr(pub.ghTokenEnc); if (/^(github_pat_|ghp_)/.test(tok)) { await saveToken(tok); return true; } } catch {}
+    return false;
+  }
   function askToken(err) {
     return new Promise((resolve) => {
       const modal = $('#token-modal'), form = $('#token-form'), inp = $('#token-input'), errEl = $('#token-err');
@@ -967,7 +973,7 @@
       let tok = await loadToken();
       if (!tok) { tok = await askToken(); if (!tok) { toast('게시를 취소했습니다 (토큰 없음)'); return; } await saveToken(tok); }
       const publishedAt = new Date().toISOString();
-      const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, publishedAt };
+      const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt, ghTokenEnc: await encStr(tok) }; // 토큰은 관리자 키로 암호화해 동봉 (다른 기기는 비밀번호만으로 게시 가능)
       const content = JSON.stringify(out, null, 2) + '\n';
       const msg = `게시: ${state.settings.name || '대회'} · ${new Date(publishedAt).toLocaleString('ko-KR')}`;
       const results = []; let mainOk = false;
@@ -1033,10 +1039,10 @@
   $('#btn-load-published').addEventListener('click', async () => {
     const pub = await loadPublished(); if (!pub) { alert('게시본(data/tournament.json)을 찾을 수 없습니다.'); return; }
     if (!confirm('게시본을 불러와 현재 작업본을 덮어씁니다. 계속할까요?')) return;
-    state = fromPublished(pub); await decryptAll(); commit();
+    state = fromPublished(pub); await decryptAll(); await syncTokenFromPublished(pub); commit();
   });
 
-  window.tennisweet = { getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
+  window.tennisweet = { syncTokenFromPublished, hasToken: () => !!localStorage.getItem(TOKEN_KEY), getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
 
   // ================= 시작 =================
   (async () => {
@@ -1078,6 +1084,7 @@
     $('#view-banner').hidden = false; $('#view-banner').classList.add('editor-banner');
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
+    if (await syncTokenFromPublished(published)) toast('게시 토큰을 게시본에서 가져왔습니다 · 바로 게시할 수 있습니다');
     render(); showTab('players');
   })();
 })();
