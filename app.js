@@ -95,10 +95,23 @@
     } catch (e) { alert('공유 링크를 읽을 수 없습니다: ' + e.message); return false; }
   }
 
+  // ================= 커버 (첫 화면) =================
+  function showCover(on) {
+    const cv = $('#cover'); if (!cv) return;
+    cv.hidden = !on; document.body.classList.toggle('cover-on', on);
+    if (on) { $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
+  }
+  $('#cover')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-go]'); if (!b) return;
+    if (b.dataset.go === 'admin') { adminLogin(); return; }
+    showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + b.dataset.go);
+  });
+  $('#btn-home')?.addEventListener('click', () => { if (viewOnly) { showCover(true); history.replaceState(null, '', location.pathname); } else showTab('schedule'); });
+
   // ================= 탭 =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
   function showTab(name) {
-    $$('.tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+    $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
     render();
   }
@@ -149,7 +162,7 @@
       return;
     }
     $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
-      <td>${i + 1}</td><td><input type="checkbox" data-pid="${esc(p.id)}" ${p.active ? 'checked' : ''}></td>
+      <td>${i + 1}</td><td><input type="checkbox" data-pid="${esc(p.id)}" aria-label="${esc(p.name)} 참가" ${p.active ? 'checked' : ''}></td>
       <td><input class="cell" data-pid="${esc(p.id)}" data-field="name" value="${esc(p.name)}"></td>
       <td><select class="cell" data-pid="${esc(p.id)}" data-field="gender"><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
       <td class="only-editor">${adminKey ? `<input class="cell" type="number" step="0.5" min="1" max="7" data-pid="${esc(p.id)}" data-field="ntrp" value="${esc(ntrp.get(p.id) || '')}">` : '<span class="tbd">🔒</span>'}</td>
@@ -192,7 +205,7 @@
   }
   formSettings.addEventListener('change', updateSettingsVisibility);
   formSettings.addEventListener('submit', (e) => {
-    e.preventDefault(); const ns = readSettings();
+    e.preventDefault(); if (viewOnly) return; const ns = readSettings();
     const kindChanged = ns.mode !== state.settings.mode || ns.discipline !== state.settings.discipline;
     state.settings = ns;
     if (kindChanged) state.units = [];
@@ -287,7 +300,7 @@
 
     const assigned = assignedIds(); const free = activePlayers().filter((p) => !assigned.has(p.id));
     const opt = (sel) => `<option value="">+ 선수 추가</option>${free.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${adminKey && ntrp.get(p.id) ? ` (${esc(ntrp.get(p.id))})` : ''}</option>`).join('')}`;
-    const pchip = (u, pid) => { const p = playerById(pid); return `<span class="chip">${esc(p?.name ?? '?')}${adminKey && ntrp.get(p.id) ? `<small> ${esc(ntrp.get(p.id))}</small>` : ''}${p?.from ? `<small> ${esc(p.from)}~</small>` : ''}${viewOnly ? '' : `<button class="x" data-rm="${esc(u.id)}:${esc(pid)}" title="빼기">×</button>`}</span>`; };
+    const pchip = (u, pid) => { const p = playerById(pid); return `<span class="chip">${esc(p?.name ?? '?')}${adminKey && ntrp.get(p.id) ? `<small> ${esc(ntrp.get(p.id))}</small>` : ''}${p?.from ? `<small> ${esc(p.from)}~</small>` : ''}${viewOnly ? '' : `<button class="x" data-rm="${esc(u.id)}:${esc(pid)}" title="빼기" aria-label="${esc(p?.name ?? '')} 빼기">×</button>`}</span>`; };
     const dis = viewOnly ? 'disabled' : '';
     view.innerHTML = `<div class="cards">${state.units.map((u, i) => `<div class="card">
         <div class="card-head">${kind === 'team' ? `<input class="unit-name" data-uid="${esc(u.id)}" value="${esc(u.name)}" placeholder="팀명" ${dis}>` : `<b>${i + 1}. ${esc(unitName(u))}</b>`}
@@ -706,16 +719,16 @@
       for (const m of rows) {
         const o = matchOutcome(m); const r = getResult(m.id); const canInput = sideIds(m, 'a').length && sideIds(m, 'b').length && !viewOnly;
         const scores = r.map((sub, i) => `<div class="score">${n > 1 ? `<span class="sub">${i + 1}</span>` : ''}
-          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
-          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" ${canInput ? '' : 'disabled'}></div>`).join('');
+          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" aria-label="${esc(sideName(m, 'a') || 'A')} 게임 수" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
+          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" aria-label="${esc(sideName(m, 'b') || 'B')} 게임 수" ${canInput ? '' : 'disabled'}></div>`).join('');
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
         const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
-        const mine = cur && matchPeople(m).includes(cur) ? 'mine' : '';
+        const mine = ''; // '내 경기' 필터는 목록 자체를 걸러서 보여주므로 별도 강조 불필요
         html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}">
           <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
-          <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs">vs</div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
+          <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
           <div class="mfoot">${scores}${res}</div></div>`;
       }
       html += '</div></div>';
@@ -795,8 +808,8 @@
     const view = $('#standings-view'); const sch = state.schedule;
     if (sch && isRot()) {
       const list = rotationStandings(); const games = {}; sch.matches.forEach((m) => [...sideIds(m, 'a'), ...sideIds(m, 'b')].forEach((id) => (games[id] = (games[id] || 0) + 1)));
-      view.innerHTML = `<h3>개인 순위 <span class="sub">(승 → 득실차 → 득게임)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">득게임</th><th class="num">실게임</th><th class="num">득실차</th></tr></thead><tbody>
-        ${list.map((r, i) => `<tr class="${i === 0 && r.p ? 'rank1' : ''}"><td class="num">${i + 1}</td><td>${unitHtml(r.id)}</td><td class="num">${games[r.id] || 0}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.d}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td><td class="num">${r.gf - r.ga}</td></tr>`).join('')}</tbody></table>`;
+      view.innerHTML = '<div class="table-wrap">' + `<h3>개인 순위 <span class="sub">(승 → 득실차 → 득게임)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">득게임</th><th class="num">실게임</th><th class="num">득실차</th></tr></thead><tbody>
+        ${list.map((r, i) => `<tr class="${i === 0 && r.p ? 'rank1' : ''}"><td class="num">${i + 1}</td><td>${unitHtml(r.id)}</td><td class="num">${games[r.id] || 0}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.d}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td><td class="num">${r.gf - r.ga}</td></tr>`).join('')}</tbody></table>` + '</div>';
       return;
     }
     if (!sch || state.settings.format === 'ko') { view.innerHTML = sch ? '<p class="hint">토너먼트 방식은 순위표가 없습니다.</p>' : '<p class="hint">일정표를 먼저 생성하세요.</p>'; return; }
@@ -890,8 +903,11 @@
   function askToken(err) {
     return new Promise((resolve) => {
       const modal = $('#token-modal'), form = $('#token-form'), inp = $('#token-input'), errEl = $('#token-err');
+      const opener = document.activeElement;
       errEl.textContent = err || ''; inp.value = ''; modal.hidden = false; inp.focus();
-      const done = (v) => { modal.hidden = true; form.onsubmit = null; $('#token-cancel').onclick = null; $('#token-forget').onclick = null; resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') done(null); };
+      document.addEventListener('keydown', onKey);
+      const done = (v) => { modal.hidden = true; form.onsubmit = null; $('#token-cancel').onclick = null; $('#token-forget').onclick = null; document.removeEventListener('keydown', onKey); opener?.focus?.(); resolve(v); };
       form.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim(); if (!/^(github_pat_|ghp_)/.test(v)) { errEl.textContent = '토큰 형식이 아닙니다 (github_pat_… 또는 ghp_…).'; return; } done(v); };
       $('#token-cancel').onclick = () => done(null);
       $('#token-forget').onclick = () => { forgetToken(); errEl.textContent = '저장된 토큰을 삭제했습니다.'; };
@@ -993,6 +1009,7 @@
   const fromPublished = (pub) => { const st = normalize(pub); st.basePublishedAt = pub.publishedAt || null; return st; };
   function enterViewOnly(text) {
     viewOnly = true; document.body.classList.add('view-only');
+    try { $('#form-settings').inert = true; } catch {}
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
   }
   function adminLogin() { location.href = 'admin.html?t=' + Date.now(); } // 관리자 페이지로 이동 (캐시된 옛 페이지 방지)
@@ -1018,7 +1035,9 @@
     if (!editor) { // 일반 페이지는 항상 보기 전용
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
-      render(); showTab(state.schedule ? 'schedule' : 'players');
+      render();
+      const want = (location.hash || '').replace('#', '');
+      if (['schedule', 'standings', 'players', 'units', 'setup'].includes(want)) showTab(want); else { showTab(state.schedule ? 'schedule' : 'players'); showCover(true); } // 첫 화면 = 포스터 커버
       // 방문자: 게시본이 바뀌면 자동 갱신 (현장에서 관리자가 게시하면 곧 반영)
       let lastPub = published?.publishedAt || null;
       setInterval(async () => {

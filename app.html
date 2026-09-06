@@ -1,6 +1,23 @@
+<!-- 커버: 포스터를 첫 화면으로, 메뉴로 진입 -->
+<section id="cover" class="cover" hidden>
+  <div class="cover-art">
+    <picture><source srcset="assets/poster.webp" type="image/webp"><img id="cover-img" src="assets/poster.jpg" alt="테니스윗 2026 클럽 포스터" onerror="this.closest('.cover-art').classList.add('noimg')"></picture>
+    <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
+  </div>
+  <nav class="cover-menu" aria-label="메뉴">
+    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span></div>
+    <button data-go="schedule" class="menu-main">경기 일정표</button>
+    <div class="cover-grid">
+      <button data-go="standings">순위</button>
+      <button data-go="players">선수</button>
+      <button data-go="units">팀 구성</button>
+      <button data-go="admin" class="only-view">🔐 관리자</button>
+    </div>
+  </nav>
+</section>
 <header class="topbar">
-  <div class="brand"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></div>
-  <nav class="tabs">
+  <button class="brand" id="btn-home" title="첫 화면으로"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
+  <nav class="tabs" aria-label="화면 선택">
     <button data-tab="players" class="active">① 선수</button>
     <button data-tab="setup">② 대회 설정</button>
     <button data-tab="units">③ 팀 구성</button>
@@ -21,11 +38,11 @@
   </div>
 </header>
 <div id="view-banner" class="banner" hidden><span id="view-banner-text"></span></div>
-<div id="toast" class="toast" hidden></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 <!-- 게시용 GitHub 토큰 등록 -->
-<div id="token-modal" class="modal" hidden>
+<div id="token-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="token-title" hidden>
   <form class="modal-card" id="token-form">
-    <h3>🚀 게시 설정 (최초 1회)</h3>
+    <h3 id="token-title">🚀 게시 설정 (최초 1회)</h3>
     <p class="hint">게시하기는 이 브라우저가 GitHub 저장소의 <code>data/tournament.json</code> 을 직접 커밋합니다. 그러려면 저장소에 쓸 수 있는 GitHub 토큰이 필요합니다.</p>
     <ol class="hint steps">
       <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener"><b>github.com/settings/personal-access-tokens/new</b></a> 를 새 탭에서 열기 (GitHub 로그인 필요). 이름은 아무거나, 만료는 대회 뒤로.</li>
@@ -145,7 +162,7 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
+  <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
     <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
