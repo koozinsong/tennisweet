@@ -303,7 +303,7 @@ body.view-only .cover-grid button.only-view { display: block; grid-column: span 
   .cover-art img { max-height: 100vh; }
   .cover-menu { align-self: center; padding: 32px 28px; background: none; }
 }
-@media print { .cover { display: none !important; } }
+@media print { .cover { display: none !important; } body.cover-on main { display: block !important; } }
 #form-player [name=ntrp] { flex: 0 0 100px; min-width: 0; }
 #form-player [name=name] { flex: 1 1 160px; }
 .mfoot .clear-score { margin-left: auto; color: var(--muted); }
