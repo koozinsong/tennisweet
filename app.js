@@ -307,8 +307,11 @@
   });
 
   /** 선수 변경 후 원클릭: 팀(또는 복식조) 재배정 + 일정 재생성 */
-  function regenerateAll() {
-    if (state.schedule && Object.keys(state.results).length && !confirm('입력된 결과와 현장 수정 내용이 모두 지워집니다. 팀 배정과 일정을 다시 생성할까요?')) return;
+  function regenerateAll(mode) {
+    const label = { rotation: '개인전', team: '팀전' }[mode] || '';
+    if (state.schedule && Object.keys(state.results).length && !confirm(`입력된 결과와 현장 수정 내용이 모두 지워집니다. ${label} 일정을 다시 생성할까요?`)) return;
+    if (mode && mode !== state.settings.mode) { state.settings.mode = mode; state.units = []; }
+    if (mode === 'team' && !state.settings.endTime) { alert('팀전은 종료 시각이 필요합니다 (② 대회 설정).'); return; }
     try {
       if (state.settings.mode === 'team') autoBuild(state.settings.teamCount || 2);
       else if (isRot()) ensureRotationUnits();
@@ -318,7 +321,7 @@
     } catch (err) { alert(err.message); return; }
     save(); showTab('schedule');
   }
-  $$('.btn-regen').forEach((b) => b.addEventListener('click', regenerateAll));
+  $$('.btn-regen').forEach((b) => b.addEventListener('click', () => regenerateAll(b.dataset.mode)));
 
   // ================= 일정 생성 =================
   function roundRobin(ids) {

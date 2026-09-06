@@ -62,8 +62,9 @@
     <span class="hint">참가 체크된 선수만 팀 구성에 포함됩니다.</span>
   </div>
   <div class="row only-editor">
-    <button class="btn-regen primary">🔄 팀 배정·일정 다시 생성</button>
-    <span class="hint">선수 추가·삭제·참가 여부·합류 시각을 바꾼 뒤 누르면 팀과 일정을 새로 만듭니다 (입력된 결과는 지워집니다).</span>
+    <button class="btn-regen primary" data-mode="rotation">🎾 개인전 생성</button>
+    <button class="btn-regen primary" data-mode="team">👥 팀전 생성</button>
+    <span class="hint">현재 선수 명단(참가 체크·합류 시각)으로 일정을 새로 만듭니다. 팀전은 팀 배정도 함께 합니다. 입력된 결과는 지워집니다.</span>
   </div>
 </section>
 
@@ -132,7 +133,7 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor">🔄 팀 배정·일정 다시 생성</button></div>
+  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
     <button id="btn-add-match" class="small" hidden>+ 경기 추가</button>
