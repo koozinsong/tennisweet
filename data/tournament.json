@@ -146,7 +146,7 @@
   "settings": {
     "name": "2026년 3분기 테니스윗 대회",
     "date": "2026-09-11",
-    "mode": "team",
+    "mode": "rotation",
     "discipline": "doubles",
     "teamCount": 2,
     "format": "groups",
@@ -161,301 +161,338 @@
   },
   "units": [
     {
-      "id": "47vegfx",
-      "name": "1팀",
+      "id": "p:h0teikh",
+      "name": "",
       "playerIds": [
-        "lvcpucm",
-        "h0teikh",
-        "nba8nn1",
-        "t4lcpvt",
-        "t5tmwl5",
-        "uzqomod",
+        "h0teikh"
+      ]
+    },
+    {
+      "id": "p:t4lcpvt",
+      "name": "",
+      "playerIds": [
+        "t4lcpvt"
+      ]
+    },
+    {
+      "id": "p:lvcpucm",
+      "name": "",
+      "playerIds": [
+        "lvcpucm"
+      ]
+    },
+    {
+      "id": "p:ibws5ld",
+      "name": "",
+      "playerIds": [
+        "ibws5ld"
+      ]
+    },
+    {
+      "id": "p:nba8nn1",
+      "name": "",
+      "playerIds": [
+        "nba8nn1"
+      ]
+    },
+    {
+      "id": "p:k45yesm",
+      "name": "",
+      "playerIds": [
+        "k45yesm"
+      ]
+    },
+    {
+      "id": "p:243v8q3",
+      "name": "",
+      "playerIds": [
+        "243v8q3"
+      ]
+    },
+    {
+      "id": "p:rw9ebrx",
+      "name": "",
+      "playerIds": [
         "rw9ebrx"
       ]
     },
     {
-      "id": "gw1auel",
-      "name": "2팀",
+      "id": "p:smnajd5",
+      "name": "",
       "playerIds": [
-        "fm3bdg7",
-        "k45yesm",
-        "ibws5ld",
-        "243v8q3",
-        "45sqltb",
-        "smnajd5",
+        "smnajd5"
+      ]
+    },
+    {
+      "id": "p:uzqomod",
+      "name": "",
+      "playerIds": [
+        "uzqomod"
+      ]
+    },
+    {
+      "id": "p:t5tmwl5",
+      "name": "",
+      "playerIds": [
+        "t5tmwl5"
+      ]
+    },
+    {
+      "id": "p:45sqltb",
+      "name": "",
+      "playerIds": [
+        "45sqltb"
+      ]
+    },
+    {
+      "id": "p:6kn0dof",
+      "name": "",
+      "playerIds": [
         "6kn0dof"
+      ]
+    },
+    {
+      "id": "p:fm3bdg7",
+      "name": "",
+      "playerIds": [
+        "fm3bdg7"
       ]
     }
   ],
   "schedule": {
-    "groups": [
-      [
-        "47vegfx",
-        "gw1auel"
-      ]
-    ],
+    "groups": [],
     "advance": 0,
     "matches": [
       {
-        "id": "9k6diw0",
-        "phase": "rr",
-        "group": 0,
+        "id": "ca5jylo",
+        "phase": "rot",
         "round": 0,
         "slot": 0,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "h0teikh",
-          "t4lcpvt"
+        "aIds": [
+          "p:t4lcpvt",
+          "p:lvcpucm"
         ],
-        "bPlayers": [
-          "k45yesm",
-          "fm3bdg7"
+        "bIds": [
+          "p:k45yesm",
+          "p:nba8nn1"
         ]
       },
       {
-        "id": "a212a9p",
-        "phase": "rr",
-        "group": 0,
+        "id": "54vayon",
+        "phase": "rot",
         "round": 1,
         "slot": 1,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "lvcpucm",
-          "t4lcpvt"
+        "aIds": [
+          "p:243v8q3",
+          "p:lvcpucm"
         ],
-        "bPlayers": [
-          "243v8q3",
-          "ibws5ld"
+        "bIds": [
+          "p:t4lcpvt",
+          "p:h0teikh"
         ]
       },
       {
-        "id": "pk6zcl5",
-        "phase": "rr",
-        "group": 0,
+        "id": "3jw2vgj",
+        "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "uzqomod",
-          "nba8nn1"
+        "aIds": [
+          "p:k45yesm",
+          "p:ibws5ld"
         ],
-        "bPlayers": [
-          "6kn0dof",
-          "45sqltb"
+        "bIds": [
+          "p:t5tmwl5",
+          "p:uzqomod"
         ]
       },
       {
-        "id": "wgxmw0q",
-        "phase": "rr",
-        "group": 0,
+        "id": "3r8um4t",
+        "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 2,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "t5tmwl5",
-          "rw9ebrx"
+        "aIds": [
+          "p:fm3bdg7",
+          "p:45sqltb"
         ],
-        "bPlayers": [
-          "smnajd5",
-          "243v8q3"
+        "bIds": [
+          "p:smnajd5",
+          "p:lvcpucm"
         ]
       },
       {
-        "id": "ir1gtoj",
-        "phase": "rr",
-        "group": 0,
+        "id": "c1wf19z",
+        "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 3,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "h0teikh",
-          "lvcpucm"
+        "aIds": [
+          "p:h0teikh",
+          "p:nba8nn1"
         ],
-        "bPlayers": [
-          "fm3bdg7",
-          "ibws5ld"
+        "bIds": [
+          "p:6kn0dof",
+          "p:rw9ebrx"
         ]
       },
       {
-        "id": "0kvc04n",
-        "phase": "rr",
-        "group": 0,
+        "id": "gtez638",
+        "phase": "rot",
         "round": 3,
         "slot": 3,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "uzqomod",
-          "t5tmwl5"
+        "aIds": [
+          "p:t4lcpvt",
+          "p:rw9ebrx"
         ],
-        "bPlayers": [
-          "k45yesm",
-          "6kn0dof"
+        "bIds": [
+          "p:t5tmwl5",
+          "p:6kn0dof"
         ]
       },
       {
-        "id": "fdw9wwx",
-        "phase": "rr",
-        "group": 0,
+        "id": "3fqgv2h",
+        "phase": "rot",
         "round": 3,
         "slot": 3,
         "court": 2,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "nba8nn1",
-          "rw9ebrx"
+        "aIds": [
+          "p:k45yesm",
+          "p:smnajd5"
         ],
-        "bPlayers": [
-          "smnajd5",
-          "45sqltb"
+        "bIds": [
+          "p:243v8q3",
+          "p:ibws5ld"
         ]
       },
       {
-        "id": "on2usuk",
-        "phase": "rr",
-        "group": 0,
+        "id": "ggu2c2z",
+        "phase": "rot",
         "round": 3,
         "slot": 3,
         "court": 3,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "t4lcpvt",
-          "h0teikh"
+        "aIds": [
+          "p:fm3bdg7",
+          "p:nba8nn1"
         ],
-        "bPlayers": [
-          "fm3bdg7",
-          "243v8q3"
+        "bIds": [
+          "p:uzqomod",
+          "p:45sqltb"
         ]
       },
       {
-        "id": "zfqq80v",
-        "phase": "rr",
-        "group": 0,
+        "id": "o80ye0s",
+        "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "lvcpucm",
-          "uzqomod"
+        "aIds": [
+          "p:t5tmwl5",
+          "p:rw9ebrx"
         ],
-        "bPlayers": [
-          "ibws5ld",
-          "6kn0dof"
+        "bIds": [
+          "p:243v8q3",
+          "p:uzqomod"
         ]
       },
       {
-        "id": "exb6k6t",
-        "phase": "rr",
-        "group": 0,
+        "id": "5jh3w95",
+        "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 2,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "nba8nn1",
-          "t5tmwl5"
+        "aIds": [
+          "p:fm3bdg7",
+          "p:smnajd5"
         ],
-        "bPlayers": [
-          "45sqltb",
-          "k45yesm"
+        "bIds": [
+          "p:6kn0dof",
+          "p:nba8nn1"
         ]
       },
       {
-        "id": "gxukvii",
-        "phase": "rr",
-        "group": 0,
+        "id": "u3x87vr",
+        "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 3,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "rw9ebrx",
-          "h0teikh"
+        "aIds": [
+          "p:ibws5ld",
+          "p:h0teikh"
         ],
-        "bPlayers": [
-          "smnajd5",
-          "fm3bdg7"
+        "bIds": [
+          "p:lvcpucm",
+          "p:45sqltb"
         ]
       },
       {
-        "id": "drtr44h",
-        "phase": "rr",
-        "group": 0,
+        "id": "ho9xlzy",
+        "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 1,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "t4lcpvt",
-          "rw9ebrx"
+        "aIds": [
+          "p:k45yesm",
+          "p:fm3bdg7"
         ],
-        "bPlayers": [
-          "ibws5ld",
-          "k45yesm"
+        "bIds": [
+          "p:243v8q3",
+          "p:rw9ebrx"
         ]
       },
       {
-        "id": "8rox2jr",
-        "phase": "rr",
-        "group": 0,
+        "id": "0ifd99l",
+        "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 2,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "t5tmwl5",
-          "lvcpucm"
+        "aIds": [
+          "p:t4lcpvt",
+          "p:smnajd5"
         ],
-        "bPlayers": [
-          "243v8q3",
-          "6kn0dof"
+        "bIds": [
+          "p:t5tmwl5",
+          "p:h0teikh"
         ]
       },
       {
-        "id": "5jkrua7",
-        "phase": "rr",
-        "group": 0,
+        "id": "uq4ebcw",
+        "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 3,
-        "aId": "47vegfx",
-        "bId": "gw1auel",
-        "aPlayers": [
-          "nba8nn1",
-          "h0teikh"
+        "aIds": [
+          "p:6kn0dof",
+          "p:45sqltb"
         ],
-        "bPlayers": [
-          "45sqltb",
-          "fm3bdg7"
+        "bIds": [
+          "p:uzqomod",
+          "p:ibws5ld"
         ]
       }
     ],
     "qualifiers": 0,
     "extraSlots": 0,
     "unitIds": [
-      "47vegfx",
-      "gw1auel"
+      "p:h0teikh",
+      "p:t4lcpvt",
+      "p:lvcpucm",
+      "p:ibws5ld",
+      "p:nba8nn1",
+      "p:k45yesm",
+      "p:243v8q3",
+      "p:rw9ebrx",
+      "p:smnajd5",
+      "p:uzqomod",
+      "p:t5tmwl5",
+      "p:45sqltb",
+      "p:6kn0dof",
+      "p:fm3bdg7"
     ]
   },
   "results": {},
-  "publishedAt": "2026-09-06T10:46:48.405Z"
+  "publishedAt": "2026-09-06T12:10:15.460Z"
 }

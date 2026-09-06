@@ -192,3 +192,8 @@ body.view-only footer .only-view { display: inline; }
 #tbl-players { min-width: 860px; }
 .tag.type { background: #e3ecf7; color: #2b4f7e; }
 .tag.bad { background: #fdecea; color: var(--danger); }
+.mode-badge { display: inline-block; vertical-align: middle; margin-left: 8px; font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 12px; background: var(--green); color: #fff; }
+.chips.games .chip b { margin-left: 2px; }
+.chip.hi { background: #dff0e5; }
+.chip.lo { background: #fff3cd; color: #7a5b00; }
+@media print { #games-summary { page-break-inside: avoid; } }

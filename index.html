@@ -76,9 +76,9 @@
 
     <fieldset class="span2">
       <legend>경기 구분</legend>
-      <label class="radio"><input type="radio" name="mode" value="team" checked> 팀전 — 합류 시각·급수를 고려해 팀을 나누고, 매 시간대 팀 대 팀 복식을 코트별로 배정 (팀 승수 + 개인 기록 집계)</label>
-      <label class="radio"><input type="radio" name="mode" value="individual"> 개인전 — 선수 개인(단식) 또는 고정 복식조가 하나의 참가 단위</label>
-      <label class="radio"><input type="radio" name="mode" value="rotation"> 복식 로테이션 개인전 — 매 경기 파트너·상대를 바꿔 가며 개인 승패 집계 (시차 합류·홀수 인원 가능)</label>
+      <label class="radio"><input type="radio" name="mode" value="rotation" checked> 개인전 — 매 경기 파트너·상대를 바꿔 가며 복식을 치르고 개인 승패로 순위 (시차 합류·홀수 인원 가능, 남복·여복·혼복 규칙 적용)</label>
+      <label class="radio"><input type="radio" name="mode" value="team"> 팀전 — 합류 시각·급수를 고려해 팀을 나누고, 매 시간대 팀 대 팀 복식을 코트별로 배정 (팀 승수 + 개인 기록 집계)</label>
+      <label class="radio"><input type="radio" name="mode" value="individual"> 고정조 대회 — 고정 복식조 또는 단식 개인이 참가 단위, 조별 리그·토너먼트</label>
     </fieldset>
 
     <label id="lbl-disc">종목
@@ -131,7 +131,7 @@
     <h1 id="print-title"></h1>
     <p id="print-meta"></p>
   </div>
-  <h2>경기 일정표</h2>
+  <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
   <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor">🔄 팀 배정·일정 다시 생성</button></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
@@ -141,11 +141,12 @@
   </div>
   <p class="hint only-editor">스코어 칸에 게임 수를 입력하면 순위가 자동 갱신됩니다. ⚠ 표시는 같은 시간대에 겹치는 참가자 또는 코트 중복입니다.</p>
   <div id="schedule-view"></div>
+  <div id="games-summary"></div>
 </section>
 
 <!-- ============ ⑤ 순위·대진 ============ -->
 <section id="tab-standings" class="tab">
-  <h2>순위표</h2>
+  <h2>순위표 <span class="mode-badge" id="mode-badge2"></span></h2>
   <div id="standings-view"></div>
   <h2 id="bracket-title">토너먼트 대진</h2>
   <div id="bracket-view"></div>
