@@ -55,6 +55,7 @@
   <div class="row only-editor">
     <button class="btn-regen primary" data-mode="rotation">🎾 개인전 생성</button>
     <button class="btn-regen primary" data-mode="team">👥 팀전 생성</button>
+    <label class="inline">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
     <span class="hint">현재 선수 명단(참가 체크·합류 시각)으로 일정을 새로 만듭니다. 팀전은 팀 배정도 함께 합니다. 입력된 결과는 지워집니다.</span>
   </div>
 </section>
@@ -97,6 +98,7 @@
     <label>종료 시각 <input name="endTime" type="time"> <span class="hint">비우면 제한 없음. 로테이션은 이 시각까지 라운드를 채웁니다.</span></label>
     <label>경기당 소요 시간(분) <input name="matchMinutes" type="number" min="5" step="5" value="30"></label>
     <label>경기 간 휴식(분) <input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
+    <label>여복 최소 경기 수 <input name="minWomenDoubles" type="number" min="0" value="1"> <span class="hint">여성 4명이 같은 시간대에 있을 때 여복(여 2 대 여 2)을 이 수 이상 편성</span></label>
 
     <div class="span2 row">
       <button type="submit" class="primary">저장하고 다음 →</button>
@@ -124,7 +126,7 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button></div>
+  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
     <button id="btn-add-match" class="small" hidden>+ 경기 추가</button>

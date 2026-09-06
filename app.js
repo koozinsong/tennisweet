@@ -8,7 +8,7 @@
   const DEFAULT_SETTINGS = {
     name: '', date: '', mode: 'rotation', discipline: 'doubles', teamCount: 2,
     format: 'groups', groupCount: 2, advance: 2, thirdPlace: true,
-    courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0,
+    courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1,
   };
   const emptyState = () => ({ players: [], settings: { ...DEFAULT_SETTINGS }, units: [], schedule: null, results: {}, editMode: false });
 
@@ -165,7 +165,7 @@
     const fd = new FormData(formSettings); const s = { ...state.settings };
     for (const [k, v] of fd.entries()) s[k] = v;
     s.thirdPlace = fd.get('thirdPlace') === 'on';
-    for (const k of ['teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
+    for (const k of ['minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
     s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
     return s;
   }
@@ -322,6 +322,7 @@
     save(); showTab('schedule');
   }
   $$('.btn-regen').forEach((b) => b.addEventListener('click', () => regenerateAll(b.dataset.mode)));
+  $$('.inp-minff').forEach((el) => el.addEventListener('change', () => { state.settings.minWomenDoubles = Math.max(0, parseInt(el.value, 10) || 0); save(); render(); }));
 
   // ================= 일정 생성 =================
   function roundRobin(ids) {
@@ -363,6 +364,7 @@
     const played = {}, lastPlayed = {}, partner = {}, meet = {}, fmCnt = {}, mmCnt = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     teams.forEach((t) => t.playerIds.forEach((id) => { played[id] = 0; lastPlayed[id] = -1; fmCnt[id] = 0; mmCnt[id] = 0; }));
+    let ffDone = 0; const minFF = s.minWomenDoubles || 0;
     const matches = [];
     for (let slot = 0; slot < n; slot++) {
       const usedP = new Set(); const usedT = {};
@@ -389,7 +391,7 @@
           const teamCost = ((meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4) * 10;
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
-            const cost = teamCost + x.cost + y.cost + Math.random();
+            const cost = teamCost + x.cost + y.cost + Math.random() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
         }
@@ -398,7 +400,7 @@
         matches.push({ id: uid(), phase: 'rr', group: 0, round: slot, slot, court: c, aId: A.id, bId: B.id, aPlayers: pa, bPlayers: pb });
         meet[key(A.id, B.id)] = (meet[key(A.id, B.id)] || 0) + 1; usedT[A.id] = (usedT[A.id] || 0) + 1; usedT[B.id] = (usedT[B.id] || 0) + 1;
         [pa, pb].forEach(([x, y]) => { partner[key(x, y)] = (partner[key(x, y)] || 0) + 1; });
-        const tpm = pairType(pa[0], pa[1]);
+        const tpm = pairType(pa[0], pa[1]); if (tpm === 'FF') ffDone++;
         [...pa, ...pb].forEach((id) => { usedP.add(id); played[id]++; lastPlayed[id] = slot; if (tpm === 'FM') fmCnt[id]++; else if (tpm === 'MM') mmCnt[id]++; });
       }
     }
@@ -413,6 +415,7 @@
     const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; });
+    let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
     const matches = []; let round = 0;
     for (let slot = 0; slot < n; slot++) {
       const avail = ps.filter((p) => playerAvailable(p, s, slot));
@@ -424,15 +427,23 @@
       const Wav = rank(avail.filter(isF)), Mav = rank(avail.filter((p) => !isF(p)));
       // 여성 수(짝수) 분할: 가능한 분할 중 선발자 우선순위 점수 합이 가장 좋은 것 (직전 휴식자 우선, 경기 수 적은 순, 오래 쉰 순)
       const score = (p) => (restedLast(p) ? -1000 : 0) + played[p.id] * 100 - (slot - lastPlayed[p.id]);
-      let kSel = k, wT = -1;
+      // 여복 최소 경기: 남은 시간대 중 여성 4명이 모이는 슬롯 수가 부족분 이하이면 강제, 아니면 가점만 (연속 편성·편중 방지)
+      const ffNeed = minFF - ffDone;
+      const ffSlotsLeft = ffNeed > 0 ? Array.from({ length: n - slot }, (_, i) => slot + i).filter((sl) => ps.filter((p) => p.gender === 'F' && playerAvailable(p, s, sl)).length >= 4).length : 0;
+      const ffPossible = ffNeed > 0 && Wav.length >= 4;
+      const ffForce = ffPossible && ffSlotsLeft <= ffNeed;
+      let kSel = k, wT = -1, wantFF = false;
       for (; kSel >= 1; kSel--) {
         const need = kSel * 4; let best = Infinity, bestDist = Infinity;
         const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
-        for (let t = 0; t <= Wav.length; t += 2) {
+        for (let t = ffForce ? 4 : 0; t <= Wav.length; t += 2) {
           if (need - t < 0 || need - t > Mav.length) continue;
-          const sum = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + Mav.slice(0, need - t).reduce((a, p) => a + score(p), 0);
+          const base = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + Mav.slice(0, need - t).reduce((a, p) => a + score(p), 0);
           const dist = Math.abs(t - ideal);
-          if (sum < best || (sum === best && dist < bestDist)) { best = sum; bestDist = dist; wT = t; }
+          for (const asFF of (ffPossible && t >= 4 ? [false, true] : [false])) {
+            const sum = base - (asFF ? (ffForce ? 1e9 : 150) : 0);
+            if (sum < best || (sum === best && dist < bestDist)) { best = sum; bestDist = dist; wT = t; wantFF = asFF; }
+          }
         }
         if (wT >= 0) break;
       }
@@ -444,7 +455,7 @@
       for (let t = 0; t < 300; t++) {
         // 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치, 남복은 그 반대 (골고루)
         const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (Math.random() - 0.5) * 0.5); const courts = [];
-        let ff = 0; while (w.length - ff * 4 > 2 * (kk - ff)) ff++; // 혼복 코트로 다 못 담으면 여복 코트 수 증가
+        let ff = wantFF ? 1 : 0; while (w.length - ff * 4 > 2 * (kk - ff)) ff++; // 혼복 코트로 다 못 담으면 여복 코트 수 증가
         for (let c = 0; c < ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
         while (w.length >= 2) courts.push([w.pop(), m.pop(), w.pop(), m.pop()]);
         while (courts.length < kk && m.length >= 4) courts.push([m.pop(), m.pop(), m.pop(), m.pop()]);
@@ -461,7 +472,7 @@
         matches.push({ id: uid(), phase: 'rot', round, slot, court: c + 1, aIds: ['p:' + a1, 'p:' + a2], bIds: ['p:' + b1, 'p:' + b2] });
         partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1;
         for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1;
-        const tp = pairType(a1, a2);
+        const tp = pairType(a1, a2); if (tp === 'FF') ffDone++;
         for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; if (tp === 'FM') fmCnt[x]++; else if (tp === 'MM') mmCnt[x]++; }
       });
       round++;
@@ -625,6 +636,7 @@
   function render() {
     hydrateSettings();
     $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
+    $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
     renderPlayers(); renderUnits();
     if (state.schedule) resolveKO();
     renderSchedule(); renderStandings(); renderBracket();

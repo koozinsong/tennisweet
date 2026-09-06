@@ -201,3 +201,4 @@ body.view-only footer .only-view { display: inline; }
 .chip small.tc { margin-left: 4px; color: var(--muted); }
 table.summary tr.hi td { background: #f1f8f3; }
 table.summary tr.lo td { background: #fff8e1; }
+body.view-only label.only-editor { display: none; }
