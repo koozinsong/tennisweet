@@ -393,9 +393,9 @@
     if (teams.length < 2) throw new Error('팀이 2개 이상 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (② 대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
-    const played = {}, lastPlayed = {}, partner = {}, opp = {}, meet = {}, fmCnt = {}, mmCnt = {};
+    const played = {}, lastPlayed = {}, partner = {}, opp = {}, meet = {}, fmCnt = {}, mmCnt = {}, playedSlots = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
-    teams.forEach((t) => t.playerIds.forEach((id) => { played[id] = 0; lastPlayed[id] = -1; fmCnt[id] = 0; mmCnt[id] = 0; }));
+    teams.forEach((t) => t.playerIds.forEach((id) => { played[id] = 0; lastPlayed[id] = -1; fmCnt[id] = 0; mmCnt[id] = 0; playedSlots[id] = new Set(); }));
     let ffDone = 0; const minFF = s.minWomenDoubles || 0;
     const matches = [];
     for (let slot = 0; slot < n; slot++) {
@@ -404,15 +404,16 @@
       for (let c = 1; c <= s.courts; c++) {
         // 각 팀의 후보 조(경기 수 적은 선수 우선, 파트너 중복 벌점) → 남복/여복/혼복 종류가 같은 조합만 허용
         const restedLast = (id) => slot > 0 && lastPlayed[id] < slot - 1 && playerAvailable(playerById(id), s, slot - 1); // 직전 시간대 휴식 → 최우선
+        const twoInRow = (id) => slot >= 2 && playedSlots[id].has(slot - 1) && playedSlots[id].has(slot - 2); // 3연속 방지
         const candPairs = (t) => {
-          const cand = availOf(t).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || rng() - 0.5).slice(0, 8);
+          const cand = availOf(t).sort((a, b) => (twoInRow(a) ? 1 : 0) - (twoInRow(b) ? 1 : 0) || (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a] - played[b] || lastPlayed[a] - lastPlayed[b] || rng() - 0.5).slice(0, 8);
           const out = [];
           for (let i = 0; i < cand.length; i++) for (let j = i + 1; j < cand.length; j++)
           {
             const tp = pairType(cand[i], cand[j]);
             // 남복·혼복 골고루: 이 종류를 이미 많이 한 남성이면 벌점, 적게 했으면 가점
             const mix = [cand[i], cand[j]].filter((id) => gOf(id) === 'M').reduce((c, id) => c + (tp === 'FM' ? fmCnt[id] - mmCnt[id] : tp === 'MM' ? mmCnt[id] - fmCnt[id] : 0), 0) * 4;
-            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 40 + mix - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) });
+            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 40 + mix + (twoInRow(cand[i]) ? 200 : 0) + (twoInRow(cand[j]) ? 200 : 0) - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) });
           }
           return out;
         };
@@ -436,7 +437,7 @@
         [pa, pb].forEach(([x, y]) => { partner[key(x, y)] = (partner[key(x, y)] || 0) + 1; });
         for (const u of pa) for (const v of pb) opp[key(u, v)] = (opp[key(u, v)] || 0) + 1;
         const tpm = pairType(pa[0], pa[1]); if (tpm === 'FF') ffDone++;
-        [...pa, ...pb].forEach((id) => { usedP.add(id); played[id]++; lastPlayed[id] = slot; if (tpm === 'FM') fmCnt[id]++; else if (tpm === 'MM') mmCnt[id]++; });
+        [...pa, ...pb].forEach((id) => { usedP.add(id); played[id]++; lastPlayed[id] = slot; playedSlots[id].add(slot); if (tpm === 'FM') fmCnt[id]++; else if (tpm === 'MM') mmCnt[id]++; });
       }
     }
     if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 각 팀에 같은 시각 참석 가능 선수가 2명 이상이고, 남복·여복·혼복 중 맞출 수 있는 조합이 있는지 확인하세요.');
@@ -470,17 +471,20 @@
     }
     const rep = (o) => Object.values(o).reduce((a, v) => a + Math.max(0, v - 1), 0);
     const g = Object.values(games); const spread = g.length ? Math.max(...g) - Math.min(...g) : 0;
+    // 3연속 출전 횟수
+    const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
+    let triple = 0; for (const set of Object.values(bySlot)) for (const sl of set) if (set.has(sl + 1) && set.has(sl + 2)) triple++;
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
-    return rep(oc) * 100 + rep(pc) * 100 + spread * 30 + ntrpDiff * 4;
+    return rep(oc) * 100 + rep(pc) * 100 + triple * 80 + spread * 30 + ntrpDiff * 4;
   }
   function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (② 대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
-    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {};
+    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
-    ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; });
+    ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); });
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
     const matches = []; let round = 0;
     for (let slot = 0; slot < n; slot++) {
@@ -489,10 +493,12 @@
       // 1) 선발: 가용 인원의 성별 비율에 맞춰 여성 수(짝수)를 정하고, 성별별로 [직전 휴식자 → 경기 수 적은 순 → 오래 쉰 순]
       const restedLast = (p) => slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1);
       const isF = (p) => p.gender === 'F';
-      const rank = (arr) => shuffle([...arr]).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a.id] - played[b.id] || lastPlayed[a.id] - lastPlayed[b.id]);
+      const twoInRow = (p) => slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2); // 직전 두 시간대 연속 출전 → 이번엔 휴식 우선
+      const scoreMap = new Map(avail.map((p) => [p.id, (restedLast(p) ? -1000 : 0) + (twoInRow(p) ? 2000 : 0) + played[p.id] * 100 - (slot - lastPlayed[p.id])]));
+      const score = (p) => scoreMap.get(p.id);
+      const rank = (arr) => shuffle([...arr]).sort((a, b) => score(a) - score(b));
       const Wav = rank(avail.filter(isF)), Mav = rank(avail.filter((p) => !isF(p)));
       // 여성 수(짝수) 분할: 가능한 분할 중 선발자 우선순위 점수 합이 가장 좋은 것 (직전 휴식자 우선, 경기 수 적은 순, 오래 쉰 순)
-      const score = (p) => (restedLast(p) ? -1000 : 0) + played[p.id] * 100 - (slot - lastPlayed[p.id]);
       // 여복 최소 경기: 남은 시간대 중 여성 4명이 모이는 슬롯 수가 부족분 이하이면 강제, 아니면 가점만 (연속 편성·편중 방지)
       const ffNeed = minFF - ffDone;
       const ffSlotsLeft = ffNeed > 0 ? Array.from({ length: n - slot }, (_, i) => slot + i).filter((sl) => ps.filter((p) => p.gender === 'F' && playerAvailable(p, s, sl)).length >= 4).length : 0;
@@ -518,7 +524,7 @@
       const kk = Math.floor((W.length + M.length) / 4); if (kk < 1) continue;
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       // NTRP 균형(기본): 양쪽 조 NTRP 합 차이에 벌점. 관리자 키가 없어 NTRP 를 모르면 0 이라 영향 없음
-      const nsum = (a, b) => ntrpOf(a) + ntrpOf(b);
+      const nsum = (a, b) => NT[a] + NT[b];
       const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); return cost + Math.abs(nsum(a1, a2) - nsum(b1, b2)) * 4; };
       const totalCost = (cs) => cs.reduce((a, c) => a + courtCost(c), 0);
       let best = null, bestCost = Infinity;
@@ -533,13 +539,15 @@
         // 교환 탐색: 같은 성별의 두 자리를 바꿔 비용이 줄면 채택 (파트너·상대 중복, NTRP 불균형 감소)
         const slots = []; courts.forEach((c, ci) => c.forEach((_, pi) => slots.push([ci, pi])));
         let cost = totalCost(courts);
-        for (let it = 0; it < 400 && cost > 0; it++) {
+        const G = {}; for (const c of courts) for (const x of c) G[x] = gOf(x);
+        for (let it = 0; it < 300 && cost > 0; it++) {
           const [c1, p1] = slots[Math.floor(rng() * slots.length)], [c2, p2] = slots[Math.floor(rng() * slots.length)];
           if (c1 === c2 && p1 === p2) continue;
-          const x = courts[c1][p1], y = courts[c2][p2]; if (gOf(x) !== gOf(y)) continue; // 성별이 같아야 종류(남복/여복/혼복) 유지
+          const x = courts[c1][p1], y = courts[c2][p2]; if (G[x] !== G[y]) continue; // 성별이 같아야 종류(남복/여복/혼복) 유지
+          const before = courtCost(courts[c1]) + (c1 !== c2 ? courtCost(courts[c2]) : 0);
           courts[c1][p1] = y; courts[c2][p2] = x;
-          const nc = totalCost(courts);
-          if (nc <= cost) cost = nc; else { courts[c1][p1] = x; courts[c2][p2] = y; }
+          const after = courtCost(courts[c1]) + (c1 !== c2 ? courtCost(courts[c2]) : 0);
+          if (after <= before) cost += after - before; else { courts[c1][p1] = x; courts[c2][p2] = y; }
         }
         if (cost < bestCost) { bestCost = cost; best = courts.map((c) => [...c]); if (cost === 0) break; }
       }
@@ -549,7 +557,7 @@
         partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1;
         for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1;
         const tp = pairType(a1, a2); if (tp === 'FF') ffDone++;
-        for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; if (tp === 'FM') fmCnt[x]++; else if (tp === 'MM') mmCnt[x]++; }
+        for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; playedSlots[x].add(slot); if (tp === 'FM') fmCnt[x]++; else if (tp === 'MM') mmCnt[x]++; }
       });
       round++;
     }
@@ -802,8 +810,8 @@
     });
     // 2회 연속 휴식 (참석 가능한 시간대 기준)
     const slotsOf = {}; ms.forEach((m) => matchPeople(m).filter(Boolean).forEach((id) => (slotsOf[id] ??= new Set()).add(m.slot)));
-    const nSlotsAll = totalSlots(); const dblRest = {};
-    for (const p of ps) { let run = 0; for (let i = 0; i < nSlotsAll; i++) { if (!playerAvailable(p, state.settings, i)) { run = 0; continue; } if (slotsOf[p.id]?.has(i)) run = 0; else { run++; if (run >= 2) dblRest[p.id] = (dblRest[p.id] || 0) + 1; } } }
+    const nSlotsAll = totalSlots(); const dblRest = {}, triple = {};
+    for (const p of ps) { let run = 0, playRun = 0; for (let i = 0; i < nSlotsAll; i++) { if (!playerAvailable(p, state.settings, i)) { run = 0; playRun = 0; continue; } if (slotsOf[p.id]?.has(i)) { run = 0; playRun++; if (playRun >= 3) triple[p.id] = (triple[p.id] || 0) + 1; } else { playRun = 0; run++; if (run >= 2) dblRest[p.id] = (dblRest[p.id] || 0) + 1; } } }
     // 파트너·상대 중복 검사
     const pc = {}, oc = {}; const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     ms.forEach((m) => { const A = m.aPlayers || (m.aIds || []).map((id) => unitById(id)?.playerIds[0]), B = m.bPlayers || (m.bIds || []).map((id) => unitById(id)?.playerIds[0]); if (!A || !B || A.some((x) => !x) || B.some((x) => !x)) return;
@@ -821,7 +829,8 @@
       <div class="table-wrap"><table class="stand summary"><thead><tr><th>선수</th>${team ? '<th>팀</th>' : ''}<th>합류</th><th class="num">경기</th><th class="num">남복</th><th class="num">여복</th><th class="num">혼복</th><th>비고</th></tr></thead><tbody>
       ${sorted.map((p) => { const g = games[p.id] || 0; const t = tc[p.id] || {}; return `<tr class="${g === max && max !== min ? 'hi' : ''} ${g === min && max !== min ? 'lo' : ''}">
         <td><b>${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}</td>${team ? `<td class="sub">${esc(teamOf[p.id] || '')}</td>` : ''}<td class="sub">${esc(p.from || '')}${p.until ? '~' + esc(p.until) : ''}</td>
-        <td class="num"><b>${g}</b></td>${cell(t.남복)}${cell(t.여복)}${cell(t.혼복)}<td class="sub">${dblRest[p.id] ? '⚠ 2회 연속 휴식' : ''}</td></tr>`; }).join('')}</tbody></table></div>
+        <td class="num"><b>${g}</b></td>${cell(t.남복)}${cell(t.여복)}${cell(t.혼복)}<td class="sub">${[dblRest[p.id] ? '⚠ 2회 연속 휴식' : '', triple[p.id] ? '3경기 연속' : ''].filter(Boolean).join(' · ')}</td></tr>`; }).join('')}</tbody></table></div>
+      ${Object.keys(triple).length ? `<p class="hint">3경기 연속 ${Object.keys(triple).length}명: 코트 ${state.settings.courts}면에 참석 ${ps.length}명이면 시간대마다 ${Math.max(0, ps.length - state.settings.courts * 4)}명만 쉬므로 연속 출전은 불가피합니다. 줄이려면 코트 수를 줄이거나(대회 설정) 경기 시간을 늘리세요.</p>` : ''}
       ${max - min > 1 ? '<p class="hint">경기 수 차이가 2 이상입니다. 합류 시각 차이 때문이면 정상이며, 그렇지 않으면 현장 편집으로 조정하세요.</p>' : ''}
       ${Object.keys(dblRest).length ? '<p class="hint">⚠ 표시: 참석 가능한 시간대에 2회 연속 쉬는 구간이 있습니다. 인원·성별 구성상 불가피한 경우(예: 19시대 코트 1면)가 아니면 다시 생성하거나 현장 편집으로 조정하세요.</p>' : ''}
       <p class="hint">${repP.length ? `⚠ 같은 파트너 2회: ${esc(repP.join(', '))}` : '✓ 같은 파트너 반복 없음'} · ${repO.length ? `⚠ 같은 상대 2회 이상: ${esc(repO.join(', '))}` : '✓ 같은 상대 반복 없음'}${womenOnly ? ` <span class="sub">(여성 ${nWomen}명이 혼복·여복으로만 만나는 구성상 여성끼리 중복은 불가피)</span>` : ''}</p>`;
@@ -1159,7 +1168,7 @@
     state = fromPublished(pub); await decryptAll(); await syncTokenFromPublished(pub); commit();
   });
 
-  window.tennisweet = { syncTokenFromPublished, hasToken: () => !!localStorage.getItem(TOKEN_KEY), getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
+  window.tennisweet = { _genOnce: (seed) => generateRotationOnce(state.settings, seed), _score: scheduleScore, syncTokenFromPublished, hasToken: () => !!localStorage.getItem(TOKEN_KEY), getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
 
   // ================= 시작 =================
   (async () => {
