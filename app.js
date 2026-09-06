@@ -726,10 +726,10 @@
         const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
         const mine = ''; // '내 경기' 필터는 목록 자체를 걸러서 보여주므로 별도 강조 불필요
-        html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}">
+        html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}" data-card="${esc(m.id)}">
           <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
-          <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
-          <div class="mfoot">${scores}${res}</div></div>`;
+          <div class="mbody"><div class="side side-a ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side side-b ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
+          <div class="mfoot">${scores}<span class="res">${res}</span></div></div>`;
       }
       html += '</div></div>';
     }
@@ -767,9 +767,24 @@
   }
   $('#sel-me').addEventListener('change', (e) => { state.meFilter = e.target.value; renderSchedule(); });
   setInterval(() => { if (state.schedule && !document.hidden && slotStatus(0) !== '' || (state.schedule && [...Array(totalSlots()).keys()].some((i) => slotStatus(i)))) renderSchedule(); }, 60000); // 당일 '진행 중' 표시 갱신
+  /** 점수 입력 후 해당 카드만 갱신 (전체 재렌더 X → 다음 칸 포커스 유지) */
+  function refreshCard(m) {
+    const card = $(`#schedule-view .mcard[data-card="${CSS.escape(m.id)}"]`); if (!card) return;
+    const o = matchOutcome(m); const n = subCount();
+    card.classList.toggle('decided', !!o.winner);
+    card.querySelector('.side-a')?.classList.toggle('w', o.winner === 'a');
+    card.querySelector('.side-b')?.classList.toggle('w', o.winner === 'b');
+    const res = card.querySelector('.res'); if (res) res.innerHTML = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
+    renderStandings(); renderGamesSummary(state.schedule.matches.filter((x) => !x.bye));
+  }
+  $('#schedule-view').addEventListener('input', (e) => { // 타이핑 즉시 저장 (포커스 이동 전에 게시해도 반영)
+    const el = e.target; if (!el.dataset?.side) return;
+    const m = state.schedule?.matches.find((x) => x.id === el.dataset.mid); if (!m) return;
+    getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; save();
+  });
   $('#schedule-view').addEventListener('change', (e) => {
     const el = e.target; const m = state.schedule?.matches.find((x) => x.id === el.dataset.mid); if (!m) return;
-    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; commit(); scheduleAutoPublish(); return; }
+    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; save(); refreshCard(m); scheduleAutoPublish(); return; }
     const f = el.dataset.f;
     if (f === 'slot') m.slot = +el.value; else if (f === 'court') m.court = +el.value;
     else if (/^[ab]\d$/.test(f)) { m[f[0] + 'Ids'][+f[1]] = el.value || null; }
