@@ -1,5 +1,5 @@
 <header class="topbar">
-  <div class="brand">🎾 테니스윗 <span id="hdr-title">분기 대회 일정표</span></div>
+  <div class="brand"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></div>
   <nav class="tabs">
     <button data-tab="players" class="active">① 선수</button>
     <button data-tab="setup">② 대회 설정</button>
@@ -145,7 +145,8 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label></div>
+  <div class="row no-print"><select id="sel-me" class="me"></select><button class="btn-regen only-editor" data-mode="rotation">🎾 개인전 생성</button><button class="btn-regen only-editor" data-mode="team">👥 팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
+    <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
   <div class="row no-print">
     <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
     <button id="btn-add-match" class="small" hidden>+ 경기 추가</button>

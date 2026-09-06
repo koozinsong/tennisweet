@@ -651,9 +651,18 @@
     hydrateSettings();
     $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
     $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
+    const ap = $('#chk-autopub'); if (ap) ap.checked = localStorage.getItem('tennisweet.autopub') === '1';
     renderPlayers(); renderUnits();
     if (state.schedule) resolveKO();
     renderSchedule(); renderStandings(); renderBracket();
+  }
+  /** 대회 당일에만: 지금 시각이 이 시간대 안이면 'live', 지났으면 'past', 아니면 '' */
+  function slotStatus(i) {
+    const s = state.settings; if (!s.date) return '';
+    const now = new Date(); const ymd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    if (ymd !== s.date) return '';
+    const cur = now.getHours() * 60 + now.getMinutes(); const t0 = slotStartMin(s, i), t1 = t0 + s.matchMinutes;
+    return cur >= t0 && cur < t1 ? 'live' : cur >= t1 ? 'past' : '';
   }
   function matchPeople(m) { return m.aPlayers ? [...m.aPlayers, ...m.bPlayers] : [...sideIds(m, 'a'), ...sideIds(m, 'b')].flatMap((id) => unitById(id)?.playerIds || []); }
   const modeLabel = () => ({ team: '팀전', rotation: '개인전', individual: '고정조 대회' }[state.settings.mode] || '');
@@ -692,7 +701,8 @@
       let rows = ms.filter((m) => m.slot === slot);
       if (cur) rows = rows.filter((m) => matchPeople(m).includes(cur));
       if (!rows.length && !(edit && !cur)) continue;
-      html += `<div class="slot"><div class="slot-title">${slotTime(slot)} <span class="sub">~ ${slotTime(slot + 1)}</span>${rows.length ? '' : ' <span class="sub">(비어 있음)</span>'}</div><div class="cards match-cards">`;
+      const st8 = slotStatus(slot);
+      html += `<div class="slot ${st8}"><div class="slot-title"><span class="t">${slotTime(slot)}</span><span class="to">~ ${slotTime(slot + 1)}</span>${rows.length ? '' : ' <span class="sub">(비어 있음)</span>'}${st8 === 'live' ? '<span class="live">진행 중</span>' : ''}</div><div class="cards match-cards">`;
       for (const m of rows) {
         const o = matchOutcome(m); const r = getResult(m.id); const canInput = sideIds(m, 'a').length && sideIds(m, 'b').length && !viewOnly;
         const scores = r.map((sub, i) => `<div class="score">${n > 1 ? `<span class="sub">${i + 1}</span>` : ''}
@@ -704,7 +714,7 @@
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
         const mine = cur && matchPeople(m).includes(cur) ? 'mine' : '';
         html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}">
-          <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b>${m.court}코트</b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
+          <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
           <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs">vs</div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
           <div class="mfoot">${scores}${res}</div></div>`;
       }
@@ -743,9 +753,10 @@
       ${Object.keys(dblRest).length ? '<p class="hint">⚠ 표시: 참석 가능한 시간대에 2회 연속 쉬는 구간이 있습니다. 인원·성별 구성상 불가피한 경우(예: 19시대 코트 1면)가 아니면 다시 생성하거나 현장 편집으로 조정하세요.</p>' : ''}`;
   }
   $('#sel-me').addEventListener('change', (e) => { state.meFilter = e.target.value; renderSchedule(); });
+  setInterval(() => { if (state.schedule && !document.hidden && slotStatus(0) !== '' || (state.schedule && [...Array(totalSlots()).keys()].some((i) => slotStatus(i)))) renderSchedule(); }, 60000); // 당일 '진행 중' 표시 갱신
   $('#schedule-view').addEventListener('change', (e) => {
     const el = e.target; const m = state.schedule?.matches.find((x) => x.id === el.dataset.mid); if (!m) return;
-    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; commit(); return; }
+    if (el.dataset.side) { getResult(m.id)[+el.dataset.i][el.dataset.side] = el.value; commit(); scheduleAutoPublish(); return; }
     const f = el.dataset.f;
     if (f === 'slot') m.slot = +el.value; else if (f === 'court') m.court = +el.value;
     else if (/^[ab]\d$/.test(f)) { m[f[0] + 'Ids'][+f[1]] = el.value || null; }
@@ -952,7 +963,13 @@
     if (again) return publish(retry + 1, overwrite);
   }
   $('#btn-publish').addEventListener('contextmenu', (e) => { e.preventDefault(); if (confirm('저장된 GitHub 토큰을 삭제할까요? 다음 게시 때 다시 묻습니다.')) { forgetToken(); toast('토큰을 삭제했습니다'); } }); // 우클릭/길게 누르기 = 토큰 삭제
-  $('#btn-publish').addEventListener('click', publish);
+  $('#btn-publish').addEventListener('click', () => publish());
+  // 자동 게시: 스코어 입력 후 3초 지나면 게시 (기기별 설정, localStorage)
+  const AUTOPUB_KEY = 'tennisweet.autopub';
+  const autoPubOn = () => localStorage.getItem(AUTOPUB_KEY) === '1';
+  let autoPubTimer = null;
+  function scheduleAutoPublish() { if (!autoPubOn() || viewOnly) return; clearTimeout(autoPubTimer); autoPubTimer = setTimeout(() => { if (!publishing) publish(); }, 3000); }
+  $('#chk-autopub')?.addEventListener('change', (e) => { localStorage.setItem(AUTOPUB_KEY, e.target.checked ? '1' : '0'); toast(e.target.checked ? '자동 게시 켜짐 · 스코어 입력 3초 뒤 게시됩니다' : '자동 게시 꺼짐'); });
   const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/;
   /** 외부에서 온 데이터(공유 링크·가져오기·게시본)의 id 검증: 화면 속성에 들어가므로 형식이 다르면 거부 */
   function assertIds(data) {

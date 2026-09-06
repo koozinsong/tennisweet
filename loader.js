@@ -8,6 +8,7 @@ window.TennisweetLoader = {
   },
   async boot({ page }) {
     const v = await this.version(); window.TENNISWEET_VERSION = v;
+    if (!document.querySelector('link[data-font]')) { const f = document.createElement('link'); f.rel = 'stylesheet'; f.dataset.font = '1'; f.href = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap'; document.head.appendChild(f); }
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'style.css?v=' + v; document.head.appendChild(css);
     const html = await (await fetch('app.html?v=' + v, { cache: 'no-store' })).text();
     const doc = new DOMParser().parseFromString(html, 'text/html');
