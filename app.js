@@ -776,7 +776,9 @@
     if (!editor) {
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 없습니다. 관리자로 로그인해 시작하세요.');
-      render(); showTab(state.schedule ? 'schedule' : 'players'); return;
+      render(); showTab(state.schedule ? 'schedule' : 'players');
+      if (new URLSearchParams(location.search).has('admin')) setTimeout(adminLogin, 100); // admin.html 진입 시 바로 로그인
+      return;
     }
     document.body.classList.add('editor');
     const saved = storage.load();
