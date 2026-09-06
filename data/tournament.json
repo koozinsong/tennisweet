@@ -266,163 +266,103 @@
     "advance": 0,
     "matches": [
       {
-        "id": "1i94zbq",
+        "id": "kmk9ck9",
         "phase": "rot",
         "round": 0,
         "slot": 0,
         "court": 1,
         "aIds": [
           "p:t4lcpvt",
-          "p:nba8nn1"
+          "p:lvcpucm"
         ],
         "bIds": [
-          "p:k45yesm",
-          "p:lvcpucm"
+          "p:243v8q3",
+          "p:fm3bdg7"
         ]
       },
       {
-        "id": "h35pnn1",
+        "id": "q29w32r",
         "phase": "rot",
         "round": 1,
         "slot": 1,
         "court": 1,
         "aIds": [
-          "p:243v8q3",
-          "p:fm3bdg7"
-        ],
-        "bIds": [
           "p:k45yesm",
           "p:h0teikh"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:nba8nn1"
         ]
       },
       {
-        "id": "1vkoh1e",
+        "id": "0gb7zvd",
         "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 1,
         "aIds": [
-          "p:t5tmwl5",
-          "p:t4lcpvt"
+          "p:243v8q3",
+          "p:t5tmwl5"
         ],
         "bIds": [
           "p:k45yesm",
-          "p:243v8q3"
+          "p:t4lcpvt"
         ]
       },
       {
-        "id": "4dr1w46",
+        "id": "b70npa8",
         "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 2,
         "aIds": [
-          "p:smnajd5",
-          "p:ibws5ld"
+          "p:6kn0dof",
+          "p:lvcpucm"
         ],
         "bIds": [
-          "p:6kn0dof",
-          "p:uzqomod"
+          "p:45sqltb",
+          "p:ibws5ld"
         ]
       },
       {
-        "id": "l6pmale",
+        "id": "16o2r7o",
         "phase": "rot",
         "round": 2,
         "slot": 2,
         "court": 3,
         "aIds": [
-          "p:45sqltb",
-          "p:rw9ebrx"
+          "p:rw9ebrx",
+          "p:uzqomod"
         ],
         "bIds": [
-          "p:lvcpucm",
-          "p:nba8nn1"
-        ]
-      },
-      {
-        "id": "0d1k8o1",
-        "phase": "rot",
-        "round": 3,
-        "slot": 3,
-        "court": 1,
-        "aIds": [
-          "p:t5tmwl5",
-          "p:ibws5ld"
-        ],
-        "bIds": [
-          "p:t4lcpvt",
+          "p:fm3bdg7",
           "p:smnajd5"
         ]
       },
       {
-        "id": "bk677j4",
+        "id": "q1bjcdb",
         "phase": "rot",
         "round": 3,
         "slot": 3,
-        "court": 2,
-        "aIds": [
-          "p:6kn0dof",
-          "p:45sqltb"
-        ],
-        "bIds": [
-          "p:rw9ebrx",
-          "p:uzqomod"
-        ]
-      },
-      {
-        "id": "xocjicx",
-        "phase": "rot",
-        "round": 3,
-        "slot": 3,
-        "court": 3,
-        "aIds": [
-          "p:lvcpucm",
-          "p:nba8nn1"
-        ],
-        "bIds": [
-          "p:fm3bdg7",
-          "p:h0teikh"
-        ]
-      },
-      {
-        "id": "h3yhdk8",
-        "phase": "rot",
-        "round": 4,
-        "slot": 4,
         "court": 1,
-        "aIds": [
-          "p:t4lcpvt",
-          "p:rw9ebrx"
-        ],
-        "bIds": [
-          "p:t5tmwl5",
-          "p:uzqomod"
-        ]
-      },
-      {
-        "id": "leg96d6",
-        "phase": "rot",
-        "round": 4,
-        "slot": 4,
-        "court": 2,
         "aIds": [
           "p:243v8q3",
           "p:6kn0dof"
         ],
         "bIds": [
-          "p:k45yesm",
-          "p:45sqltb"
+          "p:t5tmwl5",
+          "p:rw9ebrx"
         ]
       },
       {
-        "id": "sozrrph",
+        "id": "quqyzjq",
         "phase": "rot",
-        "round": 4,
-        "slot": 4,
-        "court": 3,
+        "round": 3,
+        "slot": 3,
+        "court": 2,
         "aIds": [
-          "p:fm3bdg7",
+          "p:lvcpucm",
           "p:ibws5ld"
         ],
         "bIds": [
@@ -431,48 +371,108 @@
         ]
       },
       {
-        "id": "59m90d4",
+        "id": "cfobh96",
+        "phase": "rot",
+        "round": 3,
+        "slot": 3,
+        "court": 3,
+        "aIds": [
+          "p:uzqomod",
+          "p:fm3bdg7"
+        ],
+        "bIds": [
+          "p:nba8nn1",
+          "p:45sqltb"
+        ]
+      },
+      {
+        "id": "wl6ygtm",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 1,
+        "aIds": [
+          "p:t5tmwl5",
+          "p:uzqomod"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:ibws5ld"
+        ]
+      },
+      {
+        "id": "27iz5oy",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 2,
+        "aIds": [
+          "p:k45yesm",
+          "p:45sqltb"
+        ],
+        "bIds": [
+          "p:243v8q3",
+          "p:smnajd5"
+        ]
+      },
+      {
+        "id": "53rokph",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 3,
+        "aIds": [
+          "p:rw9ebrx",
+          "p:6kn0dof"
+        ],
+        "bIds": [
+          "p:h0teikh",
+          "p:nba8nn1"
+        ]
+      },
+      {
+        "id": "qk71njz",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 1,
         "aIds": [
-          "p:243v8q3",
-          "p:smnajd5"
+          "p:k45yesm",
+          "p:fm3bdg7"
         ],
         "bIds": [
           "p:t5tmwl5",
-          "p:nba8nn1"
+          "p:ibws5ld"
         ]
       },
       {
-        "id": "f1g83dw",
+        "id": "cc8l91t",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 2,
         "aIds": [
-          "p:45sqltb",
-          "p:ibws5ld"
+          "p:nba8nn1",
+          "p:6kn0dof"
         ],
         "bIds": [
-          "p:6kn0dof",
-          "p:h0teikh"
+          "p:lvcpucm",
+          "p:smnajd5"
         ]
       },
       {
-        "id": "1ft31z2",
+        "id": "dyzl96y",
         "phase": "rot",
         "round": 5,
         "slot": 5,
         "court": 3,
         "aIds": [
-          "p:uzqomod",
-          "p:lvcpucm"
+          "p:h0teikh",
+          "p:rw9ebrx"
         ],
         "bIds": [
-          "p:fm3bdg7",
-          "p:rw9ebrx"
+          "p:45sqltb",
+          "p:uzqomod"
         ]
       }
     ],
@@ -494,88 +494,88 @@
       "p:6kn0dof",
       "p:fm3bdg7"
     ],
-    "seed": 873838
+    "seed": 293204
   },
   "results": {
-    "1i94zbq": [
+    "kmk9ck9": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "h35pnn1": [
+    "q29w32r": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "1vkoh1e": [
+    "0gb7zvd": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "4dr1w46": [
+    "b70npa8": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "l6pmale": [
+    "16o2r7o": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "0d1k8o1": [
+    "q1bjcdb": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "bk677j4": [
+    "quqyzjq": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "xocjicx": [
+    "cfobh96": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "h3yhdk8": [
+    "wl6ygtm": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "leg96d6": [
+    "27iz5oy": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "sozrrph": [
+    "53rokph": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "59m90d4": [
+    "qk71njz": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "f1g83dw": [
+    "cc8l91t": [
       {
         "a": "",
         "b": ""
       }
     ],
-    "1ft31z2": [
+    "dyzl96y": [
       {
         "a": "",
         "b": ""
@@ -583,6 +583,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-09-06T14:27:46.082Z",
-  "ghTokenEnc": "8G0rikwT+OT0ICdy.V0k22mknm2VBUvdTISxeSH/vRRFAsckvRPyabov49Okq+MqOsozBQC3Kt/05S0niG5VgvZIsNyftjypLNHLVHXPczbwFrYAf1N38ZleOwgpiiVzOPKILLeHU4QaDZIUXEyz87KIiIbBvrtxp8g=="
+  "publishedAt": "2026-09-06T14:39:56.198Z",
+  "ghTokenEnc": "DMxYFAdPeLN5r80O./j+E1GXt69qz+wuk9FtIfVBPweCFRGocdZSWQWp4lDrTzq4faPAefrCwQMRPtPzRMBeunhG/IBTvTBFaq2MJD1sN5qITCVbDM3soqZ/2FcyMgtjRS5IcEsiRfWo0SNzhn5ce92A1ik7SfFU2/Q=="
 }
