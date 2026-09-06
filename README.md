@@ -23,7 +23,7 @@
 
 ## 데이터와 공유
 - **원본 = `data/tournament.json`**. 페이지를 여는 모두가 이 게시본을 읽기 전용으로 봅니다 (선수 명단은 누구나 볼 수 있고 NTRP 열만 관리자에게 표시).
-- 관리자 편집 내용은 브라우저(localStorage)에만 저장됩니다. 게시하려면 **내보내기** → 받은 `tournament.json` 을 `data/` 에 덮어쓰고 `git push`. (또는 Claude Code 로 파일 직접 수정 후 push)
+- 일반 주소는 항상 읽기 전용이고, 관리자 앱은 `admin.html` 에서만 실행됩니다(로그인은 탭 단위 세션). 관리자 편집 내용은 브라우저(localStorage)에만 저장됩니다. 게시하려면 **내보내기** → 받은 `tournament.json` 을 `data/` 에 덮어쓰고 `git push`. (또는 Claude Code 로 파일 직접 수정 후 push)
 - 현장에서 즉시 공유: **🔗 공유 링크** — 현재 상태 전체를 링크에 담아 카톡 등으로 전달 (읽기 전용 스냅샷)
 - **NTRP 는 관리자 비밀번호로 AES-GCM 암호화**되어 저장됩니다. 저장소 JSON 을 열어도 평문이 보이지 않습니다. 비밀번호 변경은 `app.js` 의 `ADMIN_HASH`(sha256(`tennisweet-v1` + 비밀번호)) 를 바꾸고, 기존 NTRP 는 새 비밀번호로 다시 입력해야 합니다.
 

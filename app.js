@@ -604,7 +604,7 @@
 
   function render() {
     hydrateSettings();
-    $('#hdr-title').textContent = state.settings.name || '분기 대회 일정표';
+    $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
     renderPlayers(); renderUnits();
     if (state.schedule) resolveKO();
     renderSchedule(); renderStandings(); renderBracket();
@@ -810,9 +810,9 @@
     viewOnly = true; document.body.classList.add('view-only');
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
   }
-  function adminLogin() { location.href = 'admin.html'; } // 관리자 페이지(비밀번호 입력 화면)로 이동
+  function adminLogin() { location.href = 'admin.html'; } // 관리자 페이지로 이동
   $('#btn-editor').addEventListener('click', adminLogin);
-  $('#btn-leave-editor').addEventListener('click', () => { localStorage.removeItem(EDITOR_FLAG); sessionStorage.removeItem(PW_KEY); location.reload(); });
+  $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); location.href = './'; });
   $('#btn-load-published').addEventListener('click', async () => {
     const pub = await loadPublished(); if (!pub) { alert('게시본(data/tournament.json)을 찾을 수 없습니다.'); return; }
     if (!confirm('게시본을 불러와 현재 작업본을 덮어씁니다. 계속할까요?')) return;
@@ -827,12 +827,13 @@
     if (await tryLoadShared()) { enterViewOnly(`공유 링크 보기 (읽기 전용) · ${sharedAt ? new Date(sharedAt).toLocaleString('ko-KR') : ''} 기준`); render(); showTab('schedule'); return; }
     const published = await loadPublished();
     const pw = sessionStorage.getItem(PW_KEY);
-    const editor = localStorage.getItem(EDITOR_FLAG) === '1' && pw && (await sha256hex(ADMIN_SALT + pw)) === ADMIN_HASH;
-    if (!editor) {
+    const isAdminPage = document.body.dataset.page === 'admin';
+    const editor = isAdminPage && pw && (await sha256hex(ADMIN_SALT + pw)) === ADMIN_HASH;
+    if (isAdminPage && !editor) { location.replace('admin.html'); return; }
+    if (!editor) { // 일반 페이지는 항상 보기 전용
       if (published) state = normalize(published);
-      enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 없습니다. 관리자로 로그인해 시작하세요.');
-      render(); showTab(state.schedule ? 'schedule' : 'players');
-      return;
+      enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
+      render(); showTab(state.schedule ? 'schedule' : 'players'); return;
     }
     document.body.classList.add('editor');
     let saved = storage.load();

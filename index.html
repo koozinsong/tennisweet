@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>테니스윗 분기 대회 일정표</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 <header class="topbar">
@@ -25,7 +25,7 @@
     <input type="file" id="file-import" accept="application/json" hidden>
     <button id="btn-print">인쇄</button>
     <button id="btn-reset" class="danger only-editor">초기화</button>
-    <button id="btn-leave-editor" class="only-editor" title="읽기 전용 게시본 보기로">보기 모드</button>
+    <button id="btn-leave-editor" class="only-editor" title="로그아웃하고 일정표 보기로">로그아웃</button>
   </div>
 </header>
 <div id="view-banner" class="banner" hidden><span id="view-banner-text"></span></div>
@@ -155,6 +155,6 @@
 </main>
 
 <footer><span class="only-view">🎾 테니스윗 · 경기 결과와 순위는 관리자가 게시할 때마다 갱신됩니다.</span><span class="only-editor">게시본은 저장소 <code>data/tournament.json</code>, 편집 내용은 이 브라우저에만 저장됩니다. 게시하려면 <b>내보내기</b> → data/ 교체 → push.</span></footer>
-<script src="app.js?v=3"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

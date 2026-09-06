@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>테니스윗 관리자</title>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=4">
 <style>
   .login { max-width: 420px; margin: 40px auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 28px 24px; }
   .login h1 { font-size: 22px; margin: 0 0 6px; color: var(--green-dark); }
@@ -15,34 +15,41 @@
   .back { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
 </style>
 </head>
-<body>
-<header class="topbar"><div class="brand">🎾 테니스윗 <span>관리자</span></div></header>
-<main>
-  <form class="login" id="login">
-    <h1>🔐 관리자 로그인</h1>
-    <p>비밀번호를 입력하면 선수 정보(NTRP 포함)·팀 구성·일정 생성·결과 입력을 할 수 있습니다.</p>
-    <label>비밀번호 <input type="password" id="pw" autocomplete="current-password" autofocus required></label>
-    <button type="submit" class="primary">로그인</button>
-    <div class="err" id="err"></div>
-    <a class="back" href="./">← 일정표 보기로 돌아가기</a>
-  </form>
-</main>
+<body data-page="admin">
+<div id="gate">
+  <header class="topbar"><div class="brand">🎾 테니스윗 <span>관리자</span></div></header>
+  <main>
+    <form class="login" id="login">
+      <h1>🔐 관리자 로그인</h1>
+      <p>비밀번호를 입력하면 선수 정보(NTRP 포함)·팀 구성·일정 생성·결과 입력을 할 수 있습니다.</p>
+      <label>비밀번호 <input type="password" id="pw" autocomplete="current-password" autofocus required></label>
+      <button type="submit" class="primary">로그인</button>
+      <div class="err" id="err"></div>
+      <a class="back" href="./">← 일정표 보기로 돌아가기</a>
+    </form>
+  </main>
+</div>
 <script>
 (async () => {
   const ADMIN_SALT = 'tennisweet-v1';
   const ADMIN_HASH = 'fd8dd30608d332345643934a07ca0c380c73b85ebac5fb641a90f50ed0fcd81a';
   const sha = async (s) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const ok = async (pw) => !!pw && (await sha(ADMIN_SALT + pw)) === ADMIN_HASH;
+  // 로그인 성공 → 같은 페이지 안에 관리자 앱(index.html 의 화면)을 불러와 편집 모드로 실행
+  async function boot() {
+    const html = await (await fetch('index.html', { cache: 'no-store' })).text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    document.getElementById('gate').remove();
+    for (const sel of ['header.topbar', '#view-banner', 'main', 'footer']) { const el = doc.querySelector(sel); if (el) document.body.appendChild(el); }
+    document.title = '테니스윗 관리자';
+    const s = document.createElement('script'); s.src = 'app.js?v=4'; document.body.appendChild(s);
+  }
+  if (await ok(sessionStorage.getItem('tennisweet.pw'))) { boot(); return; }
   const f = document.getElementById('login'), err = document.getElementById('err'), pwEl = document.getElementById('pw');
-  // 이미 로그인된 세션이면 바로 앱으로
-  const saved = sessionStorage.getItem('tennisweet.pw');
-  if (saved && localStorage.getItem('tennisweet.editor') === '1' && (await sha(ADMIN_SALT + saved)) === ADMIN_HASH) { location.replace('./'); return; }
   f.addEventListener('submit', async (e) => {
     e.preventDefault(); err.textContent = '';
-    const pw = pwEl.value;
-    if (!pw || (await sha(ADMIN_SALT + pw)) !== ADMIN_HASH) { err.textContent = '비밀번호가 틀렸습니다.'; pwEl.select(); return; }
-    sessionStorage.setItem('tennisweet.pw', pw);
-    localStorage.setItem('tennisweet.editor', '1');
-    location.replace('./');
+    if (!(await ok(pwEl.value))) { err.textContent = '비밀번호가 틀렸습니다.'; pwEl.select(); return; }
+    sessionStorage.setItem('tennisweet.pw', pwEl.value); boot();
   });
 })();
 </script>
