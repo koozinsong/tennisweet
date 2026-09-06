@@ -202,3 +202,15 @@ body.view-only footer .only-view { display: inline; }
 table.summary tr.hi td { background: #f1f8f3; }
 table.summary tr.lo td { background: #fff8e1; }
 body.view-only label.only-editor { display: none; }
+
+/* ---- 게시 모달 / 토스트 ---- */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+.modal[hidden] { display: none; }
+.modal-card { background: #fff; border-radius: 12px; padding: 20px; max-width: 560px; width: 100%; max-height: 90vh; overflow: auto; }
+.modal-card h3 { margin: 0 0 8px; }
+.modal-card .steps { padding-left: 20px; }
+.modal-card .steps li { margin: 4px 0; }
+.modal-card .err { color: var(--danger); font-size: 13px; min-height: 18px; }
+button.danger-text { border-color: transparent; color: var(--danger); background: transparent; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: #1d2b1f; color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px; z-index: 60; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.toast[hidden] { display: none; }

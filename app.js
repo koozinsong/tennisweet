@@ -20,11 +20,18 @@
   };
   // ================= 관리자 인증 + NTRP 암호화 (AES-GCM, PBKDF2) =================
   const ADMIN_SALT = 'tennisweet-v1';
-  const ADMIN_HASH = 'fd8dd30608d332345643934a07ca0c380c73b85ebac5fb641a90f50ed0fcd81a'; // sha256(ADMIN_SALT + 비밀번호)
+  const ADMIN_HASH = 'd662b5254226a2bc02011aa385a0e4c734fe29f7ad067728c76b149ca396fd9e'; // PBKDF2-SHA256(비밀번호, salt 'tennisweet-v1-verify', 120000회) — 느린 검증값 (오프라인 추측 비용 증가)
   const PW_KEY = 'tennisweet.pw';
   let adminKey = null; const ntrp = new Map(); // playerId -> NTRP 평문 (메모리에만)
-  const b64 = (u8) => btoa(String.fromCharCode(...u8)); const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
+  const b64 = (u8) => { let r = ''; for (let i = 0; i < u8.length; i += 0x8000) r += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(r); }; // 큰 배열도 안전 (spread 인자 한도 회피)
+  const unb64 = (str) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
   async function sha256hex(str) { const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
+  /** 비밀번호 검증값: PBKDF2 120k 회 (admin.html 과 동일 계산) */
+  async function verifierHex(pw) {
+    const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(ADMIN_SALT + '-verify'), iterations: 120000, hash: 'SHA-256' }, base, 256);
+    return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
   async function deriveKey(pw) {
     const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveKey']);
     return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode(ADMIN_SALT), iterations: 120000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
@@ -32,7 +39,7 @@
   async function encStr(str) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, adminKey, new TextEncoder().encode(str)); return b64(iv) + '.' + b64(new Uint8Array(ct)); }
   async function decStr(packed) { const [iv, ct] = packed.split('.'); return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(iv) }, adminKey, unb64(ct))); }
   async function unlockAdmin(pw) {
-    if (!pw || (await sha256hex(ADMIN_SALT + pw)) !== ADMIN_HASH) return false;
+    if (!pw || (await verifierHex(pw)) !== ADMIN_HASH) return false;
     adminKey = await deriveKey(pw); await decryptAll(); return true;
   }
   async function decryptAll() { ntrp.clear(); if (!adminKey) return; for (const p of state.players) if (p.ntrpEnc) { try { ntrp.set(p.id, await decStr(p.ntrpEnc)); } catch {} } }
@@ -58,10 +65,10 @@
   // ================= 공유 링크 (URL 스냅샷) =================
   async function compress(str) {
     const bytes = new TextEncoder().encode(str);
-    if (!('CompressionStream' in window)) return 'p' + btoa(String.fromCharCode(...bytes));
+    if (!('CompressionStream' in window)) return 'p' + b64(bytes);
     const cs = new CompressionStream('deflate-raw');
     const buf = await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer();
-    return 'z' + btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return 'z' + b64(new Uint8Array(buf));
   }
   async function decompress(str) {
     const mode = str[0]; const bytes = Uint8Array.from(atob(str.slice(1)), (c) => c.charCodeAt(0));
@@ -73,7 +80,7 @@
   function assertTypesOk() { const v = typeViolations(); if (!v.length) return true; alert(`경기 종류가 일치하지 않는 경기가 ${v.length}건 있습니다 (⚠ 종류 불일치). 먼저 수정해 주세요.`); return false; }
   async function makeShareLink() {
     if (!assertTypesOk()) return;
-    const snap = { ...state, editMode: false, sharedAt: new Date().toISOString() };
+    const snap = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, sharedAt: new Date().toISOString() };
     const enc = await compress(JSON.stringify(snap));
     const url = `${location.origin}${location.pathname}#s=${encodeURIComponent(enc)}`;
     try { await navigator.clipboard.writeText(url); alert(`공유 링크가 복사되었습니다 (${Math.round(url.length / 1024)}KB).\n카톡 등으로 전달하면 누구나 일정·결과를 읽기 전용으로 볼 수 있습니다.\n결과가 바뀌면 다시 공유하세요.`); }
@@ -83,7 +90,7 @@
     const m = location.hash.match(/^#s=(.+)$/); if (!m) return false;
     try {
       const data = JSON.parse(await decompress(decodeURIComponent(m[1])));
-      state = { ...emptyState(), ...data, editMode: false }; viewOnly = true; sharedAt = data.sharedAt;
+      state = normalize(data); viewOnly = true; sharedAt = data.sharedAt;
       return true;
     } catch (e) { alert('공유 링크를 읽을 수 없습니다: ' + e.message); return false; }
   }
@@ -142,15 +149,15 @@
       return;
     }
     $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
-      <td>${i + 1}</td><td><input type="checkbox" data-pid="${p.id}" ${p.active ? 'checked' : ''}></td>
-      <td><input class="cell" data-pid="${p.id}" data-field="name" value="${esc(p.name)}"></td>
-      <td><select class="cell" data-pid="${p.id}" data-field="gender"><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
-      <td class="only-editor">${adminKey ? `<input class="cell" type="number" step="0.5" min="1" max="7" data-pid="${p.id}" data-field="ntrp" value="${esc(ntrp.get(p.id) || '')}">` : '<span class="tbd">🔒</span>'}</td>
-      <td><input class="cell" type="time" data-pid="${p.id}" data-field="from" value="${esc(p.from || '')}"></td>
-      <td><input class="cell" type="time" data-pid="${p.id}" data-field="until" value="${esc(p.until || '')}"></td>
-      <td class="only-editor"><input class="cell" data-pid="${p.id}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px"></td>
-      <td><input class="cell" data-pid="${p.id}" data-field="note" value="${esc(p.note)}"></td>
-      <td><button class="small" data-del="${p.id}">삭제</button></td></tr>`).join('');
+      <td>${i + 1}</td><td><input type="checkbox" data-pid="${esc(p.id)}" ${p.active ? 'checked' : ''}></td>
+      <td><input class="cell" data-pid="${esc(p.id)}" data-field="name" value="${esc(p.name)}"></td>
+      <td><select class="cell" data-pid="${esc(p.id)}" data-field="gender"><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
+      <td class="only-editor">${adminKey ? `<input class="cell" type="number" step="0.5" min="1" max="7" data-pid="${esc(p.id)}" data-field="ntrp" value="${esc(ntrp.get(p.id) || '')}">` : '<span class="tbd">🔒</span>'}</td>
+      <td><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="from" value="${esc(p.from || '')}"></td>
+      <td><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="until" value="${esc(p.until || '')}"></td>
+      <td class="only-editor"><input class="cell" data-pid="${esc(p.id)}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px"></td>
+      <td><input class="cell" data-pid="${esc(p.id)}" data-field="note" value="${esc(p.note)}"></td>
+      <td><button class="small" data-del="${esc(p.id)}">삭제</button></td></tr>`).join('');
   }
 
   // ================= ② 대회 설정 =================
@@ -279,14 +286,14 @@
     $('#btn-add-unit')?.addEventListener('click', () => { state.units.push({ id: uid(), name: kind === 'team' ? `${state.units.length + 1}팀` : '', playerIds: [] }); commit(); });
 
     const assigned = assignedIds(); const free = activePlayers().filter((p) => !assigned.has(p.id));
-    const opt = (sel) => `<option value="">+ 선수 추가</option>${free.map((p) => `<option value="${p.id}">${esc(p.name)}${adminKey && ntrp.get(p.id) ? ` (${esc(ntrp.get(p.id))})` : ''}</option>`).join('')}`;
-    const pchip = (u, pid) => { const p = playerById(pid); return `<span class="chip">${esc(p?.name ?? '?')}${adminKey && ntrp.get(p.id) ? `<small> ${esc(ntrp.get(p.id))}</small>` : ''}${p?.from ? `<small> ${esc(p.from)}~</small>` : ''}${viewOnly ? '' : `<button class="x" data-rm="${u.id}:${pid}" title="빼기">×</button>`}</span>`; };
+    const opt = (sel) => `<option value="">+ 선수 추가</option>${free.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}${adminKey && ntrp.get(p.id) ? ` (${esc(ntrp.get(p.id))})` : ''}</option>`).join('')}`;
+    const pchip = (u, pid) => { const p = playerById(pid); return `<span class="chip">${esc(p?.name ?? '?')}${adminKey && ntrp.get(p.id) ? `<small> ${esc(ntrp.get(p.id))}</small>` : ''}${p?.from ? `<small> ${esc(p.from)}~</small>` : ''}${viewOnly ? '' : `<button class="x" data-rm="${esc(u.id)}:${esc(pid)}" title="빼기">×</button>`}</span>`; };
     const dis = viewOnly ? 'disabled' : '';
     view.innerHTML = `<div class="cards">${state.units.map((u, i) => `<div class="card">
-        <div class="card-head">${kind === 'team' ? `<input class="unit-name" data-uid="${u.id}" value="${esc(u.name)}" placeholder="팀명" ${dis}>` : `<b>${i + 1}. ${esc(unitName(u))}</b>`}
-          ${viewOnly ? '' : `<button class="small" data-del-unit="${u.id}">삭제</button>`}</div>
+        <div class="card-head">${kind === 'team' ? `<input class="unit-name" data-uid="${esc(u.id)}" value="${esc(u.name)}" placeholder="팀명" ${dis}>` : `<b>${i + 1}. ${esc(unitName(u))}</b>`}
+          ${viewOnly ? '' : `<button class="small" data-del-unit="${esc(u.id)}">삭제</button>`}</div>
         <div class="chips">${u.playerIds.map((pid) => pchip(u, pid)).join('') || '<span class="tbd">선수 없음</span>'}</div>
-        ${!viewOnly && (kind === 'team' || u.playerIds.length < (kind === 'pair' ? 2 : 1)) && free.length ? `<select class="add-player" data-uid="${u.id}">${opt()}</select>` : ''}
+        ${!viewOnly && (kind === 'team' || u.playerIds.length < (kind === 'pair' ? 2 : 1)) && free.length ? `<select class="add-player" data-uid="${esc(u.id)}">${opt()}</select>` : ''}
       </div>`).join('')}</div>
       ${free.length ? `<h3>미배정 참가 선수 (${free.length})</h3><div class="chips">${free.map((p) => `<span class="chip muted">${esc(p.name)}</span>`).join('')}</div>` : ''}`;
     const n = state.units.filter((u) => u.playerIds.length).length;
@@ -664,21 +671,21 @@
     // 선수 필터 (모바일에서 내 경기만 보기)
     const sel = $('#sel-me'); const cur = state.meFilter || '';
     const inSched = new Set(ms.flatMap(matchPeople));
-    sel.innerHTML = `<option value="">전체 경기</option>${state.players.filter((p) => inSched.has(p.id)).map((p) => `<option value="${p.id}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)} 경기만</option>`).join('')}`;
-    const unitOpts = (selId) => `<option value="">(미정)</option>${sch.unitIds.map((id) => `<option value="${id}" ${id === selId ? 'selected' : ''}>${esc(unitName(unitById(id) || { playerIds: [] }))}</option>`).join('')}`;
+    sel.innerHTML = `<option value="">전체 경기</option>${state.players.filter((p) => inSched.has(p.id)).map((p) => `<option value="${esc(p.id)}" ${p.id === cur ? 'selected' : ''}>${esc(p.name)} 경기만</option>`).join('')}`;
+    const unitOpts = (selId) => `<option value="">(미정)</option>${sch.unitIds.map((id) => `<option value="${esc(id)}" ${id === selId ? 'selected' : ''}>${esc(unitName(unitById(id) || { playerIds: [] }))}</option>`).join('')}`;
     const slotOpts = (selI) => Array.from({ length: nSlots }, (_, i) => `<option value="${i}" ${i === selI ? 'selected' : ''}>${slotTime(i)}</option>`).join('');
     const courtOpts = (selC) => Array.from({ length: s.courts }, (_, i) => `<option value="${i + 1}" ${i + 1 === selC ? 'selected' : ''}>${i + 1}코트</option>`).join('');
     const cell = (m, side) => {
       if (!edit) return sideHtml(m, side);
-      if (m[side + 'Ids']) return m[side + 'Ids'].map((id, i) => `<select class="ed" data-mid="${m.id}" data-f="${side}${i}">${unitOpts(id)}</select>`).join('');
+      if (m[side + 'Ids']) return m[side + 'Ids'].map((id, i) => `<select class="ed" data-mid="${esc(m.id)}" data-f="${side}${i}">${unitOpts(id)}</select>`).join('');
       if (m[side + 'Players']) {
         const team = unitById(m[side + 'Id']); const pool = team ? team.playerIds : state.players.map((p) => p.id);
         // 나머지 3명이 정해져 있으면 남복·여복·혼복 종류가 유지되는 선수만 선택지에 표시
         const okFor = (i, cand) => { const t = { aPlayers: [...m.aPlayers], bPlayers: [...m.bPlayers] }; t[side + 'Players'][i] = cand; const mt = matchType(t); return !mt || !mt.mismatch; };
-        const popts = (selP, i) => `<option value="">(미정)</option>${pool.filter((id) => id === selP || okFor(i, id)).map((id) => `<option value="${id}" ${id === selP ? 'selected' : ''}>${esc(pname(id))}</option>`).join('')}`;
-        return `<select class="ed" data-mid="${m.id}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>` + m[side + 'Players'].map((id, i) => `<select class="ed" data-mid="${m.id}" data-f="p${side}${i}">${popts(id, i)}</select>`).join('');
+        const popts = (selP, i) => `<option value="">(미정)</option>${pool.filter((id) => id === selP || okFor(i, id)).map((id) => `<option value="${esc(id)}" ${id === selP ? 'selected' : ''}>${esc(pname(id))}</option>`).join('')}`;
+        return `<select class="ed" data-mid="${esc(m.id)}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>` + m[side + 'Players'].map((id, i) => `<select class="ed" data-mid="${esc(m.id)}" data-f="p${side}${i}">${popts(id, i)}</select>`).join('');
       }
-      return `<select class="ed" data-mid="${m.id}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>${m.phase === 'ko' && m[side + 'Manual'] ? '<div class="sub">수동 지정</div>' : ''}`;
+      return `<select class="ed" data-mid="${esc(m.id)}" data-f="${side}">${unitOpts(m[side + 'Id'])}</select>${m.phase === 'ko' && m[side + 'Manual'] ? '<div class="sub">수동 지정</div>' : ''}`;
     };
     let html = '';
     for (let slot = 0; slot < nSlots; slot++) {
@@ -689,15 +696,15 @@
       for (const m of rows) {
         const o = matchOutcome(m); const r = getResult(m.id); const canInput = sideIds(m, 'a').length && sideIds(m, 'b').length && !viewOnly;
         const scores = r.map((sub, i) => `<div class="score">${n > 1 ? `<span class="sub">${i + 1}</span>` : ''}
-          <input type="number" min="0" inputmode="numeric" data-mid="${m.id}" data-i="${i}" data-side="a" value="${esc(sub.a)}" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
-          <input type="number" min="0" inputmode="numeric" data-mid="${m.id}" data-i="${i}" data-side="b" value="${esc(sub.b)}" ${canInput ? '' : 'disabled'}></div>`).join('');
+          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="a" value="${esc(sub.a)}" ${canInput ? '' : 'disabled'}><span class="colon">:</span>
+          <input type="number" min="0" inputmode="numeric" data-mid="${esc(m.id)}" data-i="${i}" data-side="b" value="${esc(sub.b)}" ${canInput ? '' : 'disabled'}></div>`).join('');
         const res = o.winner ? `<div class="done">${esc(sideName(m, o.winner))} 승${n > 1 ? ` (${o.aw}:${o.bw})` : ''}</div>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
         const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type'}">${esc(mt.label)}</span>` : '';
         const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '');
         const mine = cur && matchPeople(m).includes(cur) ? 'mine' : '';
         html += `<div class="mcard ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}">
-          <div class="mhead">${edit ? `<select class="ed" data-mid="${m.id}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${m.id}" data-f="court">${courtOpts(m.court)}</select>` : `<b>${m.court}코트</b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${m.id}">삭제</button>` : ''}</div>
+          <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b>${m.court}코트</b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
           <div class="mbody"><div class="side ${o.winner === 'a' ? 'w' : ''}">${cell(m, 'a')}</div><div class="vs">vs</div><div class="side ${o.winner === 'b' ? 'w' : ''}">${cell(m, 'b')}</div></div>
           <div class="mfoot">${scores}${res}</div></div>`;
       }
@@ -832,11 +839,12 @@
   $('#btn-share').addEventListener('click', makeShareLink);
   $('#btn-export').addEventListener('click', () => {
     if (!assertTypesOk()) return;
-    const out = { ...state, editMode: false, publishedAt: new Date().toISOString() };
+    const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, publishedAt: new Date().toISOString() };
+    state.publishedAt = out.publishedAt; save(); // 이 파일을 게시하면 작업본과 같은 게시본으로 인식
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = 'tournament.json'; a.click();
-    alert('tournament.json 을 저장소의 data/ 폴더에 넣고 push 하면 게시됩니다.');
+    toast('tournament.json 저장됨 · 저장소 data/ 에 넣고 push 하면 게시됩니다 (보통은 🚀 게시하기로 충분)', 6000);
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
   $('#btn-import').addEventListener('click', () => $('#file-import').click());
@@ -845,29 +853,124 @@
     try {
       const data = JSON.parse(await f.text());
       if (!data.settings || !Array.isArray(data.players)) throw new Error('형식이 올바르지 않습니다.');
-      state = { ...emptyState(), ...data, settings: { ...DEFAULT_SETTINGS, ...data.settings } }; await decryptAll(); commit();
+      state = normalize(data); await decryptAll(); commit();
     } catch (err) { alert('가져오기 실패: ' + err.message); }
     e.target.value = '';
   });
   $('#btn-print').addEventListener('click', () => window.print());
   $('#btn-reset').addEventListener('click', () => {
     if (!confirm('모든 설정·참가자·결과를 지웁니다. 계속할까요? (먼저 내보내기를 권장)')) return;
-    state = emptyState(); save(); render(); showTab('players');
+    state = emptyState(); save(); forgetToken(); render(); showTab('players');
   });
 
   // ================= 게시본 (저장소 data/tournament.json) =================
   const EDITOR_FLAG = 'tennisweet.editor';
   async function loadPublished() {
-    try { const res = await fetch('data/tournament.json', { cache: 'no-store' }); if (!res.ok) return null; return await res.json(); } catch { return null; }
+    try { const res = await fetch('data/tournament.json?_=' + Date.now(), { cache: 'no-store' }); if (!res.ok) return null; return await res.json(); } catch { return null; } // CDN 캐시 우회
   }
-  const normalize = (data) => ({ ...emptyState(), ...data, settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, editMode: false });
+  function toast(msg, ms = 3500) { const t = $('#toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms); }
+
+  // ================= 게시하기 (GitHub Contents API 로 data/tournament.json 커밋) =================
+  const GH = { owner: 'koozinsong', repo: 'tennisweet', path: 'data/tournament.json', branches: ['main', 'gh-pages'] }; // main = 원본, gh-pages = 서빙 중인 사본(즉시 반영용)
+  const TOKEN_KEY = 'tennisweet.ghtokenEnc';
+  async function loadToken() { const enc = localStorage.getItem(TOKEN_KEY); if (!enc || !adminKey) return null; try { return await decStr(enc); } catch { return null; } }
+  async function saveToken(tok) { localStorage.setItem(TOKEN_KEY, await encStr(tok.trim())); }
+  function forgetToken() { localStorage.removeItem(TOKEN_KEY); }
+  function askToken(err) {
+    return new Promise((resolve) => {
+      const modal = $('#token-modal'), form = $('#token-form'), inp = $('#token-input'), errEl = $('#token-err');
+      errEl.textContent = err || ''; inp.value = ''; modal.hidden = false; inp.focus();
+      const done = (v) => { modal.hidden = true; form.onsubmit = null; $('#token-cancel').onclick = null; $('#token-forget').onclick = null; resolve(v); };
+      form.onsubmit = (e) => { e.preventDefault(); const v = inp.value.trim(); if (!/^(github_pat_|ghp_)/.test(v)) { errEl.textContent = '토큰 형식이 아닙니다 (github_pat_… 또는 ghp_…).'; return; } done(v); };
+      $('#token-cancel').onclick = () => done(null);
+      $('#token-forget').onclick = () => { forgetToken(); errEl.textContent = '저장된 토큰을 삭제했습니다.'; };
+    });
+  }
+  const ghHeaders = (tok) => ({ Authorization: 'Bearer ' + tok, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' });
+  const b64utf8 = (str) => b64(new TextEncoder().encode(str));
+  /** 한 브랜치에 파일 커밋 (있으면 sha 포함 갱신, 없으면 생성). 409/422 충돌 시 sha 재조회 후 1회 재시도 */
+  async function ghPutFile(tok, branch, content, message) {
+    const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH.path}`;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const cur = await fetch(`${url}?ref=${branch}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' });
+      if (cur.status === 401) throw Object.assign(new Error('AUTH'), { status: 401 });
+      if (cur.status === 403) { const b = await cur.json().catch(() => ({})); if (/rate limit|abuse|secondary/i.test(b.message || '')) throw new Error(`GitHub 요청 제한 (잠시 후 다시 시도): ${b.message}`); throw Object.assign(new Error('AUTH'), { status: 403 }); }
+      if (cur.status !== 200 && cur.status !== 404) throw new Error(`${branch} 조회 실패 (${cur.status})`);
+      const sha = cur.status === 200 ? (await cur.json()).sha : undefined;
+      const res = await fetch(url, { method: 'PUT', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message, content: b64utf8(content), branch, ...(sha ? { sha } : {}) }) });
+      if (res.ok) return await res.json();
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401) throw Object.assign(new Error('AUTH'), { status: 401 });
+      if (res.status === 403 && !/rate limit|abuse|secondary|protected|ruleset/i.test(body.message || '')) throw Object.assign(new Error('AUTH'), { status: 403 }); // 권한 문제만 토큰 문제로
+      if (res.status === 404) throw Object.assign(new Error('NOPERM'), { status: 404 }); // 읽기는 되는데 쓰기 404 = 토큰에 이 저장소 쓰기 권한 없음
+      if ((res.status === 409 || res.status === 422) && attempt === 0) continue; // 동시 변경 → 재시도
+      throw new Error(`${branch} 커밋 실패 (${res.status}) ${body.message || ''}`);
+    }
+  }
+  let publishing = false;
+  const bannerAdmin = (extra) => { const el = $('#view-banner-text'); if (el) el.textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · ${extra}`; };
+  async function publish(retry = 0) {
+    if (publishing) return; publishing = true; // 중복 클릭 즉시 차단
+    const btn = $('#btn-publish'); const label = btn.textContent; btn.disabled = true; btn.textContent = '게시 중…';
+    let again = false;
+    try {
+      if (!assertTypesOk()) return;
+      if (!state.schedule && !confirm('아직 일정표가 없습니다. 선수·설정만 게시할까요?')) return;
+      let tok = await loadToken();
+      if (!tok) { tok = await askToken(); if (!tok) { toast('게시를 취소했습니다 (토큰 없음)'); return; } await saveToken(tok); }
+      // 다른 기기에서 그 사이 게시했으면(서버 게시본이 내 작업본의 기준보다 새로움) 덮어쓰기 전에 확인
+      const cur = await loadPublished();
+      const tCur = Date.parse(cur?.publishedAt || ''), tBase = Date.parse(state.publishedAt || '');
+      if (!isNaN(tCur) && (isNaN(tBase) || tCur > tBase + 1000) && cur.publishedAt !== state.publishedAt) {
+        if (!confirm(`서버 게시본(${new Date(cur.publishedAt).toLocaleString('ko-KR')})이 이 작업본의 기준보다 새롭습니다. 다른 기기에서 게시한 내용을 지금 작업본으로 덮어쓸까요?\n(취소 후 '게시본 불러오기'로 최신을 받아 다시 편집할 수 있습니다)`)) { toast('게시를 취소했습니다'); return; }
+      }
+      const publishedAt = new Date().toISOString();
+      const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, publishedAt };
+      const content = JSON.stringify(out, null, 2) + '\n';
+      const msg = `게시: ${state.settings.name || '대회'} · ${new Date(publishedAt).toLocaleString('ko-KR')}`;
+      const results = []; let mainOk = false;
+      for (const br of GH.branches) {
+        try { await ghPutFile(tok, br, content, msg); results.push(`${br} ✓`); if (br === 'main') mainOk = true; }
+        catch (e) {
+          if (br === 'main') throw e; // 원본 실패 = 게시 실패
+          results.push(`${br} ✗ ${e.message === 'AUTH' || e.message === 'NOPERM' ? '권한 없음' : e.message}`); // 서빙 사본 실패는 Actions 배포(1~2분)로 대체됨
+        }
+      }
+      if (mainOk) { state.publishedAt = publishedAt; save(); } // 작업본 = 게시본 (새 게시본 확인창 방지)
+      toast(`게시 완료 · ${results.join(' · ')}`, 5000);
+      bannerAdmin(`방금 게시함 ${new Date(publishedAt).toLocaleTimeString('ko-KR')} · 방문자 화면은 1분 안에 자동 갱신`);
+    } catch (e) {
+      if (e.message === 'AUTH' || e.message === 'NOPERM') {
+        forgetToken();
+        const t2 = await askToken(e.message === 'AUTH' ? '토큰이 거부되었습니다 (만료·오타). 새 토큰을 넣어 주세요.' : '이 토큰으로는 저장소에 쓸 수 없습니다 (Repository access 에 koozinsong/tennisweet, Contents: Read and write 필요). 새 토큰을 넣어 주세요.');
+        if (t2 && retry < 1) { await saveToken(t2); again = true; } else toast('게시를 취소했습니다');
+      } else alert('게시 실패: ' + e.message + '\n(내보내기 → data/tournament.json 교체 → push 로도 게시할 수 있습니다)');
+    } finally { publishing = false; btn.disabled = false; btn.textContent = label; }
+    if (again) return publish(retry + 1);
+  }
+  $('#btn-publish').addEventListener('contextmenu', (e) => { e.preventDefault(); if (confirm('저장된 GitHub 토큰을 삭제할까요? 다음 게시 때 다시 묻습니다.')) { forgetToken(); toast('토큰을 삭제했습니다'); } }); // 우클릭/길게 누르기 = 토큰 삭제
+  $('#btn-publish').addEventListener('click', publish);
+  const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/;
+  /** 외부에서 온 데이터(공유 링크·가져오기·게시본)의 id 검증: 화면 속성에 들어가므로 형식이 다르면 거부 */
+  function assertIds(data) {
+    const bad = (v) => v != null && !(typeof v === 'string' && ID_RE.test(v));
+    for (const p of data.players || []) if (bad(p.id)) throw new Error('선수 id 형식 오류');
+    for (const u of data.units || []) { if (bad(u.id)) throw new Error('팀 id 형식 오류'); for (const x of u.playerIds || []) if (bad(x)) throw new Error('팀원 id 형식 오류'); }
+    for (const m of data.schedule?.matches || []) {
+      for (const v of [m.id, m.aId, m.bId, m.aManual, m.bManual, ...(m.aIds || []), ...(m.bIds || []), ...(m.aPlayers || []), ...(m.bPlayers || [])]) if (bad(v)) throw new Error('경기 id 형식 오류');
+      for (const src of [m.aFrom, m.bFrom]) if (src && bad(src.id)) throw new Error('경기 참조 id 형식 오류');
+    }
+    for (const k of Object.keys(data.results || {})) if (bad(k)) throw new Error('결과 id 형식 오류');
+    return data;
+  }
+  const normalize = (data) => ({ ...emptyState(), ...assertIds(data), settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, editMode: false });
   function enterViewOnly(text) {
     viewOnly = true; document.body.classList.add('view-only');
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
   }
   function adminLogin() { location.href = 'admin.html?t=' + Date.now(); } // 관리자 페이지로 이동 (캐시된 옛 페이지 방지)
   $('#btn-editor').addEventListener('click', adminLogin);
-  $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); location.href = './'; });
+  $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); forgetToken(); location.href = './'; }); // 로그아웃 시 토큰도 삭제 (공용 기기 대비)
   $('#btn-load-published').addEventListener('click', async () => {
     const pub = await loadPublished(); if (!pub) { alert('게시본(data/tournament.json)을 찾을 수 없습니다.'); return; }
     if (!confirm('게시본을 불러와 현재 작업본을 덮어씁니다. 계속할까요?')) return;
@@ -883,23 +986,36 @@
     const published = await loadPublished();
     const pw = sessionStorage.getItem(PW_KEY);
     const isAdminPage = document.body.dataset.page === 'admin';
-    const editor = isAdminPage && pw && (await sha256hex(ADMIN_SALT + pw)) === ADMIN_HASH;
+    const editor = isAdminPage && pw && (await verifierHex(pw)) === ADMIN_HASH;
     if (isAdminPage && !editor) { location.replace('admin.html?t=' + Date.now()); return; }
     if (!editor) { // 일반 페이지는 항상 보기 전용
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
-      render(); showTab(state.schedule ? 'schedule' : 'players'); return;
+      render(); showTab(state.schedule ? 'schedule' : 'players');
+      // 방문자: 게시본이 바뀌면 자동 갱신 (현장에서 관리자가 게시하면 곧 반영)
+      let lastPub = published?.publishedAt || null;
+      setInterval(async () => {
+        if (document.hidden) return;
+        const p = await loadPublished(); if (!p || !p.publishedAt || (lastPub && Date.parse(p.publishedAt) <= Date.parse(lastPub))) return; // 더 새로운 게시본만 (CDN 지연으로 옛 사본이 오면 무시)
+        const mf = state.meFilter; lastPub = p.publishedAt; state = normalize(p);
+        if (mf && (state.schedule?.matches || []).some((m) => matchPeople(m).includes(mf))) state.meFilter = mf; // 방문자의 '내 경기' 필터 유지
+        render();
+        $('#view-banner-text').textContent = `게시본 보기 (읽기 전용) · ${new Date(p.publishedAt).toLocaleString('ko-KR')} 게시`;
+        toast('일정이 갱신되었습니다');
+      }, 45000);
+      return;
     }
     document.body.classList.add('editor');
     let saved = storage.load();
     // 게시본이 작업본보다 새로우면(다른 기기·Claude 에서 게시) 작업본을 게시본으로 교체할지 확인
-    if (saved && published && published.publishedAt && (!saved.savedAt || published.publishedAt > saved.savedAt)) {
+    const tp = Date.parse(published?.publishedAt || ''), ts = Date.parse(saved?.savedAt || '');
+    if (saved && published && !isNaN(tp) && (isNaN(ts) || tp > ts + 5000) && published.publishedAt !== saved.publishedAt) {
       if (confirm(`저장소의 게시본(${new Date(published.publishedAt).toLocaleString('ko-KR')})이 이 브라우저의 작업본보다 새롭습니다.\n게시본을 불러올까요? (취소하면 기존 작업본을 계속 편집)`)) saved = null;
     }
     state = saved ? normalize(saved) : published ? normalize(published) : emptyState();
     if (!saved) save(); // 게시본을 작업본으로 복사
     $('#view-banner').hidden = false; $('#view-banner').classList.add('editor-banner');
-    $('#view-banner-text').textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · 이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 게시하려면 내보내기 → data/tournament.json 교체 → push`;
+    bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
     render(); showTab('players');
   })();

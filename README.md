@@ -26,9 +26,11 @@
 
 ## 데이터와 공유
 - **원본 = `data/tournament.json`**. 페이지를 여는 모두가 이 게시본을 읽기 전용으로 봅니다 (선수 명단은 누구나 볼 수 있고 NTRP 열만 관리자에게 표시).
-- 일반 주소는 항상 읽기 전용이고, 관리자 앱은 `admin.html` 에서만 실행됩니다(로그인은 탭 단위 세션). 관리자 편집 내용은 브라우저(localStorage)에만 저장됩니다. 게시하려면 **내보내기** → 받은 `tournament.json` 을 `data/` 에 덮어쓰고 `git push`. (또는 Claude Code 로 파일 직접 수정 후 push)
+- 일반 주소는 항상 읽기 전용이고, 관리자 앱은 `admin.html` 에서만 실행됩니다(로그인은 탭 단위 세션). 관리자 편집 내용은 브라우저(localStorage)에만 저장됩니다.
+- **🚀 게시하기**(권장): 관리자 페이지 상단 버튼. 이 브라우저가 GitHub Contents API 로 `data/tournament.json` 을 `main`(원본)과 `gh-pages`(서빙 사본)에 커밋합니다. 최초 1회 GitHub Fine-grained 토큰(이 저장소 Contents: Read and write 권한만)을 등록하며, 토큰은 관리자 비밀번호로 암호화되어 그 브라우저에만 저장됩니다. 방문자 페이지는 45초마다 게시본을 다시 읽어 자동 갱신됩니다.
+- 수동 게시: **내보내기** → 받은 `tournament.json` 을 `data/` 에 덮어쓰고 `git push`. (또는 Claude Code 로 파일 직접 수정 후 push)
 - 현장에서 즉시 공유: **🔗 공유 링크** — 현재 상태 전체를 링크에 담아 카톡 등으로 전달 (읽기 전용 스냅샷)
-- **NTRP 는 관리자 비밀번호로 AES-GCM 암호화**되어 저장됩니다. 저장소 JSON 을 열어도 평문이 보이지 않습니다. 비밀번호 변경은 `app.js` 의 `ADMIN_HASH`(sha256(`tennisweet-v1` + 비밀번호)) 를 바꾸고, 기존 NTRP 는 새 비밀번호로 다시 입력해야 합니다.
+- **NTRP 는 관리자 비밀번호로 AES-GCM 암호화**되어 저장됩니다. 저장소 JSON 을 열어도 평문이 보이지 않습니다. 비밀번호 변경은 `app.js` 와 `admin.html` 의 `ADMIN_HASH`(PBKDF2-SHA256, salt `tennisweet-v1-verify`, 120000회) 를 바꾸고, 기존 NTRP 는 새 비밀번호로 다시 입력해야 합니다. 게시본이 공개 파일이므로 비밀번호는 추측하기 어려운 것으로 두는 편이 안전합니다.
 
 ## 로컬 실행
 ```bash
@@ -37,4 +39,4 @@ python3 -m http.server 8080
 `http://localhost:8080` 접속.
 
 ## 배포
-`main` 에 push 하면 `.github/workflows/pages.yml` 이 사이트를 `gh-pages` 브랜치로 게시하고, GitHub Pages 가 그 브랜치를 서빙합니다. (Settings → Pages 의 Source 가 `gh-pages` / root 인지 한 번만 확인)
+`main` 에 push 하면 `.github/workflows/pages.yml` 이 사이트를 `gh-pages` 브랜치로 게시하고, GitHub Pages 가 그 브랜치를 서빙합니다. `data/**` 와 README 만 바뀐 push 는 재배포하지 않습니다(게시 버튼이 두 브랜치에 직접 씀). 코드 수정 후 `data/` 를 직접 고쳐 push 하는 경우에도 데이터는 `main` 기준으로 다음 코드 배포 때 gh-pages 에 반영되므로, 수동 게시는 `gh-pages` 브랜치에도 같은 파일을 넣거나 Actions 를 수동 실행(workflow_dispatch)하세요. (Settings → Pages 의 Source 가 `gh-pages` / root 인지 한 번만 확인)

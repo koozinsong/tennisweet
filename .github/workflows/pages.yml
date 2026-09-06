@@ -2,6 +2,9 @@ name: Publish to gh-pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'data/**'        # 게시 버튼이 data/ 를 main·gh-pages 에 직접 커밋하므로 데이터 변경은 재배포 불필요
+      - 'README.md'
   workflow_dispatch:
 permissions:
   contents: write
