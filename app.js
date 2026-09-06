@@ -905,7 +905,7 @@
     const top = list.slice(0, 3); const medal = ['🥇', '🥈', '🥉'];
     return `<h3>${esc(title)} <span class="sub">(승 → 득실차 → 득게임)</span></h3>
       <ol class="podium">${top.map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(nameOf(r.id))}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 득실 ${r.gf - r.ga >= 0 ? '+' : ''}${r.gf - r.ga}</span></li>`).join('')}</ol>
-      <p class="hint">전체 순위는 대회 종료 후 공개됩니다. 경기 수·승패 상세는 관리자 화면에서 볼 수 있습니다.</p>`;
+      <p class="hint">경기 수·승패 상세는 관리자에게 문의하세요.</p>`;
   }
   function renderStandings() {
     const view = $('#standings-view'); const sch = state.schedule;
