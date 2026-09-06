@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>테니스윗 관리자</title>
-<link rel="stylesheet" href="style.css?v=4">
+<link rel="stylesheet" href="style.css?v=5">
 <style>
   .login { max-width: 420px; margin: 40px auto; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 28px 24px; }
   .login h1 { font-size: 22px; margin: 0 0 6px; color: var(--green-dark); }
@@ -42,7 +42,7 @@
     document.getElementById('gate').remove();
     for (const sel of ['header.topbar', '#view-banner', 'main', 'footer']) { const el = doc.querySelector(sel); if (el) document.body.appendChild(el); }
     document.title = '테니스윗 관리자';
-    const s = document.createElement('script'); s.src = 'app.js?v=4'; document.body.appendChild(s);
+    const s = document.createElement('script'); s.src = 'app.js?v=5'; document.body.appendChild(s);
   }
   if (await ok(sessionStorage.getItem('tennisweet.pw'))) { boot(); return; }
   const f = document.getElementById('login'), err = document.getElementById('err'), pwEl = document.getElementById('pw');

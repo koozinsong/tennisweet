@@ -810,7 +810,7 @@
     viewOnly = true; document.body.classList.add('view-only');
     $('#view-banner').hidden = false; $('#view-banner-text').textContent = text;
   }
-  function adminLogin() { location.href = 'admin.html'; } // 관리자 페이지로 이동
+  function adminLogin() { location.href = 'admin.html?t=' + Date.now(); } // 관리자 페이지로 이동 (캐시된 옛 페이지 방지)
   $('#btn-editor').addEventListener('click', adminLogin);
   $('#btn-leave-editor').addEventListener('click', () => { sessionStorage.removeItem(PW_KEY); location.href = './'; });
   $('#btn-load-published').addEventListener('click', async () => {
@@ -829,7 +829,7 @@
     const pw = sessionStorage.getItem(PW_KEY);
     const isAdminPage = document.body.dataset.page === 'admin';
     const editor = isAdminPage && pw && (await sha256hex(ADMIN_SALT + pw)) === ADMIN_HASH;
-    if (isAdminPage && !editor) { location.replace('admin.html'); return; }
+    if (isAdminPage && !editor) { location.replace('admin.html?t=' + Date.now()); return; }
     if (!editor) { // 일반 페이지는 항상 보기 전용
       if (published) state = normalize(published);
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
