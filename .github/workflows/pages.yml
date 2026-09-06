@@ -18,6 +18,7 @@ jobs:
           mkdir -p _site
           rsync -a --exclude .git --exclude .github --exclude _site --exclude README.md ./ _site/
           touch _site/.nojekyll
+          echo "{\"v\":\"${GITHUB_SHA::7}\"}" > _site/version.json
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

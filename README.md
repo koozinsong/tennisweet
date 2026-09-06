@@ -1,6 +1,8 @@
 # 🎾 테니스윗 분기 대회 일정표
 
 빌드 없는 정적 웹 앱 (HTML/CSS/JS). GitHub Pages 로 배포됩니다.
+
+구조: `index.html`/`admin.html` 은 바뀌지 않는 껍데기이고, `loader.js` 가 배포 시 생성되는 `version.json`(캐시 없이 읽음)의 버전을 붙여 `app.html`·`style.css`·`app.js` 를 불러옵니다. 그래서 새로 배포하면 브라우저·CDN 캐시와 무관하게 항상 최신 화면이 뜹니다. 화면 마크업을 고칠 때는 `app.html` 을 수정하세요.
 → https://koozinsong.github.io/tennisweet/
 
 ## 사용 흐름 (관리자)

@@ -417,18 +417,27 @@
     for (let slot = 0; slot < n; slot++) {
       const avail = ps.filter((p) => playerAvailable(p, s, slot));
       const k = Math.min(s.courts, Math.floor(avail.length / 4)); if (k < 1) continue;
-      // 1) 경기 수 적은 순으로 선발하되, 여성 수가 홀수면 남복·여복·혼복 조합이 불가능하므로 짝수로 보정
-      // 직전 시간대에 참석 가능했는데 쉰 선수는 최우선 (2회 연속 휴식 방지) → 경기 수 적은 순 → 오래 쉰 순
+      // 1) 선발: 가용 인원의 성별 비율에 맞춰 여성 수(짝수)를 정하고, 성별별로 [직전 휴식자 → 경기 수 적은 순 → 오래 쉰 순]
       const restedLast = (p) => slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1);
-      const ranked = shuffle([...avail]).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a.id] - played[b.id] || lastPlayed[a.id] - lastPlayed[b.id]);
-      let pick = ranked.slice(0, k * 4), rest = ranked.slice(k * 4);
       const isF = (p) => p.gender === 'F';
-      if (pick.filter(isF).length % 2) {
-        const swapIn = rest.find((p) => !isF(p)); // 남성 한 명을 넣고 가장 후순위 여성을 뺀다
-        if (swapIn) { const outIdx = pick.map(isF).lastIndexOf(true); pick[outIdx] = swapIn; }
-        else { const wIn = rest.find(isF); const outIdx = pick.map(isF).lastIndexOf(false); if (wIn && outIdx >= 0) pick[outIdx] = wIn; else pick = pick.filter((p) => !isF(p) || pick.filter(isF).indexOf(p) < pick.filter(isF).length - 1); }
+      const rank = (arr) => shuffle([...arr]).sort((a, b) => (restedLast(b) ? 1 : 0) - (restedLast(a) ? 1 : 0) || played[a.id] - played[b.id] || lastPlayed[a.id] - lastPlayed[b.id]);
+      const Wav = rank(avail.filter(isF)), Mav = rank(avail.filter((p) => !isF(p)));
+      // 여성 수(짝수) 분할: 가능한 분할 중 선발자 우선순위 점수 합이 가장 좋은 것 (직전 휴식자 우선, 경기 수 적은 순, 오래 쉰 순)
+      const score = (p) => (restedLast(p) ? -1000 : 0) + played[p.id] * 100 - (slot - lastPlayed[p.id]);
+      let kSel = k, wT = -1;
+      for (; kSel >= 1; kSel--) {
+        const need = kSel * 4; let best = Infinity, bestDist = Infinity;
+        const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
+        for (let t = 0; t <= Wav.length; t += 2) {
+          if (need - t < 0 || need - t > Mav.length) continue;
+          const sum = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + Mav.slice(0, need - t).reduce((a, p) => a + score(p), 0);
+          const dist = Math.abs(t - ideal);
+          if (sum < best || (sum === best && dist < bestDist)) { best = sum; bestDist = dist; wT = t; }
+        }
+        if (wT >= 0) break;
       }
-      let W = pick.filter(isF).map((p) => p.id), M = pick.filter((p) => !isF(p)).map((p) => p.id);
+      if (kSel < 1 || wT < 0) continue;
+      const W = Wav.slice(0, wT).map((p) => p.id), M = Mav.slice(0, kSel * 4 - wT).map((p) => p.id);
       const kk = Math.floor((W.length + M.length) / 4); if (kk < 1) continue;
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       let best = null, bestCost = Infinity;
@@ -871,7 +880,7 @@
     state = saved ? normalize(saved) : published ? normalize(published) : emptyState();
     if (!saved) save(); // 게시본을 작업본으로 복사
     $('#view-banner').hidden = false; $('#view-banner').classList.add('editor-banner');
-    $('#view-banner-text').textContent = `✏️ 관리자 모드 · 이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 게시하려면 내보내기 → data/tournament.json 교체 → push`;
+    $('#view-banner-text').textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · 이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 게시하려면 내보내기 → data/tournament.json 교체 → push`;
     adminKey = await deriveKey(pw); await decryptAll();
     render(); showTab('players');
   })();
