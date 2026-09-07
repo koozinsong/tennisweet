@@ -424,7 +424,7 @@
           const teamCost = ((meet[key(A.id, B.id)] || 0) * 10 + (usedT[A.id] || 0) * 4 + (usedT[B.id] || 0) * 4) * 10;
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
-            const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 12; // NTRP 균형(기본)
+            const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 25; // NTRP 균형(기본)
             let oppCost = 0; for (const u of x.p) for (const v of y.p) oppCost += 30 * (opp[key(u, v)] || 0); // 같은 상대 반복 회피
             const cost = teamCost + x.cost + y.cost + balCost + oppCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
@@ -475,7 +475,7 @@
     const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
-    return rep(oc) * 100 + rep(pc) * 100 + spread * 60 + quad * 15 + triple * 8 + ntrpDiff * 4; // 경기 수 균등 > 연속 출전 완화
+    return rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 20 + quad * 15 + triple * 8; // 중복 회피 > 경기 수 균등 > NTRP 균형 > 연속 출전 완화
   }
   function generateRotationOnce(s, seed) {
     seedRng(seed);
@@ -525,7 +525,7 @@
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       // NTRP 균형(기본): 양쪽 조 NTRP 합 차이에 벌점. 관리자 키가 없어 NTRP 를 모르면 0 이라 영향 없음
       const nsum = (a, b) => NT[a] + NT[b];
-      const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); return cost + Math.abs(nsum(a1, a2) - nsum(b1, b2)) * 4; };
+      const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); return cost + d * 10 + (d > 0.5 ? 20 : 0); }; // NTRP 균형: 0.5 초과 차이는 추가 벌점
       const totalCost = (cs) => cs.reduce((a, c) => a + courtCost(c), 0);
       let best = null, bestCost = Infinity;
       for (let t = 0; t < 40; t++) {
