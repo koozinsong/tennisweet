@@ -898,6 +898,10 @@
     ms.forEach((m) => (m.slot = used.indexOf(m.slot))); state.schedule.extraSlots = 0; commit();
   });
 
+  /** 공정 순위: 승률 → 경기당 평균 득실 → 승수 → 득게임 (경기 수가 달라도 비교 가능) */
+  const winRate = (r) => (r.p ? r.w / r.p : 0), avgDiff = (r) => (r.p ? (r.gf - r.ga) / r.p : 0);
+  const fairCmp = (x, y) => winRate(y) - winRate(x) || avgDiff(y) - avgDiff(x) || y.w - x.w || y.gf - x.gf || y.p - x.p;
+  const pct = (r) => (r.p ? Math.round(winRate(r) * 100) + '%' : '-'), avgStr = (r) => (r.p ? (avgDiff(r) >= 0 ? '+' : '') + avgDiff(r).toFixed(1) : '-');
   function rotationStandings() {
     const rows = Object.fromEntries(state.schedule.unitIds.map((id) => [id, { id, p: 0, w: 0, l: 0, d: 0, gf: 0, ga: 0 }]));
     for (const m of state.schedule.matches) {
@@ -906,15 +910,15 @@
       A.forEach((r) => { r.p++; r.gf += o.ag; r.ga += o.bg; if (o.winner === 'a') r.w++; else if (o.winner === 'b') r.l++; else r.d++; });
       B.forEach((r) => { r.p++; r.gf += o.bg; r.ga += o.ag; if (o.winner === 'b') r.w++; else if (o.winner === 'a') r.l++; else r.d++; });
     }
-    return Object.values(rows).sort((x, y) => y.w - x.w || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf || x.p - y.p);
+    return Object.values(rows).sort(fairCmp);
   }
   /** 방문자용 순위: 3위까지만 (상세 순위는 관리자 화면) */
   function podiumHtml(list, title, nameOf = (id) => unitName(unitById(id) || { playerIds: [] })) {
     const played = list.filter((r) => r.p > 0);
     if (!played.length) return `<h3>${esc(title)}</h3><p class="hint">아직 입력된 경기 결과가 없습니다. 결과가 게시되면 상위 3명이 표시됩니다.</p>`;
     const top = list.slice(0, 3); const medal = ['🥇', '🥈', '🥉'];
-    return `<h3>${esc(title)} <span class="sub">(승 → 득실차 → 득게임)</span></h3>
-      <ol class="podium">${top.map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(nameOf(r.id))}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 득실 ${r.gf - r.ga >= 0 ? '+' : ''}${r.gf - r.ga}</span></li>`).join('')}</ol>
+    return `<h3>${esc(title)} <span class="sub">(승률 → 경기당 평균 득실 → 승수)</span></h3>
+      <ol class="podium">${top.map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(nameOf(r.id))}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 승률 ${pct(r)} · 평균 득실 ${avgStr(r)}</span></li>`).join('')}</ol>
       <p class="hint">경기 수·승패 상세는 관리자에게 문의하세요.</p>`;
   }
   function renderStandings() {
@@ -922,8 +926,8 @@
     if (sch && isRot() && viewOnly) { view.innerHTML = podiumHtml(rotationStandings(), '개인 순위'); return; }
     if (sch && isRot()) {
       const list = rotationStandings(); const games = {}; sch.matches.forEach((m) => [...sideIds(m, 'a'), ...sideIds(m, 'b')].forEach((id) => (games[id] = (games[id] || 0) + 1)));
-      view.innerHTML = '<div class="table-wrap">' + `<h3>개인 순위 <span class="sub">(승 → 득실차 → 득게임)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">득게임</th><th class="num">실게임</th><th class="num">득실차</th></tr></thead><tbody>
-        ${list.map((r, i) => `<tr class="${i === 0 && r.p ? 'rank1' : ''}"><td class="num">${i + 1}</td><td>${unitHtml(r.id)}</td><td class="num">${games[r.id] || 0}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.d}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td><td class="num">${r.gf - r.ga}</td></tr>`).join('')}</tbody></table>` + '</div>';
+      view.innerHTML = '<div class="table-wrap">' + `<h3>개인 순위 <span class="sub">(승률 → 경기당 평균 득실 → 승수 → 득게임)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">승률</th><th class="num">평균 득실</th><th class="num">득게임</th><th class="num">실게임</th></tr></thead><tbody>
+        ${list.map((r, i) => `<tr class="${i === 0 && r.p ? 'rank1' : ''}"><td class="num">${i + 1}</td><td>${unitHtml(r.id)}</td><td class="num">${r.p}<span class="sub">/${games[r.id] || 0}</span></td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.d}</td><td class="num"><b>${pct(r)}</b></td><td class="num">${avgStr(r)}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td></tr>`).join('')}</tbody></table>` + '</div>';
       return;
     }
     if (!sch || state.settings.format === 'ko') { view.innerHTML = sch ? '<p class="hint">토너먼트 방식은 순위표가 없습니다.</p>' : '<p class="hint">일정표를 먼저 생성하세요.</p>'; return; }
@@ -935,10 +939,10 @@
         m.aPlayers.filter((id) => rows[id]).forEach((id) => { const r = rows[id]; r.p++; r.gf += o.ag; r.ga += o.bg; if (o.winner === 'a') r.w++; else if (o.winner === 'b') r.l++; else r.d++; });
         m.bPlayers.filter((id) => rows[id]).forEach((id) => { const r = rows[id]; r.p++; r.gf += o.bg; r.ga += o.ag; if (o.winner === 'b') r.w++; else if (o.winner === 'a') r.l++; else r.d++; }); }
       const games = {}; sch.matches.forEach((m) => [...(m.aPlayers || []), ...(m.bPlayers || [])].forEach((id) => (games[id] = (games[id] || 0) + 1)));
-      const list = Object.values(rows).filter((r) => games[r.id]).sort((x, y) => y.w - x.w || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf);
+      const list = Object.values(rows).filter((r) => games[r.id]).sort(fairCmp);
       if (viewOnly) return podiumHtml(list, '개인 기록 상위 3명', (id) => pname(id));
-      return `<h3>개인 기록</h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th>팀</th><th class="num">배정</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">득실차</th></tr></thead><tbody>
-        ${list.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(pname(r.id))}</td><td class="sub">${esc(teamOf[r.id] || '')}</td><td class="num">${games[r.id]}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.gf - r.ga}</td></tr>`).join('')}</tbody></table>`;
+      return `<h3>개인 기록 <span class="sub">(승률 → 경기당 평균 득실 → 승수)</span></h3><table class="stand"><thead><tr><th class="num">순위</th><th>선수</th><th>팀</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">승률</th><th class="num">평균 득실</th></tr></thead><tbody>
+        ${list.map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(pname(r.id))}</td><td class="sub">${esc(teamOf[r.id] || '')}</td><td class="num">${r.p}<span class="sub">/${games[r.id]}</span></td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num"><b>${pct(r)}</b></td><td class="num">${avgStr(r)}</td></tr>`).join('')}</tbody></table>`;
     })() : '';
     view.innerHTML = '<div class="table-wrap">' + sch.groups.map((g, gi) => {
       const st = groupStandings(gi);
