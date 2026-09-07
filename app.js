@@ -278,7 +278,7 @@
       $('#units-title').textContent = '팀 구성';
       $('#units-hint').textContent = '';
       $('#units-tools').innerHTML = '';
-      view.innerHTML = `<p class="hint">개인전은 팀 구성이 없습니다. ① 선수 탭의 참가 선수 ${ps.length}명이 매 경기 파트너·상대를 바꿔 가며 개인 순위로 경쟁합니다.</p>`;
+      view.innerHTML = `<p class="hint">개인전은 팀 구성이 없습니다. 선수 탭의 참가 선수 ${ps.length}명이 매 경기 파트너·상대를 바꿔 가며 개인 순위로 경쟁합니다.</p>`;
       $('#gen-hint').textContent = ps.length < 4 ? '개인전은 4명 이상 필요합니다.' : `${ps.length}명, 코트 ${state.settings.courts}면, ${state.settings.startTime}~${state.settings.endTime || '제한 없음'} 로 라운드를 생성합니다.`;
       return;
     }
@@ -337,7 +337,7 @@
     const seed = seedIn !== undefined && /^\d{1,6}$/.test(seedIn) ? +seedIn : newSeed();
     if (state.schedule && Object.keys(state.results).length && !confirm(`입력된 결과와 현장 수정 내용이 모두 지워집니다. ${label} 일정을 다시 생성할까요?`)) return;
     if (mode && mode !== state.settings.mode) { state.settings.mode = mode; state.units = []; }
-    if (mode === 'team' && !state.settings.endTime) { alert('팀전은 종료 시각이 필요합니다 (② 대회 설정).'); return; }
+    if (mode === 'team' && !state.settings.endTime) { alert('팀전은 종료 시각이 필요합니다 (대회 설정).'); return; }
     try {
       seedRng(seed);
       if (state.settings.mode === 'team') autoBuild(state.settings.teamCount || 2);
@@ -350,8 +350,8 @@
     save(); showTab('schedule');
   }
   $$('.btn-regen').forEach((b) => b.addEventListener('click', () => {
-    const all = $$('.btn-regen'); const labels = all.map((x) => x.textContent); all.forEach((x) => { x.disabled = true; x.textContent = '생성 중…'; });
-    setTimeout(() => { try { regenerateAll(b.dataset.mode); } finally { all.forEach((x, i) => { x.disabled = false; x.textContent = labels[i]; }); } }, 30);
+    const all = $$('.btn-regen'); const labels = all.map((x) => x.innerHTML); all.forEach((x) => { x.disabled = true; x.textContent = '생성 중…'; });
+    setTimeout(() => { try { regenerateAll(b.dataset.mode); } finally { all.forEach((x, i) => { x.disabled = false; x.innerHTML = labels[i]; }); } }, 30);
   }));
   $$('.inp-minff').forEach((el) => el.addEventListener('change', () => { state.settings.minWomenDoubles = Math.max(0, parseInt(el.value, 10) || 0); save(); render(); }));
 
@@ -391,7 +391,7 @@
   function generateTeam(s, teams, seed = newSeed()) {
     seedRng(seed);
     if (teams.length < 2) throw new Error('팀이 2개 이상 필요합니다.');
-    const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (② 대회 설정).');
+    const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
     const played = {}, lastPlayed = {}, partner = {}, opp = {}, meet = {}, fmCnt = {}, mmCnt = {}, playedSlots = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
@@ -480,7 +480,7 @@
   function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
-    const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (② 대회 설정).');
+    const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
     const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
@@ -743,7 +743,7 @@
     const edit = state.editMode && !viewOnly;
     $('#chk-edit').checked = edit; $('#chk-edit').disabled = viewOnly || !sch;
     for (const id of ['#btn-add-match', '#btn-add-slot', '#btn-compact']) $(id).hidden = !edit;
-    if (!sch) { view.innerHTML = '<p class="hint">아직 일정표가 없습니다. ③ 팀 구성 탭에서 생성하세요.</p>'; $('#print-meta').textContent = ''; $('#sel-me').innerHTML = ''; return; }
+    if (!sch) { view.innerHTML = '<p class="hint">아직 일정표가 없습니다. 팀 구성 탭에서 생성하세요.</p>'; $('#print-meta').textContent = ''; $('#sel-me').innerHTML = ''; return; }
     const ms = sch.matches.filter((m) => !m.bye).sort((a, b) => a.slot - b.slot || a.court - b.court);
     const nSlots = totalSlots(); const bad = conflicts(); const n = subCount();
     $('#print-meta').textContent = `${s.date || ''}  ·  ${s.mode === 'team' ? '팀전' : s.mode === 'rotation' ? '개인전' : '고정조 대회'} ${s.mode === 'individual' && s.discipline === 'singles' ? '단식' : '복식'}  ·  코트 ${s.courts}면  ·  ${slotTime(0)}~${slotTime(nSlots)} (경기 ${ms.length})`;
@@ -1005,11 +1005,11 @@
   function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`)) return res(); const sc = document.createElement('script'); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error('스크립트 로드 실패')); document.head.appendChild(sc); }); }
   let lastImageBlob = null;
   async function saveImage() {
-    const btn = $('#btn-image'); const label = btn.textContent; btn.disabled = true; btn.textContent = '만드는 중…';
+    const btn = $('#btn-image'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중…';
     try {
       await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
       const target = $('.tab.active') || $('main');
-      const name = (state.settings.name || '테니스윗') + ' · ' + ($('.tabs button.active')?.textContent.replace(/^[①-⑤]\s*/, '') || '');
+      const name = (state.settings.name || '테니스윗') + ' · ' + ($('.tabs button.active')?.textContent.trim() || '');
       // 캡처용 헤더를 임시로 붙임
       const head = document.createElement('div'); head.className = 'capture-head'; head.style.cssText = 'padding:10px 14px;font-weight:800;font-size:18px;color:#07452a;'; head.textContent = name + (state.publishedAt ? `  (${new Date(state.publishedAt).toLocaleString('ko-KR')} 게시)` : '');
       target.prepend(head); document.body.classList.add('capturing');
@@ -1023,7 +1023,7 @@
       $('#image-share').hidden = !canShare; $('#image-modal').hidden = false;
       if (canShare) { $('#image-share').onclick = async () => { try { await navigator.share({ files: [file], title: name }); } catch {} }; }
     } catch (e) { alert('이미지를 만들지 못했습니다: ' + e.message); document.body.classList.remove('capturing'); $('.capture-head')?.remove(); }
-    finally { btn.disabled = false; btn.textContent = label; }
+    finally { btn.disabled = false; btn.innerHTML = label; }
   }
   $('#btn-image')?.addEventListener('click', saveImage);
   $('#image-close')?.addEventListener('click', () => { $('#image-modal').hidden = true; });
@@ -1096,7 +1096,7 @@
   const bannerAdmin = (extra) => { const el = $('#view-banner-text'); if (el) el.textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · ${extra}`; };
   async function publish(retry = 0, overwrite = false) {
     if (publishing) return; publishing = true; // 중복 클릭 즉시 차단
-    const btn = $('#btn-publish'); const label = btn.textContent; btn.disabled = true; btn.textContent = '게시 중…';
+    const btn = $('#btn-publish'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '게시 중…';
     let again = false;
     try {
       if (!assertTypesOk()) return;
@@ -1127,7 +1127,7 @@
         const t2 = await askToken(e.message === 'AUTH' ? '토큰이 거부되었습니다 (만료·오타). 새 토큰을 넣어 주세요.' : '이 토큰으로는 저장소에 쓸 수 없습니다 (Repository access 에 koozinsong/tennisweet, Contents: Read and write 필요). 새 토큰을 넣어 주세요.');
         if (t2 && retry < 2) { await saveToken(t2); again = true; } else toast('게시를 취소했습니다');
       } else alert('게시 실패: ' + e.message + '\n(내보내기 → data/tournament.json 교체 → push 로도 게시할 수 있습니다)');
-    } finally { publishing = false; btn.disabled = false; btn.textContent = label; }
+    } finally { publishing = false; btn.disabled = false; btn.innerHTML = label; }
     if (again) return publish(retry + 1, overwrite);
   }
   $('#btn-publish').addEventListener('contextmenu', (e) => { e.preventDefault(); if (confirm('저장된 GitHub 토큰을 삭제할까요? 다음 게시 때 다시 묻습니다.')) { forgetToken(); toast('토큰을 삭제했습니다'); } }); // 우클릭/길게 누르기 = 토큰 삭제

@@ -336,3 +336,12 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .podium .medal { font-size: 24px; }
 .podium .pname { font-weight: 800; font-size: 18px; }
 .podium .pstat { font-family: var(--display); font-size: 16px; color: var(--muted); }
+
+/* ---- 아이콘 ---- */
+.ic { width: 18px; height: 18px; vertical-align: -4px; margin-right: 6px; flex: none; }
+.tabs button .ic { width: 17px; height: 17px; opacity: .9; }
+.cover-menu button { display: flex; align-items: center; justify-content: center; }
+.cover-menu button .ic { width: 20px; height: 20px; margin-right: 8px; }
+.cover-menu button.menu-main .ic { width: 22px; height: 22px; }
+.actions button .ic { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
+@media (max-width: 720px) { .tabs button .ic { width: 16px; height: 16px; margin-right: 4px; } }
