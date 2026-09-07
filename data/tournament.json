@@ -174,7 +174,8 @@
     "maxGames": 6,
     "fmMenEqual": true,
     "mustFace": "김지선, 고서영",
-    "sameNtrpGame": "4"
+    "sameNtrpGame": "4",
+    "avoidPairs": "김지선-이석우"
   },
   "units": [
     {
@@ -288,7 +289,7 @@
     "advance": 0,
     "matches": [
       {
-        "id": "yply1fj",
+        "id": "6uyrncf",
         "phase": "rot",
         "round": 0,
         "slot": 0,
@@ -303,7 +304,7 @@
         ]
       },
       {
-        "id": "h0vl3mj",
+        "id": "rfg4gpc",
         "phase": "rot",
         "round": 1,
         "slot": 1,
@@ -318,7 +319,7 @@
         ]
       },
       {
-        "id": "wnqyyei",
+        "id": "byb257o",
         "phase": "rot",
         "round": 1,
         "slot": 1,
@@ -333,7 +334,7 @@
         ]
       },
       {
-        "id": "v6weab2",
+        "id": "mhqaz1o",
         "phase": "rot",
         "round": 2,
         "slot": 2,
@@ -348,7 +349,7 @@
         ]
       },
       {
-        "id": "gdl8bk0",
+        "id": "xtltmou",
         "phase": "rot",
         "round": 2,
         "slot": 2,
@@ -363,7 +364,7 @@
         ]
       },
       {
-        "id": "zlnsrsl",
+        "id": "7kiwz7t",
         "phase": "rot",
         "round": 2,
         "slot": 2,
@@ -378,7 +379,7 @@
         ]
       },
       {
-        "id": "cyrxxda",
+        "id": "hba9ita",
         "phase": "rot",
         "round": 3,
         "slot": 3,
@@ -393,7 +394,7 @@
         ]
       },
       {
-        "id": "08pbufz",
+        "id": "rmezo36",
         "phase": "rot",
         "round": 3,
         "slot": 3,
@@ -408,7 +409,7 @@
         ]
       },
       {
-        "id": "as7yxxi",
+        "id": "ovx10om",
         "phase": "rot",
         "round": 3,
         "slot": 3,
@@ -423,22 +424,22 @@
         ]
       },
       {
-        "id": "pm6rhy2",
+        "id": "3v504bq",
         "phase": "rot",
         "round": 4,
         "slot": 4,
         "court": 1,
         "aIds": [
-          "p:t5tmwl5",
+          "p:243v8q3",
           "p:nba8nn1"
         ],
         "bIds": [
-          "p:243v8q3",
+          "p:t5tmwl5",
           "p:rw9ebrx"
         ]
       },
       {
-        "id": "9ct8huh",
+        "id": "fo5ifwl",
         "phase": "rot",
         "round": 4,
         "slot": 4,
@@ -453,7 +454,7 @@
         ]
       },
       {
-        "id": "0pnrfde",
+        "id": "kcbwaos",
         "phase": "rot",
         "round": 4,
         "slot": 4,
@@ -468,7 +469,7 @@
         ]
       },
       {
-        "id": "v2whwms",
+        "id": "toimyuo",
         "phase": "rot",
         "round": 5,
         "slot": 5,
@@ -483,7 +484,7 @@
         ]
       },
       {
-        "id": "r9pd72u",
+        "id": "izncdg9",
         "phase": "rot",
         "round": 5,
         "slot": 5,
@@ -498,7 +499,7 @@
         ]
       },
       {
-        "id": "label34",
+        "id": "n77c2ut",
         "phase": "rot",
         "round": 5,
         "slot": 5,
@@ -536,6 +537,6 @@
   },
   "results": {},
   "editMode": false,
-  "publishedAt": "2026-09-07T21:32:54.353Z",
+  "publishedAt": "2026-09-07T21:44:45.676Z",
   "ghTokenEnc": "6+BQEWBks0aUVgk4.zzzM+yNuruQ4ZoJZOjsgtIHCEXjfbmplGBkISNUByrlFft7k/hdGeT8kUvmyRY8lQf+YgOyfgshFKbmcKVTSuzeUkouCGrn9wZ6lTqPYsqP2So+lk6owMeLt4OG0Fmlv1FBxKo96P+3kvqrcBg=="
 }

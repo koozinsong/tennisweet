@@ -9,7 +9,7 @@
     name: '', date: '', mode: 'rotation', discipline: 'doubles', teamCount: 2,
     format: 'groups', groupCount: 2, advance: 2, thirdPlace: true,
     courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1, maxGames: 6,
-    fmMenEqual: true, mustFace: '', sameNtrpGame: '', // 특별 규칙(개인전): 혼복 남자 NTRP 동일 / 혼복 필수 대진(이름 2개) / 동일 NTRP 남복 1경기
+    fmMenEqual: true, mustFace: '', sameNtrpGame: '', avoidPairs: '', // 특별 규칙(개인전): 혼복 남자 NTRP 동일 / 혼복 필수 대진(이름 2개) / 동일 NTRP 남복 1경기 / 같은 조 금지(이름 쌍 목록)
   };
   const emptyState = () => ({ players: [], settings: { ...DEFAULT_SETTINGS }, units: [], schedule: null, results: {}, editMode: false });
 
@@ -190,7 +190,7 @@
     const fd = new FormData(formSettings); const s = { ...state.settings };
     for (const [k, v] of fd.entries()) s[k] = v;
     s.thirdPlace = fd.get('thirdPlace') === 'on'; s.fmMenEqual = fd.get('fmMenEqual') === 'on';
-    s.mustFace = String(s.mustFace || '').trim().slice(0, 60); { const v = parseFloat(String(s.sameNtrpGame || '').replace(/[^\d.]/g, '')); s.sameNtrpGame = Number.isFinite(v) ? String(v) : ''; }
+    s.mustFace = String(s.mustFace || '').trim().slice(0, 60); s.avoidPairs = String(s.avoidPairs || '').trim().slice(0, 300); { const v = parseFloat(String(s.sameNtrpGame || '').replace(/[^\d.]/g, '')); s.sameNtrpGame = Number.isFinite(v) ? String(v) : ''; }
     for (const k of ['maxGames', 'minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
     s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.maxGames = Math.max(1, s.maxGames || 6); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
     return s;
@@ -380,6 +380,16 @@
   /** 특별 규칙 이름 목록 파싱: "김지선, 고서영" / "김지선-고서영" / "김지선 고서영" */
   const parseNames = (str) => { const t = String(str || ''); const a = t.split(/[,/·]+/).map((x) => x.trim()).filter(Boolean); return a.length >= 2 ? a : t.split(/[\s\-]+/).map((x) => x.trim()).filter(Boolean); };
   const menDiffer = (a, b) => !!a && !!b && a !== b; // NTRP 미입력(0) 은 어느 쪽과도 짝이 됨
+  /** 같은 조 금지 목록: "김지선-이석우, 박상용/송국진" → [[id, id], …] (참가 선수에 없는 이름은 무시) */
+  function avoidPairIds(str, ps = activePlayers()) {
+    const out = []; for (const item of String(str || '').split(/[,;\n]+/)) { const names = item.split(/[\s\-/·]+/).map((x) => x.trim()).filter(Boolean); if (names.length !== 2) continue; const P = names.map((nm) => ps.find((p) => p.name === nm)); if (P[0] && P[1] && P[0] !== P[1]) out.push([P[0].id, P[1].id]); }
+    return out;
+  }
+  /** 금지 조합이 파트너로 묶인 경기면 그 쌍 이름, 아니면 '' */
+  function avoidedPartner(m, pairs = avoidPairIds(state.settings.avoidPairs)) {
+    if (!pairs.length) return ''; for (const side of ['a', 'b']) { const ids = sidePl(m, side); if (ids.length !== 2) continue; for (const [x, y] of pairs) if (ids.includes(x) && ids.includes(y)) return `${playerById(x)?.name}·${playerById(y)?.name}`; }
+    return '';
+  }
   /** 혼복인데 양쪽 남자 NTRP 가 다르면 true (규칙 fmMenEqual, NTRP 를 모르면 항상 false) */
   function fmMenBad(m) {
     if (state.settings.fmMenEqual === false) return false; const A = sidePl(m, 'a'), B = sidePl(m, 'b'); if (A.length !== 2 || B.length !== 2) return false;
@@ -396,6 +406,7 @@
     const fw = {}; for (const m of ms) { const wa = sidePl(m, 'a').filter((id) => gOf(id) === 'F'), wb = sidePl(m, 'b').filter((id) => gOf(id) === 'F'); if (wa.length === 1 && wb.length === 1) { const k = [wa[0], wb[0]].sort().join('|'); fw[k] = (fw[k] || 0) + 1; } }
     const dup = Object.entries(fw).filter(([, v]) => v > 1).map(([k, v]) => k.split('|').map((id) => playerById(id)?.name || '?').join(' vs ') + ` ${v}회`);
     if (Object.keys(fw).length) out.push(dup.length ? `✗ 혼복 여성 상대 중복: ${esc(dup.join(', '))}` : '✓ 혼복 여성 상대 중복 없음');
+    const ap = avoidPairIds(s.avoidPairs); if (ap.length) { const bad = ms.map((m) => avoidedPartner(m, ap)).filter(Boolean); out.push(bad.length ? `✗ 금지 조합 편성: ${esc(bad.join(', '))}` : `✓ 금지 조합 없음 (${ap.map(([x, y]) => esc(playerById(x)?.name + '·' + playerById(y)?.name)).join(', ')})`); }
     return out;
   }
   /** 경기 종류 (양쪽 조가 모두 정해졌을 때). mismatch=true 면 규칙 위반 */
@@ -498,13 +509,14 @@
     const rep3 = Object.values(oc).filter((v) => v >= 3).length; // 같은 상대 3회 이상은 별도 가중 (2회는 여성 구성상 불가피할 수 있음)
     const fmW = {}; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F'), wb = B.filter((x) => gOf(x) === 'F'); if (wa.length === 1 && wb.length === 1) fmW[k2(wa[0], wb[0])] = (fmW[k2(wa[0], wb[0])] || 0) + 1; }
     const fmWomenRep = rep(fmW); // 혼복에서 같은 여성 상대와 다시 붙은 횟수 (골고루 원칙)
+    const apairs = avoidPairIds(state.settings.avoidPairs); const avoided = apairs.length ? sch.matches.filter((m) => avoidedPartner(m, apairs)).length : 0; // 같은 조 금지 위반
     const g = Object.values(games); const spread = g.length ? Math.max(...g) - Math.min(...g) : 0;
     // 3연속 출전 횟수
     const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
     const menBad = state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 특별 규칙 위반은 사실상 배제
-    return menBad * 1e5 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return (menBad + avoided) * 1e5 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   function generateRotationOnce(s, seed) {
     seedRng(seed);
@@ -517,20 +529,22 @@
     ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); isF[p.id] = p.gender === 'F'; });
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
     const menEq = s.fmMenEqual !== false; // 특별 규칙: 혼복은 양쪽 남자 NTRP 동일 (기본 켬)
+    const AVOID = new Set(avoidPairIds(s.avoidPairs, ps).map(([x, y]) => key(x, y))); // 특별 규칙: 같은 조 금지 (파트너로 묶지 않음)
+    const avoidedCourt = (c) => AVOID.has(key(c[0], c[1])) || AVOID.has(key(c[2], c[3]));
     // 코트 비용: 파트너·상대 중복, NTRP 균형(기본), 암묵적 편성 선호, 혼복 남자 NTRP 불일치(사실상 금지)
     const nsum = (a, b) => NT[a] + NT[b];
     // 암묵적 편성 선호(데이터 필드 pref, 화면 표시 없음): p=파트너·상대가 본인 수준에 가깝게, s=파트너가 본인 이상, e=상대 조 합이 본인 조 이하
     const DEFAULT_PREF = { '김지선': 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음)
     const CARE = {}; ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; });
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
-    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); return cost + d * 60 + (d > 0.5 ? 100 : 0); }; // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
+    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; return cost + d * 60 + (d > 0.5 ? 100 : 0); }; // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const prio = (p, slot) => played[p.id] * 100 + (slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id]);
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
     const capAt = (slot) => Math.min(s.courts, Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
-    const bestOf = (cs) => { let best = null, bc = Infinity; for (const c of cs) { const v = courtCost(c); if (v < bc) { bc = v; best = c; } } return best; };
+    const bestOf = (cs) => { let best = null, bc = Infinity; for (const c of cs) { if (avoidedCourt(c)) continue; const v = courtCost(c); if (v < bc) { bc = v; best = c; } } return best; };
 
     // ---- 특별 규칙(필수 대진): 시도마다 가능한 시간대를 무작위로 골라, 그 시간대에 먼저 확정하고 나머지를 채운다 ----
     const forced = []; // { slot, label, build(used) → 코트 [a1,a2,b1,b2] | null }
@@ -552,7 +566,7 @@
       const [p1, p2] = P.map((p) => p.id); if (p1 === p2) throw new Error('혼복 필수 대진은 서로 다른 두 선수여야 합니다.');
       const options = (slot, used) => { // 완성 후보: A 조 = p1 + 반대 성별 1명, B 조 = p2 + 반대 성별 1명
         const av = availAt(slot).map((p) => p.id).filter((x) => !used.has(x) && x !== p1 && x !== p2); const out = [];
-        for (const xa of av) { if (isF[xa] === isF[p1]) continue; for (const xb of av) { if (xb === xa || isF[xb] === isF[p2]) continue; const c = [p1, xa, p2, xb]; const men = c.filter((x) => !isF[x]); if (men.length !== 2) continue; if (menEq && menDiffer(NT[men[0]], NT[men[1]])) continue; out.push(c); } }
+        for (const xa of av) { if (isF[xa] === isF[p1]) continue; for (const xb of av) { if (xb === xa || isF[xb] === isF[p2]) continue; const c = [p1, xa, p2, xb]; const men = c.filter((x) => !isF[x]); if (men.length !== 2) continue; if (menEq && menDiffer(NT[men[0]], NT[men[1]])) continue; if (avoidedCourt(c)) continue; out.push(c); } }
         return out; };
       const taken = forced.map((f) => f.slot);
       let slots = []; for (let sl = 0; sl < n; sl++) if ([p1, p2].every((x) => playerAvailable(playerById(x), s, sl)) && capAt(sl) >= 1 + taken.filter((t) => t === sl).length && options(sl, new Set()).length) slots.push(sl);
@@ -883,7 +897,7 @@
         const clearBtn = !viewOnly && r.some((x) => x.a !== '' || x.b !== '') ? `<button class="small clear-score" data-clear="${esc(m.id)}" title="이 경기 점수 지우기">지우기</button>` : '';
         const mt = m.aPlayers ? matchType(m) : (m.aIds && m.bIds && [...m.aIds, ...m.bIds].every(Boolean) ? matchType({ aPlayers: m.aIds.map((id) => unitById(id)?.playerIds[0]), bPlayers: m.bIds.map((id) => unitById(id)?.playerIds[0]) }) : null);
         const typeTag = mt ? `<span class="tag ${mt.mismatch ? 'bad' : 'type ' + mt.code}">${esc(mt.label)}</span>` : '';
-        const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '') + (!viewOnly && isRot() && fmMenBad(m) ? '<span class="warn" title="혼복은 양쪽 남자 NTRP 가 같아야 합니다 (특별 규칙)">⚠ 남자 NTRP</span>' : '');
+        const warn = (bad.has(m.id) ? '<span class="warn" title="같은 시간대에 참가자 또는 코트가 겹칩니다">⚠ 겹침</span>' : '') + (mt?.mismatch ? '<span class="warn" title="남복·여복·혼복은 양쪽 조 종류가 같아야 합니다">⚠ 종류 불일치</span>' : '') + (!viewOnly && isRot() && fmMenBad(m) ? '<span class="warn" title="혼복은 양쪽 남자 NTRP 가 같아야 합니다 (특별 규칙)">⚠ 남자 NTRP</span>' : '') + (!viewOnly && isRot() && avoidedPartner(m) ? `<span class="warn" title="같은 조 금지 (특별 규칙)">⚠ 금지 조합 ${esc(avoidedPartner(m))}</span>` : '');
         const mine = ''; // '내 경기' 필터는 목록 자체를 걸러서 보여주므로 별도 강조 불필요
         html += `<div class="mcard ${mt && !mt.mismatch ? 't-' + mt.code : ''} ${o.winner ? 'decided' : ''} ${bad.has(m.id) || mt?.mismatch ? 'conflict' : ''} ${mine}" data-card="${esc(m.id)}">
           <div class="mhead">${edit ? `<select class="ed" data-mid="${esc(m.id)}" data-f="slot">${slotOpts(m.slot)}</select><select class="ed" data-mid="${esc(m.id)}" data-f="court">${courtOpts(m.court)}</select>` : `<b class="court">${m.court}<small>코트</small></b>`} ${phaseTag(m)}${typeTag} ${warn}${edit ? `<button class="small x" data-del-match="${esc(m.id)}">삭제</button>` : ''}</div>
