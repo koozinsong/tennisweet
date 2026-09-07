@@ -163,6 +163,13 @@
     <label>경기당 최대 게임 수 <input name="maxGames" type="number" min="1" max="20" value="6"> <span class="hint">점수 입력 상한 (기본 6게임)</span></label>
     <label>여복 최소 경기 수 <input name="minWomenDoubles" type="number" min="0" value="1"> <span class="hint">여성 4명이 같은 시간대에 있을 때 여복(여 2 대 여 2)을 이 수 이상 편성</span></label>
 
+    <fieldset class="span2 only-editor" id="fs-special">
+      <legend>특별 규칙 (개인전)</legend>
+      <label class="check span2"><input type="checkbox" name="fmMenEqual" checked> 혼복은 양쪽 남자의 NTRP 가 같아야 함</label>
+      <label>혼복 필수 대진 <input name="mustFace" maxlength="60" placeholder="예: 김지선, 고서영" autocomplete="off"> <span class="hint">선수 2명 이름. 서로 상대편으로 혼복 1경기를 반드시 편성 (비우면 없음)</span></label>
+      <label>동일 NTRP 남복 <input name="sameNtrpGame" maxlength="6" inputmode="decimal" placeholder="예: 4" autocomplete="off"> <span class="hint">이 NTRP 남자 4명만의 남복을 1경기 이상 편성 (비우면 없음)</span></label>
+    </fieldset>
+
     <div class="span2 row">
       <button type="submit" class="primary">저장하고 다음 →</button>
       <span class="hint only-editor">경기 구분·종목을 바꾸면 팀 구성을 다시 해야 합니다.</span>
