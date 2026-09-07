@@ -494,7 +494,7 @@
       const restedLast = (p) => slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1);
       const isF = (p) => p.gender === 'F';
       const twoInRow = (p) => slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2); // 직전 두 시간대 연속 출전 → 이번엔 휴식 우선
-      const scoreMap = new Map(avail.map((p) => [p.id, (restedLast(p) ? -1000 : 0) + (twoInRow(p) ? 40 : 0) + played[p.id] * 100 - (slot - lastPlayed[p.id])])); // 연속 출전은 경기 수가 같을 때만 휴식 우선 (경기 수 균등이 우선)
+      const scoreMap = new Map(avail.map((p) => [p.id, played[p.id] * 100 + (restedLast(p) ? -60 : 0) + (twoInRow(p) ? 40 : 0) - (slot - lastPlayed[p.id])])); // 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화
       const score = (p) => scoreMap.get(p.id);
       const rank = (arr) => shuffle([...arr]).sort((a, b) => score(a) - score(b));
       const Wav = rank(avail.filter(isF)), Mav = rank(avail.filter((p) => !isF(p)));
@@ -506,18 +506,21 @@
       const ffForce = ffPossible && ffSlotsLeft <= ffNeed;
       let kSel = k, wT = -1, wantFF = false;
       for (; kSel >= 1; kSel--) {
-        const need = kSel * 4; let best = Infinity, bestDist = Infinity;
+        const need = kSel * 4;
         const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
+        const cands = []; // 가능한 여성 수 분할 후보 (점수 합이 최선에 가까운 것들 중 무작위 선택 → 시도마다 다른 구성 탐색)
         for (let t = ffForce ? 4 : 0; t <= Wav.length; t += 2) {
           if (need - t < 0 || need - t > Mav.length) continue;
           const base = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + Mav.slice(0, need - t).reduce((a, p) => a + score(p), 0);
-          const dist = Math.abs(t - ideal);
-          for (const asFF of (ffPossible && t >= 4 ? [false, true] : [false])) {
-            const sum = base - (asFF ? (ffForce ? 1e9 : 150) : 0);
-            if (sum < best || (sum === best && dist < bestDist)) { best = sum; bestDist = dist; wT = t; wantFF = asFF; }
-          }
+          for (const asFF of (ffPossible && t >= 4 ? [false, true] : [false])) cands.push({ t, asFF, sum: base - (asFF ? (ffForce ? 1e9 : 150) : 0), dist: Math.abs(t - ideal) });
         }
-        if (wT >= 0) break;
+        if (cands.length) {
+          cands.sort((a, b) => a.sum - b.sum || a.dist - b.dist);
+          const bestSum = cands[0].sum;
+          const near = cands.filter((c) => c.sum - bestSum <= 120); // 경기 수 1 차이(100) 안쪽이면 동급 후보
+          const pick = near[Math.floor(rng() * near.length)];
+          wT = pick.t; wantFF = pick.asFF; break;
+        }
       }
       if (kSel < 1 || wT < 0) continue;
       const W = Wav.slice(0, wT).map((p) => p.id), M = Mav.slice(0, kSel * 4 - wT).map((p) => p.id);
