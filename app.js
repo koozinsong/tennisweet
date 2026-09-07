@@ -393,6 +393,9 @@
     const v = parseFloat(s.sameNtrpGame);
     if (Number.isFinite(v)) { const ok = ms.some((m) => { const ids = [...sidePl(m, 'a'), ...sidePl(m, 'b')]; return ids.length === 4 && ids.every((id) => ntrpOf(id) === v && gOf(id) !== 'F'); }); out.push(`${ok ? '✓' : '✗'} NTRP ${v} 남복`); }
     if (s.fmMenEqual !== false) { const bad = ms.filter(fmMenBad).length; out.push(bad ? `✗ 혼복 남자 NTRP 불일치 ${bad}경기` : '✓ 혼복 남자 NTRP 일치'); }
+    const fw = {}; for (const m of ms) { const wa = sidePl(m, 'a').filter((id) => gOf(id) === 'F'), wb = sidePl(m, 'b').filter((id) => gOf(id) === 'F'); if (wa.length === 1 && wb.length === 1) { const k = [wa[0], wb[0]].sort().join('|'); fw[k] = (fw[k] || 0) + 1; } }
+    const dup = Object.entries(fw).filter(([, v]) => v > 1).map(([k, v]) => k.split('|').map((id) => playerById(id)?.name || '?').join(' vs ') + ` ${v}회`);
+    if (Object.keys(fw).length) out.push(dup.length ? `✗ 혼복 여성 상대 중복: ${esc(dup.join(', '))}` : '✓ 혼복 여성 상대 중복 없음');
     return out;
   }
   /** 경기 종류 (양쪽 조가 모두 정해졌을 때). mismatch=true 면 규칙 위반 */
@@ -493,21 +496,24 @@
     }
     const rep = (o) => Object.values(o).reduce((a, v) => a + Math.max(0, v - 1), 0);
     const rep3 = Object.values(oc).filter((v) => v >= 3).length; // 같은 상대 3회 이상은 별도 가중 (2회는 여성 구성상 불가피할 수 있음)
+    const fmW = {}; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F'), wb = B.filter((x) => gOf(x) === 'F'); if (wa.length === 1 && wb.length === 1) fmW[k2(wa[0], wb[0])] = (fmW[k2(wa[0], wb[0])] || 0) + 1; }
+    const fmWomenRep = rep(fmW); // 혼복에서 같은 여성 상대와 다시 붙은 횟수 (골고루 원칙)
     const g = Object.values(games); const spread = g.length ? Math.max(...g) - Math.min(...g) : 0;
     // 3연속 출전 횟수
     const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
     const menBad = state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 특별 규칙 위반은 사실상 배제
-    return menBad * 1e5 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 60 + quad * 15 + triple * 8; // 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return menBad * 1e5 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
-    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {}, isF = {};
+    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {}, isF = {}, fmWomen = {}; // fmWomen: 혼복에서 여성끼리 상대한 횟수
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
+    const fmWomenKey = (c) => { const wa = c.slice(0, 2).find((x) => isF[x]), wb = c.slice(2).find((x) => isF[x]); return wa && wb && c.filter((x) => isF[x]).length === 2 ? key(wa, wb) : null; }; // 혼복 코트의 여성 상대 쌍
     ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); isF[p.id] = p.gender === 'F'; });
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
     const menEq = s.fmMenEqual !== false; // 특별 규칙: 혼복은 양쪽 남자 NTRP 동일 (기본 켬)
@@ -517,7 +523,7 @@
     const DEFAULT_PREF = { '김지선': 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음)
     const CARE = {}; ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; });
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
-    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } return cost + d * 60 + (d > 0.5 ? 100 : 0); }; // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
+    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); return cost + d * 60 + (d > 0.5 ? 100 : 0); }; // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const prio = (p, slot) => played[p.id] * 100 + (slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id]);
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
@@ -650,7 +656,7 @@
         matches.push({ id: uid(), phase: 'rot', round, slot, court: c + 1, aIds: ['p:' + a1, 'p:' + a2], bIds: ['p:' + b1, 'p:' + b2] });
         partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1;
         for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1;
-        const tp = pairType(a1, a2); if (tp === 'FF') ffDone++;
+        const tp = pairType(a1, a2); if (tp === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1;
         for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; playedSlots[x].add(slot); if (tp === 'FM') fmCnt[x]++; else if (tp === 'MM') mmCnt[x]++; }
       });
       round++;
