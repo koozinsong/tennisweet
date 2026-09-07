@@ -528,7 +528,10 @@
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       // NTRP 균형(기본): 양쪽 조 NTRP 합 차이에 벌점. 관리자 키가 없어 NTRP 를 모르면 0 이라 영향 없음
       const nsum = (a, b) => NT[a] + NT[b];
-      const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); return cost + d * 10 + (d > 0.5 ? 20 : 0); }; // NTRP 균형: 0.5 초과 차이는 추가 벌점
+      // 암묵적 편성 선호(데이터 필드 pref, 화면 표시 없음): p=파트너·상대가 본인 수준에 가깝게, s=파트너가 본인 이상, e=상대 조 합이 본인 조 이하
+      const CARE = {}; ps.forEach((p) => { if (p.pref) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[p.pref]; });
+      const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
+      const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); return cost + d * 10 + (d > 0.5 ? 20 : 0); }; // NTRP 균형: 0.5 초과 차이는 추가 벌점
       const totalCost = (cs) => cs.reduce((a, c) => a + courtCost(c), 0);
       let best = null, bestCost = Infinity;
       for (let t = 0; t < 40; t++) {
@@ -1145,7 +1148,7 @@
   /** 외부에서 온 데이터(공유 링크·가져오기·게시본)의 id 검증: 화면 속성에 들어가므로 형식이 다르면 거부 */
   function assertIds(data) {
     const bad = (v) => v != null && !(typeof v === 'string' && ID_RE.test(v));
-    for (const p of data.players || []) if (bad(p.id)) throw new Error('선수 id 형식 오류');
+    for (const p of data.players || []) { if (bad(p.id)) throw new Error('선수 id 형식 오류'); if (p.pref != null && !['', 'p', 's', 'e'].includes(p.pref)) p.pref = ''; }
     for (const u of data.units || []) { if (bad(u.id)) throw new Error('팀 id 형식 오류'); for (const x of u.playerIds || []) if (bad(x)) throw new Error('팀원 id 형식 오류'); }
     for (const m of data.schedule?.matches || []) {
       for (const v of [m.id, m.aId, m.bId, m.aManual, m.bManual, ...(m.aIds || []), ...(m.bIds || []), ...(m.aPlayers || []), ...(m.bPlayers || [])]) if (bad(v)) throw new Error('경기 id 형식 오류');
