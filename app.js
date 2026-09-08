@@ -349,6 +349,7 @@
       state.schedule = isRot() ? generateRotation(state.settings, seed) : state.settings.mode === 'team' ? generateTeam(state.settings, state.units.filter((u) => u.playerIds.length), seed) : generate(state.settings, state.units.filter((u) => u.playerIds.length));
       state.results = {};
     } catch (err) { alert(err.message); return; }
+    if (state.schedule?.notes?.length) alert('일정은 생성했지만 아래 특별 규칙은 지금 인원으로는 성립하지 않아 제외했습니다:\n- ' + state.schedule.notes.join('\n- '));
     $$('.inp-seed').forEach((el) => (el.value = '')); // 다음 생성은 다시 무작위
     save(); showTab('schedule');
   }
@@ -397,11 +398,16 @@
   }
   /** 특별 규칙 충족 여부 (관리자 화면 표시용) */
   function specialStatus(ms) {
-    const s = state.settings, out = [];
+    const s = state.settings, out = []; const notes = state.schedule?.notes || [];
+    for (const nt of notes) out.push(`⚠ ${esc(nt)}`);
     const names = parseNames(s.mustFace);
-    if (names.length === 2) { const P = names.map((nm) => activePlayers().find((p) => p.name === nm)?.id); const ok = P.every(Boolean) && ms.some((m) => { const A = sidePl(m, 'a'), B = sidePl(m, 'b'); if (A.length !== 2 || B.length !== 2) return false; const fm = [...A, ...B].filter((id) => gOf(id) === 'F').length === 2 && A.filter((id) => gOf(id) === 'F').length === 1; return fm && ((A.includes(P[0]) && B.includes(P[1])) || (A.includes(P[1]) && B.includes(P[0]))); }); out.push(`${ok ? '✓' : '✗'} 혼복 ${esc(names.join(' vs '))} 대진`); }
+    if (names.length === 2 && !notes.some((nt) => nt.startsWith('혼복 필수 대진'))) { const P = names.map((nm) => activePlayers().find((p) => p.name === nm)?.id); const ok = P.every(Boolean) && ms.some((m) => { const A = sidePl(m, 'a'), B = sidePl(m, 'b'); if (A.length !== 2 || B.length !== 2) return false; const fm = [...A, ...B].filter((id) => gOf(id) === 'F').length === 2 && A.filter((id) => gOf(id) === 'F').length === 1; return fm && ((A.includes(P[0]) && B.includes(P[1])) || (A.includes(P[1]) && B.includes(P[0]))); }); out.push(`${ok ? '✓' : '✗'} 혼복 ${esc(names.join(' vs '))} 대진`); }
     const v = parseFloat(s.sameNtrpGame);
-    if (Number.isFinite(v)) { const ok = ms.some((m) => { const ids = [...sidePl(m, 'a'), ...sidePl(m, 'b')]; return ids.length === 4 && ids.every((id) => ntrpOf(id) === v && gOf(id) !== 'F'); }); out.push(`${ok ? '✓' : '✗'} NTRP ${v} 남복`); }
+    if (Number.isFinite(v) && !notes.some((nt) => nt.startsWith(`NTRP ${v} 남복`))) {
+      const relaxed = notes.some((nt) => nt.startsWith(`NTRP ${v} 남자가`)); // 상위 4명으로 완화된 경우
+      const ok = ms.some((m) => { const ids = [...sidePl(m, 'a'), ...sidePl(m, 'b')]; if (ids.length !== 4 || !ids.every((id) => gOf(id) !== 'F' && ntrpOf(id))) return false; if (!relaxed) return ids.every((id) => ntrpOf(id) === v); const others = activePlayers().filter((p) => p.gender !== 'F' && ntrpOf(p.id) && !ids.includes(p.id)); const low = Math.min(...ids.map(ntrpOf)); return ids.every((id) => ntrpOf(id) <= v) && others.every((p) => ntrpOf(p.id) <= low); });
+      out.push(`${ok ? '✓' : '✗'} NTRP ${v}${relaxed ? ' 상위 4명' : ''} 남복`);
+    }
     if (s.fmMenEqual !== false) { const bad = ms.filter(fmMenBad).length; out.push(bad ? `✗ 혼복 남자 NTRP 불일치 ${bad}경기` : '✓ 혼복 남자 NTRP 일치'); }
     const fw = {}; for (const m of ms) { const wa = sidePl(m, 'a').filter((id) => gOf(id) === 'F'), wb = sidePl(m, 'b').filter((id) => gOf(id) === 'F'); if (wa.length === 1 && wb.length === 1) { const k = [wa[0], wb[0]].sort().join('|'); fw[k] = (fw[k] || 0) + 1; } }
     const dup = Object.entries(fw).filter(([, v]) => v > 1).map(([k, v]) => k.split('|').map((id) => playerById(id)?.name || '?').join(' vs ') + ` ${v}회`);
@@ -551,22 +557,30 @@
 
     // ---- 특별 규칙(필수 대진): 시도마다 가능한 시간대를 무작위로 골라, 그 시간대에 먼저 확정하고 나머지를 채운다 ----
     const forced = []; // { slot, kind: 'FM'|'MM', label, build(used) → 코트 [a1,a2,b1,b2] | null, feasibleWith(used) }
+    const notes = []; // 적용하지 못한 특별 규칙 안내 (규칙이 성립하지 않으면 생성을 막지 않고 그 규칙만 뺀다)
     // 혼복 필수 대진 선수 파싱 (다른 필수 대진이 같은 시간대에 이 두 사람을 쓰지 않도록 먼저 확정)
     const faceNames = parseNames(s.mustFace); let faceIds = null;
     if (faceNames.length) {
       if (faceNames.length !== 2) throw new Error('혼복 필수 대진은 선수 2명의 이름이어야 합니다 (예: 김지선, 고서영).');
       const P = faceNames.map((nm) => ps.find((p) => p.name === nm));
-      const miss = faceNames.filter((_, i) => !P[i]); if (miss.length) throw new Error(`혼복 필수 대진 선수를 참가 선수에서 찾을 수 없습니다: ${miss.join(', ')}`);
-      faceIds = P.map((p) => p.id); if (faceIds[0] === faceIds[1]) throw new Error('혼복 필수 대진은 서로 다른 두 선수여야 합니다.');
+      const miss = faceNames.filter((_, i) => !P[i]);
+      if (miss.length) notes.push(`혼복 필수 대진 제외: ${miss.join(', ')} 이(가) 참가 선수에 없음`);
+      else { faceIds = P.map((p) => p.id); if (faceIds[0] === faceIds[1]) throw new Error('혼복 필수 대진은 서로 다른 두 선수여야 합니다.'); }
     }
-    // (2) 동일 NTRP 남복: 그 NTRP 남자 4명만으로 남복 1경기
+    // (2) 동일 NTRP 남복: 그 NTRP 남자 4명으로 남복 1경기. 4명이 안 되면 바로 아래 등급에서 상위로 채워 '상위 4명' 남복
     const sameV = parseFloat(s.sameNtrpGame);
     if (Number.isFinite(sameV)) {
-      const pool = (slot, used) => availAt(slot).filter((p) => NT[p.id] === sameV && !isF[p.id] && !used.has(p.id));
-      const slots = []; for (let sl = 0; sl < n; sl++) if (capAt(sl) >= 1 && pool(sl, new Set()).length >= 4) slots.push(sl);
-      if (!slots.length) throw new Error(`NTRP ${sameV} 남복을 편성할 수 없습니다 (같은 시간대에 NTRP ${sameV} 남자가 4명 이상 필요${adminKey ? '' : ', 관리자 로그인 필요'}).`);
-      const slot = slots[Math.floor(rng() * slots.length)];
-      forced.push({ slot, kind: 'MM', label: `NTRP ${sameV} 남복`, feasibleWith: (used) => pool(slot, used).length >= 4, build(used) { const M = byPrio(pool(slot, used), slot).map((p) => p.id); return M.length >= 4 ? bestOf(pairings4(M.slice(0, 4))) : null; } });
+      const pool = (slot, used) => availAt(slot).filter((p) => NT[p.id] === sameV && !isF[p.id] && !used.has(p.id)); // 지정 등급 남자
+      const below = (slot, used) => availAt(slot).filter((p) => !isF[p.id] && !used.has(p.id) && NT[p.id] && NT[p.id] <= sameV); // 지정 등급 이하 남자
+      /** 지정 등급이 4명 이상이면 그 안에서, 모자라면 다음 등급을 포함한 상위 4명 (NTRP 내림차순, 동점은 선발 우선순위) */
+      const top4 = (slot, used) => { const ex = pool(slot, used); if (ex.length >= 4) return byPrio(ex, slot).slice(0, 4).map((p) => p.id); const M = byPrio(below(slot, used), slot).sort((a, b) => NT[b.id] - NT[a.id]); return M.length >= 4 ? M.slice(0, 4).map((p) => p.id) : null; };
+      const exactCnt = (slot, used) => pool(slot, used).length;
+      const can = (sl, used) => pool(sl, used).length >= 4 || below(sl, used).length >= 4; // 난수를 쓰지 않는 가능 여부 판정 (생성 번호 재현성 유지)
+      const slots = []; for (let sl = 0; sl < n; sl++) if (capAt(sl) >= 1 && can(sl, new Set())) slots.push(sl);
+      if (!slots.length) notes.push(`NTRP ${sameV} 남복 제외: 같은 시간대에 NTRP ${sameV} 이하 남자가 4명 이상 없음${adminKey ? '' : ' (관리자 로그인 필요)'}`);
+      else { const full = slots.filter((sl) => exactCnt(sl, new Set()) >= 4); const pick = (full.length ? full : slots); const slot = pick[Math.floor(rng() * pick.length)]; // 지정 등급만으로 되는 시간대를 우선
+      if (!full.length) notes.push(`NTRP ${sameV} 남자가 4명이 안 되어 상위 4명(다음 등급 포함)으로 남복을 편성했습니다`);
+      forced.push({ slot, kind: 'MM', label: `NTRP ${sameV} 남복`, feasibleWith: (used) => can(slot, used), build(used) { const M = top4(slot, used); return M ? bestOf(pairings4(M)) : null; } }); }
     }
     // (1) 혼복 필수 대진: 두 선수가 서로 상대편 (각 조 = 여 1 + 남 1, 남자는 menEq 면 NTRP 동일)
     if (faceIds) {
@@ -582,9 +596,9 @@
       let slots = [], slotsNoRule = [];
       for (let sl = 0; sl < n; sl++) { if (![p1, p2].every((x) => playerAvailable(playerById(x), s, sl)) || capAt(sl) < 1 || !shareOk(sl)) continue; if (options(sl, new Set(), true).length) slotsNoRule.push(sl); if (options(sl, new Set()).length) slots.push(sl); }
       if (slots.some((sl) => !taken.includes(sl))) slots = slots.filter((sl) => !taken.includes(sl)); // 다른 필수 대진과 같은 시간대는 대안이 없을 때만
-      if (!slots.length) throw new Error(slotsNoRule.length ? `혼복 필수 대진(${faceNames.join(' vs ')})의 남자 짝을 NTRP 가 같은 남자로 채울 수 없습니다 (특별 규칙 '혼복 남자 NTRP 동일' 과 충돌). 규칙을 끄거나 선수 구성을 확인하세요.` : `혼복 필수 대진(${faceNames.join(' vs ')})을 편성할 수 있는 시간대가 없습니다 (두 선수가 함께 있는 시간대에 코트와 상대 선수가 필요합니다).`);
-      const slot = slots[Math.floor(rng() * slots.length)];
-      forced.push({ slot, kind: 'FM', label: `혼복 필수 대진(${faceNames.join(' vs ')})`, feasibleWith: (used) => options(slot, used).length > 0, build(used) { let best = null, bc = Infinity; for (const c of shuffle(options(slot, used))) { const v = courtCost(c) + prio(playerById(c[1]), slot) + prio(playerById(c[3]), slot); if (v < bc) { bc = v; best = c; } } return best; } });
+      if (!slots.length) notes.push(slotsNoRule.length ? `혼복 필수 대진(${faceNames.join(' vs ')}) 제외: 남자 짝을 NTRP 가 같은 남자로 채울 수 없음 (특별 규칙 '혼복 남자 NTRP 동일' 과 충돌)` : `혼복 필수 대진(${faceNames.join(' vs ')}) 제외: 두 선수가 함께 있는 시간대에 코트·상대 선수가 없음`);
+      else { const slot = slots[Math.floor(rng() * slots.length)];
+      forced.push({ slot, kind: 'FM', label: `혼복 필수 대진(${faceNames.join(' vs ')})`, feasibleWith: (used) => options(slot, used).length > 0, build(used) { let best = null, bc = Infinity; for (const c of shuffle(options(slot, used))) { const v = courtCost(c) + prio(playerById(c[1]), slot) + prio(playerById(c[3]), slot); if (v < bc) { bc = v; best = c; } } return best; } }); }
     }
     forced.sort((a, b) => (a.kind === 'FM' ? 0 : 1) - (b.kind === 'FM' ? 0 : 1)); // 선수가 고정된 혼복 필수 대진을 먼저 놓고, 남복은 남은 선수로
     const forcedWomenAt = (sl) => forced.filter((f) => f.slot === sl && f.kind === 'FM').length * 2; // 필수 혼복이 쓰는 여성 수 (여복 가능 시간대 계산용)
@@ -696,7 +710,7 @@
     }
     if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 합류 시각과 종료 시각을 확인하세요.');
     const bad = forced.filter((f) => !matches.some((m) => m.slot === f.slot)); if (bad.length) throw new Error(`${bad[0].label} 편성 실패`);
-    return { groups: [], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: ps.map((p) => 'p:' + p.id), seed };
+    return { groups: [], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: ps.map((p) => 'p:' + p.id), seed, ...(notes.length ? { notes } : {}) };
   }
   function generate(s, units) {
     const ids = units.map((u) => u.id);
@@ -1288,7 +1302,7 @@
     const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : d);
     for (const m of data.schedule?.matches || []) { for (const k of ['slot', 'court', 'round', 'group', 'koRound', 'koSize', 'koIndex']) if (m[k] != null) m[k] = num(m[k]); if (m.phase != null && !/^[a-z]{1,10}$/.test(String(m.phase))) m.phase = 'extra'; }
     for (const arr of Object.values(data.results || {})) if (Array.isArray(arr)) for (const r of arr) { for (const k of ['a', 'b']) r[k] = /^\d{1,3}$/.test(String(r?.[k] ?? '')) ? String(r[k]) : ''; }
-    if (data.schedule) { data.schedule.extraSlots = num(data.schedule.extraSlots); data.schedule.advance = num(data.schedule.advance); if (data.schedule.seed != null) data.schedule.seed = num(data.schedule.seed); }
+    if (data.schedule) { if (data.schedule.notes != null) { data.schedule.notes = Array.isArray(data.schedule.notes) ? data.schedule.notes.filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 10) : undefined; if (!data.schedule.notes?.length) delete data.schedule.notes; } data.schedule.extraSlots = num(data.schedule.extraSlots); data.schedule.advance = num(data.schedule.advance); if (data.schedule.seed != null) data.schedule.seed = num(data.schedule.seed); }
     return data;
   }
   const normalize = (data) => ({ ...emptyState(), ...assertIds(data), settings: { ...DEFAULT_SETTINGS, ...(data.settings || {}) }, editMode: false });
