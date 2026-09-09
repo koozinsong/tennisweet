@@ -348,9 +348,9 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 
 /* 회식 장소 */
 .venue-card { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 18px; max-width: 560px; }
-.venue-head { display: flex; align-items: center; gap: 8px; font-size: 21px; color: var(--court-deep); padding-bottom: 12px; margin-bottom: 4px; border-bottom: 2px dashed var(--rule); }
+.venue-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 21px; color: var(--court-deep); padding-bottom: 12px; margin-bottom: 4px; border-bottom: 2px dashed var(--rule); }
 .venue-head .ic { width: 22px; height: 22px; color: var(--accent); }
-.venue-time { margin-left: auto; font-family: 'Barlow Condensed', system-ui, sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); }
+.venue-time { margin-left: auto; white-space: nowrap; font-family: 'Barlow Condensed', system-ui, sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); }
 .vrow { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
 .vrow:last-of-type { border-bottom: 0; }
 .vk { flex: 0 0 76px; color: var(--muted); font-size: 13px; font-weight: 700; padding-top: 1px; }
@@ -364,7 +364,9 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .mapbtn:hover { background: color-mix(in srgb, var(--court) 10%, #fff); border-color: var(--court); }
 .mapbtn .ic { width: 16px; height: 16px; }
 #form-venue { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.venue-head b { word-break: keep-all; }
 @media (max-width: 560px) { .venue-card { padding: 14px; } .venue-head { font-size: 18px; } .vk { flex-basis: 62px; } }
+@media (max-width: 460px) { .venue-time { flex-basis: 100%; margin-left: 30px; font-size: 18px; } }
 
 .cover-grid button { font-size: 15px; padding: 13px 10px; }
 @media (max-width: 380px) { .cover-grid button { font-size: 14px; padding: 12px 6px; } .cover-menu button .ic { margin-right: 6px; } }
