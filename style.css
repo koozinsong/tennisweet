@@ -356,6 +356,9 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .vk { flex: 0 0 76px; color: var(--muted); font-size: 13px; font-weight: 700; padding-top: 1px; }
 .vv { flex: 1; color: var(--ink); font-weight: 600; word-break: keep-all; }
 .vv a { color: var(--court-deep); }
+.venue-map { margin-top: 14px; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--bg); aspect-ratio: 4 / 3; }
+.venue-map iframe { display: block; width: 100%; height: 100%; border: 0; }
+@media (min-width: 560px) { .venue-map { aspect-ratio: 16 / 10; } }
 .venue-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .mapbtn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--court-deep); font-size: 14px; font-weight: 700; text-decoration: none; }
 .mapbtn:hover { background: color-mix(in srgb, var(--court) 10%, #fff); border-color: var(--court); }

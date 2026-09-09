@@ -880,12 +880,13 @@
     box.innerHTML = `<div class="venue-card">
       <div class="venue-head"><svg class="ic"><use href="#i-cup"/></svg><b>${esc(v.name || '회식')}</b>${v.time ? `<span class="venue-time">${esc(v.time)}</span>` : ''}</div>
       ${row('주소', v.addr)}${row('전화', v.phone, `<a href="${esc(telHref(v.phone))}">${esc(v.phone)}</a>`)}${row('메뉴·회비', v.menu)}${row('안내', v.note)}
+      <div class="venue-map no-print"><iframe src="https://maps.google.com/maps?q=${q}&z=16&hl=ko&output=embed" title="${esc(v.name || '회식 장소')} 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
       <div class="venue-maps no-print">
         <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://map.naver.com/p/search/${q}"><svg class="ic"><use href="#i-pin"/></svg>네이버 지도</a>
         <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/?q=${q}"><svg class="ic"><use href="#i-pin"/></svg>카카오맵</a>
         <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=${q}"><svg class="ic"><use href="#i-pin"/></svg>구글 지도</a>
       </div>
-      <p class="hint no-print">지도 버튼은 ${v.addr ? '장소 이름·주소로' : '장소 이름으로'} 검색해 엽니다.${!v.addr && !viewOnly ? ' 주소를 입력하면 더 정확히 찾아갑니다.' : ''}</p>
+      <p class="hint no-print">${v.addr ? '지도와 버튼은 주소 기준입니다.' : '지도와 버튼은 장소 이름 검색 결과입니다.'}${!v.addr && !viewOnly ? ' 아래에 주소를 입력하면 정확한 위치를 가리킵니다.' : ''}</p>
     </div>`;
   }
   $('#form-venue')?.addEventListener('submit', (e) => {
