@@ -1,0 +1,243 @@
+<!-- 아이콘 스프라이트 (선 아이콘) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/><path d="M8 14h3M13 14h3M8 18h3"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 5M17 6h3a3 3 0 0 1-3 5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 15.5a5 5 0 0 1 5.5 4.5"/></symbol>
+  <symbol id="i-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.5 7.5-8 9-4.5-1.5-8-4.5-8-9V6z"/><path d="M8.5 12.5l2.5 2.5 4.5-4.5"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.5"/><circle cx="9" cy="17" r="2.5"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-publish" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M6 10l6-6 6 6"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></symbol>
+  <symbol id="i-ball" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 6.5a9 9 0 0 1 0 11M18.5 6.5a9 9 0 0 0 0 11"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.4 6.2a5 5 0 0 1-4.9 3.9h0a5 5 0 0 1-4.9-3.9z"/><path d="M12 13.1V19"/><path d="M8.5 21h7"/></symbol>
+  <symbol id="i-court" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 12h18M12 4v16M7 8h10M7 16h10"/></symbol>
+</svg>
+<!-- 커버: 포스터를 첫 화면으로, 메뉴로 진입 -->
+<section id="cover" class="cover" hidden>
+  <div class="cover-art">
+    <picture><source srcset="assets/poster.webp" type="image/webp"><img id="cover-img" src="assets/poster.jpg" alt="테니스윗 2026 클럽 포스터" onerror="this.closest('.cover-art').classList.add('noimg')"></picture>
+    <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
+  </div>
+  <nav class="cover-menu" aria-label="메뉴">
+    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span></div>
+    <button data-go="schedule" class="menu-main"><svg class="ic"><use href="#i-court"/></svg>경기 일정표</button>
+    <div class="cover-grid">
+      <button data-go="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button>
+      <button data-go="players"><svg class="ic"><use href="#i-users"/></svg>선수</button>
+      <button data-go="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
+      <button data-go="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
+      <button data-go="admin" class="only-view"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
+    </div>
+  </nav>
+</section>
+<header class="topbar">
+  <button class="brand" id="btn-home" title="첫 화면으로"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
+  <nav class="tabs" aria-label="화면 선택">
+    <button data-tab="players" class="active"><svg class="ic"><use href="#i-users"/></svg>선수</button>
+    <button data-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button>
+    <button data-tab="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
+    <button data-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button>
+    <button data-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위·대진</button>
+    <button data-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
+  </nav>
+  <div class="actions">
+    <button id="btn-editor" class="only-view primary-light"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
+    <button id="btn-share" class="only-editor" title="현재 상태를 링크에 담아 공유"><svg class="ic"><use href="#i-link"/></svg>공유 링크</button>
+    <button id="btn-load-published" class="only-editor" title="저장소 게시본으로 되돌리기">게시본 불러오기</button>
+    <button id="btn-publish" class="only-editor primary-light" title="현재 작업본을 저장소에 커밋해 모두에게 반영"><svg class="ic"><use href="#i-publish"/></svg>게시하기</button>
+    <button id="btn-export" class="only-editor" title="tournament.json 파일로 저장 (수동 게시용)">내보내기</button>
+    <button id="btn-import" class="only-editor" title="JSON 파일 불러오기">가져오기</button>
+    <input type="file" id="file-import" accept="application/json" hidden>
+    <button id="btn-image" title="현재 화면을 이미지로 저장·공유 (모바일용)"><svg class="ic"><use href="#i-camera"/></svg>이미지 저장</button>
+    <button id="btn-print"><svg class="ic"><use href="#i-print"/></svg>인쇄</button>
+    <button id="btn-reset" class="danger only-editor">초기화</button>
+    <button id="btn-leave-editor" class="only-editor" title="로그아웃하고 일정표 보기로">로그아웃</button>
+  </div>
+</header>
+<div id="view-banner" class="banner" hidden><span id="view-banner-text"></span></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<!-- 이미지 저장 결과 -->
+<div id="image-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="image-title" hidden>
+  <div class="modal-card image-card">
+    <h3 id="image-title">📷 이미지 저장</h3>
+    <p class="hint">이미지를 <b>길게 눌러</b> 사진에 저장하거나 카톡으로 보내세요.</p>
+    <div class="image-wrap"><img id="image-out" alt="일정표 이미지"></div>
+    <div class="row"><a id="image-download" class="btn-like" download="tennisweet.png">다운로드</a><button type="button" id="image-share" hidden>📤 공유</button><button type="button" id="image-close">닫기</button></div>
+  </div>
+</div>
+<!-- 게시용 GitHub 토큰 등록 -->
+<div id="token-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="token-title" hidden>
+  <form class="modal-card" id="token-form">
+    <h3 id="token-title">🚀 게시 설정 (최초 1회)</h3>
+    <p class="hint">게시하기는 이 브라우저가 GitHub 저장소의 <code>data/tournament.json</code> 을 직접 커밋합니다. 그러려면 저장소에 쓸 수 있는 GitHub 토큰이 필요합니다.</p>
+    <ol class="hint steps">
+      <li><a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener"><b>github.com/settings/personal-access-tokens/new</b></a> 를 새 탭에서 열기 (GitHub 로그인 필요). 이름은 아무거나, 만료는 대회 뒤로.</li>
+      <li>Repository access: <b>Only select repositories</b> → <code>koozinsong/tennisweet</code></li>
+      <li>Permissions → Repository permissions → <b>Contents: Read and write</b> (다른 권한 불필요)</li>
+      <li>생성된 토큰(<code>github_pat_…</code>)을 아래에 붙여넣기</li>
+    </ol>
+    <label>GitHub 토큰 <input type="password" id="token-input" autocomplete="off" placeholder="github_pat_..." required></label>
+    <p class="hint">토큰은 관리자 비밀번호로 암호화되어 저장되고 게시본에도 암호화된 채 실립니다. 그래서 <b>한 번만 넣으면</b> 다른 기기에서도 관리자 비밀번호만으로 게시할 수 있습니다. 만료되거나 틀리면 다시 묻고, 지우려면 게시하기 버튼을 길게 누르거나(우클릭) 초기화하세요.</p>
+    <div class="row"><button type="submit" class="primary">저장하고 게시</button><button type="button" id="token-cancel">취소</button><button type="button" id="token-forget" class="danger-text">저장된 토큰 삭제</button></div>
+    <div class="err" id="token-err"></div>
+  </form>
+</div>
+
+<main>
+<!-- ============ ① 선수 ============ -->
+<section id="tab-players" class="tab active">
+  <h2 id="players-title">선수 명단</h2>
+  <p class="hint only-view">참가 선수 명단입니다. 합류 시각은 그 시각부터 경기에 배정됨을 뜻합니다.</p>
+  <p class="hint only-editor">기본 명단은 저장소의 <code>data/tournament.json</code> 게시본에서 불러오며, 편집 모드에서 추가·수정한 내용은 이 브라우저에 저장됩니다. 셀을 클릭하면 바로 수정할 수 있습니다. <b>합류 시각</b>을 비우면 대회 시작부터 참가합니다. <b>NTRP</b> 는 관리자 로그인 시에만 표시되며 파일에도 암호화되어 저장됩니다. <b>같은팀 묶음</b>에 같은 표시(예: A)를 넣은 선수들은 항상 한 팀에 배정됩니다 (관리자에게만 표시).</p>
+  <form id="form-player" class="row">
+    <input name="name" placeholder="이름" required>
+    <select name="gender" style="max-width:90px"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>
+    <input name="ntrp" class="only-editor" type="number" step="0.5" min="1" max="7" placeholder="NTRP" style="max-width:100px">
+    <label class="inline">합류 <input name="from" type="time" style="max-width:120px"></label>
+    <label class="inline">퇴장 <input name="until" type="time" style="max-width:120px"></label>
+    <input name="note" placeholder="메모">
+    <button type="submit" class="primary">추가</button>
+  </form>
+  <details>
+    <summary>여러 명 한 번에 추가</summary>
+    <form id="form-bulk" class="row">
+      <textarea name="bulk" rows="4" placeholder="한 줄에 한 명:  이름, 성별(남/여), NTRP, 합류시각(예 20:00)   — 이름만 써도 됩니다"></textarea>
+      <button type="submit">일괄 추가</button>
+    </form>
+  </details>
+  <div class="table-wrap"><table class="list" id="tbl-players">
+    <thead><tr><th>#</th><th>참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th class="only-editor">같은팀 묶음</th><th>메모</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="row only-editor">
+    <button id="btn-players-all">전원 참가</button>
+    <button id="btn-players-none">전원 불참</button>
+    <span class="hint">참가 체크된 선수만 팀 구성에 포함됩니다.</span>
+  </div>
+  <div class="row only-editor">
+    <button class="btn-regen primary" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button>
+    <button class="btn-regen primary" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button>
+    <label class="inline">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>
+    <label class="inline" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
+    <span class="hint">현재 선수 명단(참가 체크·합류 시각)으로 일정을 새로 만듭니다. 팀전은 팀 배정도 함께 합니다. 입력된 결과는 지워집니다.</span>
+  </div>
+</section>
+
+<!-- ============ ② 대회 설정 ============ -->
+<section id="tab-setup" class="tab">
+  <h2>대회 설정</h2>
+  <form id="form-settings" class="grid2">
+    <label>대회명 <input name="name" placeholder="2026년 3분기 테니스윗 대회"></label>
+    <label>대회 날짜 <input name="date" type="date"></label>
+
+    <fieldset class="span2">
+      <legend>경기 구분</legend>
+      <label class="radio"><input type="radio" name="mode" value="rotation" checked> 개인전 — 매 경기 파트너·상대를 바꿔 가며 복식을 치르고 개인 승패로 순위 (시차 합류·홀수 인원 가능, 남복·여복·혼복 규칙 적용)</label>
+      <label class="radio"><input type="radio" name="mode" value="team"> 팀전 — 합류 시각·급수를 고려해 팀을 나누고, 매 시간대 팀 대 팀 복식을 코트별로 배정 (팀 승수 + 개인 기록 집계)</label>
+      <label class="radio"><input type="radio" name="mode" value="individual"> 고정조 대회 — 고정 복식조 또는 단식 개인이 참가 단위, 조별 리그·토너먼트</label>
+    </fieldset>
+
+    <label id="lbl-disc">종목
+      <select name="discipline">
+        <option value="doubles">복식</option>
+        <option value="singles">단식</option>
+      </select>
+    </label>
+
+    <fieldset class="span2" id="fs-format">
+      <legend>대회 방식</legend>
+      <label class="radio"><input type="radio" name="format" value="groups" checked> 조별 풀리그 → 본선 토너먼트</label>
+      <label class="radio"><input type="radio" name="format" value="rr"> 전체 풀리그</label>
+      <label class="radio"><input type="radio" name="format" value="ko"> 토너먼트 (단판 탈락)</label>
+    </fieldset>
+
+    <label id="lbl-teamcount">팀 수 <input name="teamCount" type="number" min="2" value="2"></label>
+    <label id="lbl-groups">조 수 <input name="groupCount" type="number" min="1" value="2"></label>
+    <label id="lbl-advance">조별 본선 진출 수 <input name="advance" type="number" min="1" value="2"></label>
+    <label class="check span2" id="lbl-third"><input type="checkbox" name="thirdPlace" checked> 3·4위전 진행</label>
+
+    <label>코트 수 <input name="courts" type="number" min="1" value="2"></label>
+    <label>경기 시작 시각 <input name="startTime" type="time" value="09:00"></label>
+    <label>종료 시각 <input name="endTime" type="time"> <span class="hint">비우면 제한 없음. 로테이션은 이 시각까지 라운드를 채웁니다.</span></label>
+    <label>경기당 소요 시간(분) <input name="matchMinutes" type="number" min="5" step="5" value="30"></label>
+    <label>경기 간 휴식(분) <input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
+    <label>경기당 최대 게임 수 <input name="maxGames" type="number" min="1" max="20" value="6"> <span class="hint">점수 입력 상한 (기본 6게임)</span></label>
+    <label>여복 최소 경기 수 <input name="minWomenDoubles" type="number" min="0" value="1"> <span class="hint">여성 4명이 같은 시간대에 있을 때 여복(여 2 대 여 2)을 이 수 이상 편성</span></label>
+
+    <fieldset class="span2 only-editor" id="fs-special">
+      <legend>특별 규칙 (개인전)</legend>
+      <label class="check span2"><input type="checkbox" name="fmMenEqual" checked> 혼복은 양쪽 남자의 NTRP 가 같아야 함</label>
+      <label>혼복 필수 대진 <input name="mustFace" maxlength="60" placeholder="예: 김지선, 고서영" autocomplete="off"> <span class="hint">선수 2명 이름. 서로 상대편으로 혼복 1경기를 반드시 편성 (비우면 없음)</span></label>
+      <label>동일 NTRP 남복 <input name="sameNtrpGame" maxlength="6" inputmode="decimal" placeholder="예: 4" autocomplete="off"> <span class="hint">이 NTRP 남자 4명의 남복을 1경기 편성. 4명이 안 되면 다음 등급에서 상위로 채웁니다 (비우면 없음)</span></label>
+      <label class="span2">같은 조 금지 <input name="avoidPairs" maxlength="300" placeholder="예: 김지선-이석우, 박상용-송국진" autocomplete="off"> <span class="hint">이 두 선수는 파트너로 묶지 않음 (쌍은 쉼표로 구분)</span></label>
+    </fieldset>
+
+    <div class="span2 row">
+      <button type="submit" class="primary">저장하고 다음 →</button>
+      <span class="hint only-editor">경기 구분·종목을 바꾸면 팀 구성을 다시 해야 합니다.</span>
+    </div>
+  </form>
+</section>
+
+<!-- ============ ③ 팀 구성 ============ -->
+<section id="tab-units" class="tab">
+  <h2 id="units-title">팀 구성</h2>
+  <p class="hint only-editor" id="units-hint"></p>
+  <div class="row" id="units-tools"></div>
+  <div id="units-view"></div>
+  <div class="row only-editor">
+    <button id="btn-generate" class="primary">전체 일정 생성 →</button>
+    <span class="hint" id="gen-hint"></span>
+  </div>
+</section>
+
+<!-- ============ ④ 일정표 ============ -->
+<section id="tab-schedule" class="tab">
+  <div class="print-header">
+    <h1 id="print-title"></h1>
+    <p id="print-meta"></p>
+  </div>
+  <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
+  <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button><button class="btn-regen only-editor" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label><label class="inline only-editor" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
+    <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
+  <div class="row no-print">
+    <label class="check"><input type="checkbox" id="chk-edit"> 현장 편집 모드 (시간·코트 이동, 참가자 교체, 경기 추가/삭제)</label>
+    <button id="btn-add-match" class="small" hidden>+ 경기 추가</button>
+    <button id="btn-add-slot" class="small" hidden>+ 시간대 추가</button>
+    <button id="btn-compact" class="small" hidden>빈 시간대 정리</button>
+    <button id="btn-clear-results" class="small only-editor danger-text">🧹 기록 전체 지우기</button>
+  </div>
+  <p class="hint only-editor">스코어 칸에 게임 수를 입력하면 순위가 자동 갱신됩니다. ⚠ 표시는 같은 시간대에 겹치는 참가자 또는 코트 중복입니다.</p>
+  <div id="schedule-view"></div>
+  <div id="games-summary"></div>
+</section>
+
+<!-- ============ ⑥ 회식 장소 ============ -->
+<section id="tab-venue" class="tab">
+  <h2>회식 장소</h2>
+  <div id="venue-view"></div>
+  <form id="form-venue" class="grid only-editor" autocomplete="off">
+    <h3 class="span2">회식 안내 수정</h3>
+    <label>장소 이름 <input name="name" maxlength="60" placeholder="예: 통속"></label>
+    <label>시각 <input name="time" maxlength="40" placeholder="예: 22:00부터"></label>
+    <label class="span2">주소 <input name="addr" maxlength="120" placeholder="예: 서울 ○○구 ○○로 12"></label>
+    <label>전화 <input name="phone" maxlength="30" placeholder="예: 02-000-0000"></label>
+    <label>메뉴·회비 <input name="menu" maxlength="60" placeholder="예: 1인 2만원"></label>
+    <label class="span2">안내 <input name="note" maxlength="200" placeholder="예: 코트에서 도보 5분, 예약은 총무에게"></label>
+    <div class="span2 row"><button type="submit" class="primary">저장</button><span class="hint">저장 뒤 게시하기를 누르면 모두에게 반영됩니다. 비우면 그 줄은 표시되지 않습니다.</span></div>
+  </form>
+</section>
+
+<!-- ============ ⑤ 순위·대진 ============ -->
+<section id="tab-standings" class="tab">
+  <h2>순위표 <span class="mode-badge" id="mode-badge2"></span></h2>
+  <div id="standings-view"></div>
+  <h2 id="bracket-title">토너먼트 대진</h2>
+  <div id="bracket-view"></div>
+</section>
+</main>
+
+<footer><span class="only-view">🎾 테니스윗 · 경기 결과와 순위는 관리자가 게시할 때마다 갱신됩니다.</span><span class="only-editor">편집 내용은 이 브라우저에만 저장됩니다. <b>🚀 게시하기</b>를 누르면 저장소 <code>data/tournament.json</code> 에 반영되어 모두에게 보입니다. (내보내기·가져오기는 파일 백업용)</span></footer>
