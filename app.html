@@ -11,6 +11,8 @@
   <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
   <symbol id="i-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/></symbol>
   <symbol id="i-ball" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 6.5a9 9 0 0 1 0 11M18.5 6.5a9 9 0 0 0 0 11"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.4 6.2a5 5 0 0 1-4.9 3.9h0a5 5 0 0 1-4.9-3.9z"/><path d="M12 13.1V19"/><path d="M8.5 21h7"/></symbol>
   <symbol id="i-court" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 12h18M12 4v16M7 8h10M7 16h10"/></symbol>
 </svg>
 <!-- 커버: 포스터를 첫 화면으로, 메뉴로 진입 -->
@@ -20,12 +22,13 @@
     <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
   </div>
   <nav class="cover-menu" aria-label="메뉴">
-    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span><span id="cover-notice" class="cover-notice" hidden></span></div>
+    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span></div>
     <button data-go="schedule" class="menu-main"><svg class="ic"><use href="#i-court"/></svg>경기 일정표</button>
     <div class="cover-grid">
       <button data-go="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button>
       <button data-go="players"><svg class="ic"><use href="#i-users"/></svg>선수</button>
       <button data-go="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
+      <button data-go="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
       <button data-go="admin" class="only-view"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
     </div>
   </nav>
@@ -38,6 +41,7 @@
     <button data-tab="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
     <button data-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button>
     <button data-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위·대진</button>
+    <button data-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
   </nav>
   <div class="actions">
     <button id="btn-editor" class="only-view primary-light"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
@@ -161,8 +165,6 @@
     <label>경기당 소요 시간(분) <input name="matchMinutes" type="number" min="5" step="5" value="30"></label>
     <label>경기 간 휴식(분) <input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
     <label>경기당 최대 게임 수 <input name="maxGames" type="number" min="1" max="20" value="6"> <span class="hint">점수 입력 상한 (기본 6게임)</span></label>
-    <label class="span2">안내 문구 <input name="notice" maxlength="200" placeholder="예: 회식 · 통속 · 22:00부터" autocomplete="off"> <span class="hint">일정표 맨 위와 첫 화면에 모두에게 표시됩니다 (비우면 숨김)</span></label>
-
     <label>여복 최소 경기 수 <input name="minWomenDoubles" type="number" min="0" value="1"> <span class="hint">여성 4명이 같은 시간대에 있을 때 여복(여 2 대 여 2)을 이 수 이상 편성</span></label>
 
     <fieldset class="span2 only-editor" id="fs-special">
@@ -199,7 +201,6 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
-  <p id="notice-bar" class="notice" hidden></p>
   <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button><button class="btn-regen only-editor" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label><label class="inline only-editor" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
     <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
   <div class="row no-print">
@@ -212,6 +213,22 @@
   <p class="hint only-editor">스코어 칸에 게임 수를 입력하면 순위가 자동 갱신됩니다. ⚠ 표시는 같은 시간대에 겹치는 참가자 또는 코트 중복입니다.</p>
   <div id="schedule-view"></div>
   <div id="games-summary"></div>
+</section>
+
+<!-- ============ ⑥ 회식 장소 ============ -->
+<section id="tab-venue" class="tab">
+  <h2>회식 장소</h2>
+  <div id="venue-view"></div>
+  <form id="form-venue" class="grid only-editor" autocomplete="off">
+    <h3 class="span2">회식 안내 수정</h3>
+    <label>장소 이름 <input name="name" maxlength="60" placeholder="예: 통속"></label>
+    <label>시각 <input name="time" maxlength="40" placeholder="예: 22:00부터"></label>
+    <label class="span2">주소 <input name="addr" maxlength="120" placeholder="예: 서울 ○○구 ○○로 12"></label>
+    <label>전화 <input name="phone" maxlength="30" placeholder="예: 02-000-0000"></label>
+    <label>메뉴·회비 <input name="menu" maxlength="60" placeholder="예: 1인 2만원"></label>
+    <label class="span2">안내 <input name="note" maxlength="200" placeholder="예: 코트에서 도보 5분, 예약은 총무에게"></label>
+    <div class="span2 row"><button type="submit" class="primary">저장</button><span class="hint">저장 뒤 게시하기를 누르면 모두에게 반영됩니다. 비우면 그 줄은 표시되지 않습니다.</span></div>
+  </form>
 </section>
 
 <!-- ============ ⑤ 순위·대진 ============ -->

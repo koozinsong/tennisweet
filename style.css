@@ -346,7 +346,19 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .actions button .ic { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
 @media (max-width: 720px) { .tabs button .ic { width: 16px; height: 16px; margin-right: 4px; } }
 
-/* 안내 문구 (회식 장소 등) — 일정표 맨 위 / 첫 화면 */
-.notice { margin: 0 0 14px; padding: 11px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, #fff); border: 1px solid color-mix(in srgb, var(--accent) 28%, #fff); border-left: 4px solid var(--accent); color: var(--court-deep); font-weight: 700; font-size: 15px; }
-.cover-notice { display: block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ball); }
-@media print { .notice { border: 1px solid #999; background: #fff; } }
+/* 회식 장소 */
+.venue-card { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 18px; max-width: 560px; }
+.venue-head { display: flex; align-items: center; gap: 8px; font-size: 21px; color: var(--court-deep); padding-bottom: 12px; margin-bottom: 4px; border-bottom: 2px dashed var(--rule); }
+.venue-head .ic { width: 22px; height: 22px; color: var(--accent); }
+.venue-time { margin-left: auto; font-family: 'Barlow Condensed', system-ui, sans-serif; font-size: 20px; font-weight: 700; color: var(--accent); }
+.vrow { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.vrow:last-of-type { border-bottom: 0; }
+.vk { flex: 0 0 76px; color: var(--muted); font-size: 13px; font-weight: 700; padding-top: 1px; }
+.vv { flex: 1; color: var(--ink); font-weight: 600; word-break: keep-all; }
+.vv a { color: var(--court-deep); }
+.venue-maps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.mapbtn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--court-deep); font-size: 14px; font-weight: 700; text-decoration: none; }
+.mapbtn:hover { background: color-mix(in srgb, var(--court) 10%, #fff); border-color: var(--court); }
+.mapbtn .ic { width: 16px; height: 16px; }
+#form-venue { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule); }
+@media (max-width: 560px) { .venue-card { padding: 14px; } .venue-head { font-size: 18px; } .vk { flex-basis: 62px; } }

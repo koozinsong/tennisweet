@@ -9,7 +9,7 @@
     name: '', date: '', mode: 'rotation', discipline: 'doubles', teamCount: 2,
     format: 'groups', groupCount: 2, advance: 2, thirdPlace: true,
     courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1, maxGames: 6,
-    notice: '', // 모두에게 보이는 안내 문구 (회식 장소 등)
+    venue: { name: '', time: '', addr: '', phone: '', menu: '', note: '' }, // 회식 장소 (별도 메뉴로 표시)
     fmMenEqual: true, mustFace: '', sameNtrpGame: '', avoidPairs: '', // 특별 규칙(개인전): 혼복 남자 NTRP 동일 / 혼복 필수 대진(이름 2개) / 동일 NTRP 남복 1경기 / 같은 조 금지(이름 쌍 목록)
   };
   const emptyState = () => ({ players: [], settings: { ...DEFAULT_SETTINGS }, units: [], schedule: null, results: {}, editMode: false });
@@ -101,7 +101,7 @@
   function showCover(on) {
     const cv = $('#cover'); if (!cv) return;
     cv.hidden = !on; document.body.classList.toggle('cover-on', on);
-    if (on) { const cn = $('#cover-notice'); if (cn) { cn.textContent = state.settings.notice || ''; cn.hidden = !state.settings.notice; } $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
+    if (on) { $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
   }
   $('#cover')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-go]'); if (!b) return;
@@ -191,7 +191,6 @@
     const fd = new FormData(formSettings); const s = { ...state.settings };
     for (const [k, v] of fd.entries()) s[k] = v;
     s.thirdPlace = fd.get('thirdPlace') === 'on'; s.fmMenEqual = fd.get('fmMenEqual') === 'on';
-    s.notice = String(s.notice || '').trim().slice(0, 200);
     s.mustFace = String(s.mustFace || '').trim().slice(0, 60); s.avoidPairs = String(s.avoidPairs || '').trim().slice(0, 300); { const v = parseFloat(String(s.sameNtrpGame || '').replace(/[^\d.]/g, '')); s.sameNtrpGame = Number.isFinite(v) ? String(v) : ''; }
     for (const k of ['maxGames', 'minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
     s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.maxGames = Math.max(1, s.maxGames || 6); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
@@ -867,15 +866,43 @@
   }
   function totalSlots() { const ms = state.schedule.matches.filter((m) => !m.bye); return (ms.length ? Math.max(...ms.map((m) => m.slot)) : -1) + 1 + (state.schedule.extraSlots || 0); }
 
+  // ================= ⑥ 회식 장소 =================
+  const VENUE_FIELDS = ['name', 'time', 'addr', 'phone', 'menu', 'note'];
+  const venueOf = () => ({ ...{ name: '', time: '', addr: '', phone: '', menu: '', note: '' }, ...(state.settings.venue || {}) });
+  const telHref = (p) => 'tel:' + String(p).replace(/[^0-9+]/g, '');
+  function renderVenue() {
+    const box = $('#venue-view'); if (!box) return;
+    const v = venueOf(); const f = $('#form-venue');
+    if (f) for (const k of VENUE_FIELDS) { const el = f.elements[k]; if (el) el.value = v[k]; }
+    if (!v.name && !v.addr && !v.note) { box.innerHTML = `<p class="hint">${viewOnly ? '회식 장소는 아직 안내되지 않았습니다.' : '아래에서 회식 장소를 입력하세요. 입력한 내용이 이 화면과 첫 화면 메뉴에 표시됩니다.'}</p>`; return; }
+    const q = encodeURIComponent([v.name, v.addr].filter(Boolean).join(' '));
+    const row = (label, val, extra = '') => (val ? `<div class="vrow"><span class="vk">${esc(label)}</span><span class="vv">${extra || esc(val)}</span></div>` : '');
+    box.innerHTML = `<div class="venue-card">
+      <div class="venue-head"><svg class="ic"><use href="#i-cup"/></svg><b>${esc(v.name || '회식')}</b>${v.time ? `<span class="venue-time">${esc(v.time)}</span>` : ''}</div>
+      ${row('주소', v.addr)}${row('전화', v.phone, `<a href="${esc(telHref(v.phone))}">${esc(v.phone)}</a>`)}${row('메뉴·회비', v.menu)}${row('안내', v.note)}
+      <div class="venue-maps no-print">
+        <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://map.naver.com/p/search/${q}"><svg class="ic"><use href="#i-pin"/></svg>네이버 지도</a>
+        <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/?q=${q}"><svg class="ic"><use href="#i-pin"/></svg>카카오맵</a>
+        <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=${q}"><svg class="ic"><use href="#i-pin"/></svg>구글 지도</a>
+      </div>
+      <p class="hint no-print">지도 버튼은 ${v.addr ? '장소 이름·주소로' : '장소 이름으로'} 검색해 엽니다.${!v.addr && !viewOnly ? ' 주소를 입력하면 더 정확히 찾아갑니다.' : ''}</p>
+    </div>`;
+  }
+  $('#form-venue')?.addEventListener('submit', (e) => {
+    e.preventDefault(); if (viewOnly) return;
+    const fd = new FormData(e.target); const v = {};
+    for (const k of VENUE_FIELDS) v[k] = String(fd.get(k) || '').trim().slice(0, k === 'note' ? 200 : k === 'addr' ? 120 : 60);
+    state.settings.venue = v; save(); toast('회식 장소를 저장했습니다 · 게시하기를 누르면 모두에게 반영됩니다');
+  });
+
   function render() {
     hydrateSettings();
     $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
     $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
-    const nb = $('#notice-bar'); if (nb) { nb.textContent = state.settings.notice || ''; nb.hidden = !state.settings.notice; }
     const ap = $('#chk-autopub'); if (ap) ap.checked = localStorage.getItem('tennisweet.autopub') === '1';
     renderPlayers(); renderUnits();
     if (state.schedule) resolveKO();
-    renderSchedule(); renderStandings(); renderBracket();
+    renderSchedule(); renderStandings(); renderBracket(); renderVenue();
   }
   /** 대회 당일에만: 지금 시각이 이 시간대 안이면 'live', 지났으면 'past', 아니면 '' */
   function slotStatus(i) {
@@ -1305,6 +1332,7 @@
     const num = (v, d = 0) => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : d);
     for (const m of data.schedule?.matches || []) { for (const k of ['slot', 'court', 'round', 'group', 'koRound', 'koSize', 'koIndex']) if (m[k] != null) m[k] = num(m[k]); if (m.phase != null && !/^[a-z]{1,10}$/.test(String(m.phase))) m.phase = 'extra'; }
     for (const arr of Object.values(data.results || {})) if (Array.isArray(arr)) for (const r of arr) { for (const k of ['a', 'b']) r[k] = /^\d{1,3}$/.test(String(r?.[k] ?? '')) ? String(r[k]) : ''; }
+    { const v = data.settings?.venue; const LIM = { name: 60, time: 40, addr: 120, phone: 30, menu: 60, note: 200 }; const out = {}; for (const k of Object.keys(LIM)) out[k] = typeof v?.[k] === 'string' ? v[k].trim().slice(0, LIM[k]) : ''; if (data.settings) data.settings.venue = out; }
     if (data.schedule) { if (data.schedule.notes != null) { data.schedule.notes = Array.isArray(data.schedule.notes) ? data.schedule.notes.filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, 10) : undefined; if (!data.schedule.notes?.length) delete data.schedule.notes; } data.schedule.extraSlots = num(data.schedule.extraSlots); data.schedule.advance = num(data.schedule.advance); if (data.schedule.seed != null) data.schedule.seed = num(data.schedule.seed); }
     return data;
   }
