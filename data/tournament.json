@@ -182,7 +182,7 @@
       "addr": "",
       "phone": "",
       "menu": "",
-      "note": "경기 끝나면 다함께 이동합니다. 참석 여부는 총무에게 알려 주세요."
+      "note": "경기 완료하신 분들은 미리 이동하셔도 됩니다."
     }
   },
   "units": [
@@ -545,6 +545,6 @@
   },
   "results": {},
   "editMode": false,
-  "publishedAt": "2026-09-09T01:39:27.494Z",
+  "publishedAt": "2026-09-09T02:08:04.945Z",
   "ghTokenEnc": "6+BQEWBks0aUVgk4.zzzM+yNuruQ4ZoJZOjsgtIHCEXjfbmplGBkISNUByrlFft7k/hdGeT8kUvmyRY8lQf+YgOyfgshFKbmcKVTSuzeUkouCGrn9wZ6lTqPYsqP2So+lk6owMeLt4OG0Fmlv1FBxKo96P+3kvqrcBg=="
 }
