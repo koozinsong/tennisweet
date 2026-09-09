@@ -345,3 +345,8 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .cover-menu button.menu-main .ic { width: 22px; height: 22px; }
 .actions button .ic { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
 @media (max-width: 720px) { .tabs button .ic { width: 16px; height: 16px; margin-right: 4px; } }
+
+/* 안내 문구 (회식 장소 등) — 일정표 맨 위 / 첫 화면 */
+.notice { margin: 0 0 14px; padding: 11px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, #fff); border: 1px solid color-mix(in srgb, var(--accent) 28%, #fff); border-left: 4px solid var(--accent); color: var(--court-deep); font-weight: 700; font-size: 15px; }
+.cover-notice { display: block; margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--ball); }
+@media print { .notice { border: 1px solid #999; background: #fff; } }

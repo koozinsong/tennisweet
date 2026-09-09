@@ -175,7 +175,8 @@
     "fmMenEqual": true,
     "mustFace": "김지선, 고서영",
     "sameNtrpGame": "4",
-    "avoidPairs": "김지선-이석우"
+    "avoidPairs": "김지선-이석우",
+    "notice": "회식 · 통속 · 22:00부터"
   },
   "units": [
     {
@@ -537,6 +538,6 @@
   },
   "results": {},
   "editMode": false,
-  "publishedAt": "2026-09-07T21:44:45.676Z",
+  "publishedAt": "2026-09-09T01:30:40.432Z",
   "ghTokenEnc": "6+BQEWBks0aUVgk4.zzzM+yNuruQ4ZoJZOjsgtIHCEXjfbmplGBkISNUByrlFft7k/hdGeT8kUvmyRY8lQf+YgOyfgshFKbmcKVTSuzeUkouCGrn9wZ6lTqPYsqP2So+lk6owMeLt4OG0Fmlv1FBxKo96P+3kvqrcBg=="
 }

@@ -9,6 +9,7 @@
     name: '', date: '', mode: 'rotation', discipline: 'doubles', teamCount: 2,
     format: 'groups', groupCount: 2, advance: 2, thirdPlace: true,
     courts: 2, startTime: '09:00', endTime: '', matchMinutes: 30, breakMinutes: 0, minWomenDoubles: 1, maxGames: 6,
+    notice: '', // 모두에게 보이는 안내 문구 (회식 장소 등)
     fmMenEqual: true, mustFace: '', sameNtrpGame: '', avoidPairs: '', // 특별 규칙(개인전): 혼복 남자 NTRP 동일 / 혼복 필수 대진(이름 2개) / 동일 NTRP 남복 1경기 / 같은 조 금지(이름 쌍 목록)
   };
   const emptyState = () => ({ players: [], settings: { ...DEFAULT_SETTINGS }, units: [], schedule: null, results: {}, editMode: false });
@@ -100,7 +101,7 @@
   function showCover(on) {
     const cv = $('#cover'); if (!cv) return;
     cv.hidden = !on; document.body.classList.toggle('cover-on', on);
-    if (on) { $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
+    if (on) { const cn = $('#cover-notice'); if (cn) { cn.textContent = state.settings.notice || ''; cn.hidden = !state.settings.notice; } $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
   }
   $('#cover')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-go]'); if (!b) return;
@@ -190,6 +191,7 @@
     const fd = new FormData(formSettings); const s = { ...state.settings };
     for (const [k, v] of fd.entries()) s[k] = v;
     s.thirdPlace = fd.get('thirdPlace') === 'on'; s.fmMenEqual = fd.get('fmMenEqual') === 'on';
+    s.notice = String(s.notice || '').trim().slice(0, 200);
     s.mustFace = String(s.mustFace || '').trim().slice(0, 60); s.avoidPairs = String(s.avoidPairs || '').trim().slice(0, 300); { const v = parseFloat(String(s.sameNtrpGame || '').replace(/[^\d.]/g, '')); s.sameNtrpGame = Number.isFinite(v) ? String(v) : ''; }
     for (const k of ['maxGames', 'minWomenDoubles', 'teamCount', 'groupCount', 'advance', 'courts', 'matchMinutes', 'breakMinutes']) s[k] = Math.max(0, parseInt(s[k], 10) || 0);
     s.courts = Math.max(1, s.courts); s.teamCount = Math.max(2, s.teamCount || 2); s.maxGames = Math.max(1, s.maxGames || 6); s.groupCount = Math.max(1, s.groupCount); s.advance = Math.max(1, s.advance); s.matchMinutes = Math.max(5, s.matchMinutes);
@@ -869,6 +871,7 @@
     hydrateSettings();
     $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
     $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
+    const nb = $('#notice-bar'); if (nb) { nb.textContent = state.settings.notice || ''; nb.hidden = !state.settings.notice; }
     const ap = $('#chk-autopub'); if (ap) ap.checked = localStorage.getItem('tennisweet.autopub') === '1';
     renderPlayers(); renderUnits();
     if (state.schedule) resolveKO();

@@ -20,7 +20,7 @@
     <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
   </div>
   <nav class="cover-menu" aria-label="메뉴">
-    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span></div>
+    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span><span id="cover-notice" class="cover-notice" hidden></span></div>
     <button data-go="schedule" class="menu-main"><svg class="ic"><use href="#i-court"/></svg>경기 일정표</button>
     <div class="cover-grid">
       <button data-go="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button>
@@ -161,6 +161,8 @@
     <label>경기당 소요 시간(분) <input name="matchMinutes" type="number" min="5" step="5" value="30"></label>
     <label>경기 간 휴식(분) <input name="breakMinutes" type="number" min="0" step="5" value="0"></label>
     <label>경기당 최대 게임 수 <input name="maxGames" type="number" min="1" max="20" value="6"> <span class="hint">점수 입력 상한 (기본 6게임)</span></label>
+    <label class="span2">안내 문구 <input name="notice" maxlength="200" placeholder="예: 회식 · 통속 · 22:00부터" autocomplete="off"> <span class="hint">일정표 맨 위와 첫 화면에 모두에게 표시됩니다 (비우면 숨김)</span></label>
+
     <label>여복 최소 경기 수 <input name="minWomenDoubles" type="number" min="0" value="1"> <span class="hint">여성 4명이 같은 시간대에 있을 때 여복(여 2 대 여 2)을 이 수 이상 편성</span></label>
 
     <fieldset class="span2 only-editor" id="fs-special">
@@ -197,6 +199,7 @@
     <p id="print-meta"></p>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
+  <p id="notice-bar" class="notice" hidden></p>
   <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button><button class="btn-regen only-editor" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label><label class="inline only-editor" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
     <label class="autopub only-editor" title="스코어를 입력하면 몇 초 뒤 자동으로 게시합니다"><input type="checkbox" id="chk-autopub"> 스코어 입력 시 자동 게시</label></div>
   <div class="row no-print">
