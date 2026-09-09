@@ -306,9 +306,9 @@ body.cover-on header.topbar, body.cover-on #view-banner, body.cover-on main, bod
 .cover-menu button:hover { background: rgba(255,255,255,.16); }
 .cover-menu button.menu-main { background: var(--accent); border-color: var(--accent-deep); font-size: 18px; }
 .cover-menu button.menu-main:hover { background: var(--accent-deep); }
-.cover-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.cover-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .cover-grid button.only-view { display: none; }
-body.view-only .cover-grid button.only-view { display: block; grid-column: span 3; background: rgba(255,255,255,.04); font-weight: 500; font-size: 14px; min-height: 44px; }
+body.view-only .cover-grid button.only-view { display: block; grid-column: span 2; background: rgba(255,255,255,.04); font-weight: 500; font-size: 14px; min-height: 44px; }
 @media (min-width: 900px) {
   .cover { grid-template-columns: 1fr 380px; grid-template-rows: 1fr; }
   .cover-art img { max-height: 100vh; }
@@ -340,7 +340,7 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 /* ---- 아이콘 ---- */
 .ic { width: 18px; height: 18px; vertical-align: -4px; margin-right: 6px; flex: none; }
 .tabs button .ic { width: 17px; height: 17px; opacity: .9; }
-.cover-menu button { display: flex; align-items: center; justify-content: center; }
+.cover-menu button { display: flex; align-items: center; justify-content: center; white-space: nowrap; }
 .cover-menu button .ic { width: 20px; height: 20px; margin-right: 8px; }
 .cover-menu button.menu-main .ic { width: 22px; height: 22px; }
 .actions button .ic { width: 15px; height: 15px; vertical-align: -3px; margin-right: 4px; }
@@ -362,3 +362,6 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .mapbtn .ic { width: 16px; height: 16px; }
 #form-venue { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--rule); }
 @media (max-width: 560px) { .venue-card { padding: 14px; } .venue-head { font-size: 18px; } .vk { flex-basis: 62px; } }
+
+.cover-grid button { font-size: 15px; padding: 13px 10px; }
+@media (max-width: 380px) { .cover-grid button { font-size: 14px; padding: 12px 6px; } .cover-menu button .ic { margin-right: 6px; } }
