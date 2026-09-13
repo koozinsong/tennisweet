@@ -370,3 +370,10 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 
 .cover-grid button { font-size: 15px; padding: 13px 10px; }
 @media (max-width: 380px) { .cover-grid button { font-size: 14px; padding: 12px 6px; } .cover-menu button .ic { margin-right: 6px; } }
+
+/* ---- 대회 페이지 (이번 대회 · 지난 대회) ---- */
+.tour-card { border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px; background: #fff; box-shadow: var(--shadow); }
+.tour-head { display: flex; flex-direction: column; gap: 2px; font-size: 18px; margin-bottom: 4px; }
+.tour-item { text-align: left; cursor: pointer; align-items: flex-start; font: inherit; }
+.tour-item:hover { border-color: var(--court); background: #f6faf7; }
+.chip.f { background: var(--ff-bg); color: var(--ff); }

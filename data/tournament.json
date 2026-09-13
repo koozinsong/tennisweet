@@ -153,6 +153,66 @@
       "note": "",
       "active": true,
       "ntrpEnc": "t/xK6NdmsjffRVnl.ODgYCQ0ld5GWMb7wsi0AJs0="
+    },
+    {
+      "id": "t136ug1",
+      "name": "김성모",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
+    },
+    {
+      "id": "g261xhp",
+      "name": "김진모",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
+    },
+    {
+      "id": "uqb3sp3",
+      "name": "박종일",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
+    },
+    {
+      "id": "ev1tqiv",
+      "name": "이현용",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
+    },
+    {
+      "id": "328ljva",
+      "name": "이종민",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
+    },
+    {
+      "id": "df9dtam",
+      "name": "성기호",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false
     }
   ],
   "settings": {
@@ -628,6 +688,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-09-11T12:43:37.570Z",
+  "publishedAt": "2026-09-13T12:47:20.036Z",
   "ghTokenEnc": "H+N3QjoNhUz5eoTw.eopX1E4nTCEWJQo2V9EC1hLrvQhM8Ap3lU6ZNqY87cGBfqDjBvzaZDqshH5tl8r99fCnnsOzWLNQSVhsuOfqBv15O2SWSwqNQyF6Tjl39VNc8NaKeyqis3HFzAy97DDMOt2ToYvkTNsQkPEf0g=="
 }

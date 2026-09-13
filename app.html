@@ -29,6 +29,7 @@
       <button data-go="players"><svg class="ic"><use href="#i-users"/></svg>선수</button>
       <button data-go="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
       <button data-go="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
+      <button data-go="tournament"><svg class="ic"><use href="#i-calendar"/></svg>지난 대회</button>
       <button data-go="admin" class="only-view"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
     </div>
   </nav>
@@ -41,6 +42,7 @@
     <button data-tab="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
     <button data-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button>
     <button data-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위·대진</button>
+    <button data-tab="tournament"><svg class="ic"><use href="#i-calendar"/></svg>대회</button>
     <button data-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
   </nav>
   <div class="actions">
@@ -90,7 +92,7 @@
 <!-- ============ ① 선수 ============ -->
 <section id="tab-players" class="tab active">
   <h2 id="players-title">선수 명단</h2>
-  <p class="hint only-view">참가 선수 명단입니다. 합류 시각은 그 시각부터 경기에 배정됨을 뜻합니다.</p>
+  <p class="hint only-view">클럽 전체 멤버 명단입니다. <b>대회 참가</b> 표시는 이번 대회 기준이고, 합류 시각은 그 시각부터 경기에 배정됨을 뜻합니다.</p>
   <p class="hint only-editor">기본 명단은 저장소의 <code>data/tournament.json</code> 게시본에서 불러오며, 편집 모드에서 추가·수정한 내용은 이 브라우저에 저장됩니다. 셀을 클릭하면 바로 수정할 수 있습니다. <b>합류 시각</b>을 비우면 대회 시작부터 참가합니다. <b>NTRP</b> 는 관리자 로그인 시에만 표시되며 파일에도 암호화되어 저장됩니다. <b>같은팀 묶음</b>에 같은 표시(예: A)를 넣은 선수들은 항상 한 팀에 배정됩니다 (관리자에게만 표시).</p>
   <form id="form-player" class="row">
     <input name="name" placeholder="이름" required>
@@ -109,13 +111,13 @@
     </form>
   </details>
   <div class="table-wrap"><table class="list" id="tbl-players">
-    <thead><tr><th>#</th><th>참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th class="only-editor">같은팀 묶음</th><th>메모</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>대회 참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th>합류</th><th>퇴장</th><th class="only-editor">같은팀 묶음</th><th>메모</th><th></th></tr></thead>
     <tbody></tbody>
   </table></div>
   <div class="row only-editor">
     <button id="btn-players-all">전원 참가</button>
     <button id="btn-players-none">전원 불참</button>
-    <span class="hint">참가 체크된 선수만 팀 구성에 포함됩니다.</span>
+    <span class="hint">대회 참가 체크된 선수만 대회 편성에 포함됩니다. 명단은 클럽 전체 멤버를 유지하세요.</span>
   </div>
   <div class="row only-editor">
     <button class="btn-regen primary" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button>
@@ -213,6 +215,12 @@
   <p class="hint only-editor">스코어 칸에 게임 수를 입력하면 순위가 자동 갱신됩니다. ⚠ 표시는 같은 시간대에 겹치는 참가자 또는 코트 중복입니다.</p>
   <div id="schedule-view"></div>
   <div id="games-summary"></div>
+</section>
+
+<!-- ============ ⑧ 대회 (이번 대회 · 지난 대회 보관) ============ -->
+<section id="tab-tournament" class="tab">
+  <h2>대회</h2>
+  <div id="tour-view"></div>
 </section>
 
 <!-- ============ ⑥ 회식 장소 ============ -->
