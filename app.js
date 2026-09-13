@@ -1438,40 +1438,18 @@
     get(path) { const v = this.all()[path]; return v ? JSON.parse(JSON.stringify(v)) : null; },
     set(path, v) { const a = this.all(); if (v == null) delete a[path]; else a[path] = v; localStorage.setItem(this.key, JSON.stringify(a)); },
   };
+  // 저장 위치: 지금은 코드 저장소의 data/weekly/… (관리자 토큰으로 main·gh-pages 에 커밋). 프록시를 붙이면 별도 저장소(DATA_BASE)로 옮긴다
+  const WK_PATH = (path) => 'data/' + path;
   async function dataRead(path) {
     if (WK_MOCK) return wkMock.get(path);
-    try { const r = await fetch(DATA_BASE + path + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
+    try { const r = await fetch(WK_PATH(path) + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
   }
-  /** 관리자 토큰으로 데이터 저장소 파일 갱신: 현재 내용을 읽어 mutate(json|null) 의 결과를 커밋 (null 이면 중단). 토큰 권한 부족이면 두 저장소용 토큰을 새로 묻는다 */
+  /** 관리자 토큰으로 정기 모임 파일 갱신: mutate(json|null) → 새 json (null 이면 중단) */
   async function dataAdminUpdate(path, mutate, msg) {
     if (WK_MOCK) { const next = mutate(wkMock.get(path)); if (next == null) return false; wkMock.set(path, next); return true; }
-    let tok = await loadToken(); if (!tok) { tok = await askToken(); if (!tok) return false; await saveToken(tok); }
-    for (let retry = 0; retry < 2; retry++) {
-      try {
-        const url = `https://api.github.com/repos/${GH.owner}/${GH_DATA.repo}/contents/${path}`;
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const cur = await fetch(`${url}?ref=${GH_DATA.branch}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' });
-          if (cur.status === 401 || cur.status === 403) throw Object.assign(new Error('AUTH'), { status: cur.status });
-          if (cur.status !== 200 && cur.status !== 404) throw new Error(`조회 실패 (${cur.status})`);
-          const body = cur.status === 200 ? await cur.json() : null;
-          let json = null; if (body?.content) { try { json = JSON.parse(new TextDecoder().decode(unb64(body.content.replace(/\n/g, '')))); } catch {} }
-          const next = mutate(json); if (next == null) return false;
-          const res = await fetch(url, { method: 'PUT', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, content: b64utf8(JSON.stringify(next, null, 1) + '\n'), branch: GH_DATA.branch, ...(body?.sha ? { sha: body.sha } : {}) }) });
-          if (res.ok) return true;
-          const eb = await res.json().catch(() => ({}));
-          if (res.status === 401) throw Object.assign(new Error('AUTH'), { status: 401 });
-          if (res.status === 404 || (res.status === 403 && !/rate limit|abuse|secondary/i.test(eb.message || ''))) throw Object.assign(new Error('NOPERM'), { status: res.status });
-          if (res.status === 409 || res.status === 422) continue; // 동시 변경 → 다시 읽고 재시도
-          throw new Error(`커밋 실패 (${res.status}) ${eb.message || ''}`);
-        }
-        throw new Error('동시에 다른 변경이 있어 저장하지 못했습니다. 다시 시도하세요.');
-      } catch (e) {
-        if ((e.message === 'AUTH' || e.message === 'NOPERM') && retry === 0) { forgetToken(); const t2 = await askToken(`이 토큰으로는 데이터 저장소에 쓸 수 없습니다. Repository access 에 koozinsong/tennisweet 와 koozinsong/${GH_DATA.repo} 두 저장소를 넣고 Contents: Read and write 권한을 준 토큰을 넣어 주세요.`); if (!t2) return false; await saveToken(t2); tok = t2; continue; }
-        alert('저장 실패: ' + e.message); return false;
-      }
-    }
-    return false;
+    return repoAdminUpdate(WK_PATH(path), mutate, msg);
   }
+  const wkCanWrite = () => WK_MOCK || !!adminKey || !!W.index?.proxy; // 저장 수단: 로컬 모의 / 관리자 토큰 / 프록시
   const wkClosed = (doc) => doc?.status === 'closed' || (/^\d{4}-\d{2}-\d{2}$/.test(doc?.date || '') && Date.parse(doc.date + 'T00:00:00+09:00') + 86400000 <= Date.now()); // 모임 다음날 0시(KST)부터 읽기 전용
   /** 멤버 쓰기: 프록시에 작업 1건 전송 (로컬은 모의 저장소에 직접 적용) */
   async function proxySend(op) {
@@ -1481,10 +1459,25 @@
       const r = applyWeeklyOp(doc, op); if (!r.ok) return { ok: false, code: r.code, rev: doc.rev, doc };
       wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200)); return { ok: true, rev: doc.rev, doc };
     }
+    if (adminKey) return adminApplyOp(op); // 관리자: 자기 토큰으로 직접 저장
     const url = W.index?.proxy; if (!url) return { ok: false, code: 'NOPROXY' };
     try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); return await r.json(); } // Content-Type 미지정(text/plain) → preflight 없음
     catch (e) { return { ok: false, code: 'NETWORK', detail: e.message }; }
   }
+  /** 관리자 토큰으로 세션 파일에 작업 적용 (프록시와 같은 규칙: 마감 검사 → applyWeeklyOp → 커밋, 동시 변경은 다시 읽어 재시도) */
+  async function adminApplyOp(op) {
+    let fail = null, result = null;
+    const ok = await repoAdminUpdate(WK_PATH(`weekly/sessions/${op.session}.json`), (cur) => {
+      if (!cur) { fail = { ok: false, code: 'NOSESSION' }; return null; }
+      let doc; try { doc = assertWeekly(cur); } catch { fail = { ok: false, code: 'INVALID' }; return null; }
+      if (wkClosed(doc)) { fail = { ok: false, code: 'CLOSED', rev: doc.rev, doc }; return null; }
+      const r = applyWeeklyOp(doc, op); if (!r.ok) { fail = { ok: false, code: r.code, rev: doc.rev, doc }; return null; }
+      result = doc; return doc;
+    }, wkCommitMsg(op));
+    if (fail) return fail; if (!ok || !result) return { ok: false, code: 'GITHUB' };
+    return { ok: true, rev: result.rev, doc: result };
+  }
+  const wkCommitMsg = (op) => { const who = op.by ? ` by ${String(op.by).slice(0, 20)}` : ''; return op.op === 'set' ? `정기 모임 ${op.session} ${op.path}${op.value == null ? ' 삭제' : ''}${who}` : `정기 모임 ${op.session} 대진 ${op.value ? '#' + (op.value.seed | 0) : '삭제'}${who}`; };
   // ---- 상태 ----
   const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, busy: false, retry: null, lastMsg: '', cache: {}, hist: null, histFor: null };
   const ymdOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -1522,7 +1515,7 @@
   // ---- 쓰기 (낙관적 반영 → 순서대로 전송) ----
   let wkQueue = Promise.resolve();
   function wkSend(op) {
-    const full = { v: 1, club: 'tennisweet', session: W.id, ...op };
+    const full = { v: 1, club: 'tennisweet', session: W.id, by: W.me || '', ...op };
     if (W.doc) { const d = JSON.parse(JSON.stringify(W.doc)); const r = applyWeeklyOp(d, full); if (r.ok) { W.doc = d; renderWeeklyView(); } }
     const p = wkQueue.then(() => wkSendNow(full)); wkQueue = p.catch(() => {}); return p;
   }
@@ -1530,7 +1523,7 @@
     W.busy = true; wkStatus('저장 중…');
     const res = await proxySend(op); W.busy = false;
     if (res.ok) { if (!W.doc || (res.rev | 0) >= (W.doc.rev | 0)) { try { W.doc = assertWeekly(res.doc); } catch {} } W.retry = null; W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
-    const msg = { STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '저장 서버 주소가 아직 설정되지 않았습니다 (관리자)', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장소 오류 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
+    const msg = { STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     if (res.doc) { try { W.doc = assertWeekly(res.doc); } catch {} }
     W.retry = ['NETWORK', 'BUSY', 'GITHUB'].includes(res.code) ? op : null;
     if (!res.doc && !W.retry) await wkLoadDoc(W.id, { quiet: true });
@@ -1546,14 +1539,14 @@
     if (!list.length) { box.innerHTML = `<p class="hint">아직 만들어진 모임 날짜가 없습니다.${editor ? ' 위에서 날짜를 만드세요.' : ' 관리자가 날짜를 만들면 여기서 참석을 체크할 수 있습니다.'}</p>`; return; }
     let html = `<div class="chips wk-sessions">${list.slice(0, 10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
-    const s = wkSettings(doc); const closed = wkClosed(doc); const att = wkAttendees(doc); const hours = wkHours(s);
+    const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
     const cnt = (h) => att.filter((p) => toMin(p.from) <= h * 60 && toMin(p.until) >= (h + 1) * 60).length;
     html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · 코트 ${s.courts}면 · ${s.matchMinutes}분 경기</span>${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${esc(name)}${a ? `<small>${esc(a.from.slice(0, 2))}~${esc(a.until.slice(0, 2))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
     html += `<h3>참석 ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
-      <p class="hint">${closed ? '지난 모임의 참석 기록입니다.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
+      <p class="hint">${wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
       <div class="chips wk-chips">${members.map((p) => chip(p.id, p.name, doc.attendance[p.id], false)).join('')}${guests.map((p) => chip(p.id, p.name, doc.attendance[p.id], true)).join('')}${closed ? '' : `<button class="chip wk-chip add ${W.edit?.guest && !W.edit.id ? 'sel' : ''}" id="wk-guest-add">+ 게스트</button>`}</div>`;
     if (W.edit && !closed) html += wkPanelHtml(s);
     html += `<div class="wk-status-row"><span id="wk-status" class="sub"></span><button id="wk-retry" class="small" hidden>다시 시도</button></div>`;
@@ -1636,7 +1629,7 @@
     W.hist = H; W.histFor = curId; return H;
   }
   async function wkGenerate(mode) {
-    const doc = W.doc; if (!doc || wkClosed(doc)) return; const s = wkSettings(doc); const att = wkAttendees(doc);
+    const doc = W.doc; if (!doc || wkClosed(doc) || !wkCanWrite()) return; const s = wkSettings(doc); const att = wkAttendees(doc);
     if (att.length < 4) { toast('4명 이상 참석해야 대진을 만들 수 있습니다'); return; }
     const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1;
     if (mode === 'left') { fromSlot = wkFromSlot(doc, s); gen = doc.schedule?.gen || 1; if (fromSlot === 0 && hasDone && !confirm('아직 시작 전이라 전체를 다시 만듭니다. 완료 표시가 지워질 수 있습니다. 계속할까요?')) return; }
@@ -1678,7 +1671,7 @@
       }
       if (!shown) html += `<p class="hint">${filter === 'left' ? '남은 대진이 없습니다. 모두 완료했습니다 🎾' : '경기가 없습니다.'}</p>`;
       html += wkSummaryHtml(doc, s, ms);
-    } else if (closed) html += '<p class="hint">이 모임에는 대진이 없었습니다.</p>';
+    } else if (closed) html += `<p class="hint">${wkClosed(doc) ? '이 모임에는 대진이 없었습니다.' : '대진은 관리자가 만들면 여기에 표시됩니다.'}</p>`;
     return html;
   }
   /** 인당 경기 수 요약 (접기) */
@@ -1695,7 +1688,7 @@
     if (t.closest('#wk-regen-left')) { await wkGenerate('left'); return; }
     if (t.closest('#wk-reshuffle')) { await wkGenerate('reshuffle'); return; }
     const fb = t.closest('[data-wk-filter]'); if (fb) { W.filter = fb.dataset.wkFilter; renderWeeklyView(); return; }
-    const card = t.closest('[data-wk-done]'); if (card && W.doc && !wkClosed(W.doc)) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
+    const card = t.closest('[data-wk-done]'); if (card && W.doc && !wkClosed(W.doc) && wkCanWrite()) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
   }
   /** 관리자: 모임 삭제 (목록에서 빼고 세션 파일도 지움) */
   async function wkDeleteSession(id) {
@@ -1707,17 +1700,19 @@
     await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`);
     delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; } toast(`${fmtDate(id)} 모임을 삭제했습니다`); await weeklyRefresh();
   }
-  /** 관리자 토큰으로 데이터 저장소 파일 삭제 (없으면 무시) */
+  /** 관리자 토큰으로 정기 모임 파일 삭제 (main·gh-pages, 없으면 무시) */
   async function dataAdminDelete(path, msg) {
     if (WK_MOCK) { wkMock.set(path, null); return true; }
-    const tok = await loadToken(); if (!tok) return false;
-    try {
-      const url = `https://api.github.com/repos/${GH.owner}/${GH_DATA.repo}/contents/${path}`;
-      const cur = await fetch(`${url}?ref=${GH_DATA.branch}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' }); if (cur.status === 404) return true; if (!cur.ok) return false;
-      const { sha } = await cur.json();
-      const res = await fetch(url, { method: 'DELETE', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, sha, branch: GH_DATA.branch }) });
-      if (!res.ok) toast('파일 삭제는 실패했지만 목록에서는 뺐습니다'); return res.ok;
-    } catch { return false; }
+    const tok = await loadToken(); if (!tok) return false; let ok = true;
+    for (const br of GH.branches) {
+      try {
+        const url = `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${WK_PATH(path)}`;
+        const cur = await fetch(`${url}?ref=${br}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' }); if (cur.status === 404) continue; if (!cur.ok) { ok = false; continue; }
+        const { sha } = await cur.json();
+        const res = await fetch(url, { method: 'DELETE', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, sha, branch: br }) }); if (!res.ok && br === 'main') ok = false;
+      } catch { ok = false; }
+    }
+    if (!ok) toast('파일 삭제는 실패했지만 목록에서는 뺐습니다'); return ok;
   }
   // ---- 관리자: 날짜 만들기 · 프록시 주소 ----
   $('#wk-form-session')?.addEventListener('submit', async (e) => {

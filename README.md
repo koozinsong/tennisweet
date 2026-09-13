@@ -38,11 +38,11 @@
 
 - 화면: 첫 화면 **정기 모임** → 날짜 칩 → 이름을 눌러 도착·퇴장 시각 선택(참석 저장) → **대진 생성** 버튼 → 시간대별 카드, 카드를 누르면 완료(다시 누르면 취소), "남은 대진" 필터. 게스트는 [+ 게스트]로 그 날짜에만 추가(이름·남/여 필수). 참석이 바뀌면 "남은 시간대 다시 짜기"로 아직 시작하지 않은 시간대만 다시 만듭니다. 최근 6회 모임에서 같이 뛴 파트너·상대는 벌점을 받아 다음 주에는 다른 사람과 붙습니다.
 - 관리자: 정기 모임 탭 위의 **정기 모임 생성** 카드에서 날짜·코트·경기 시간·시작/종료·여복 최소를 넣고 만들기. 목록의 🗑 삭제로 지웁니다. **게시하기는 필요 없습니다** — 정기 모임 데이터는 저장 즉시 반영됩니다.
-- 데이터는 별도 저장소 **`koozinsong/tennisweet-data`** 의 정적 파일입니다: `weekly/index.json`(모임 목록·저장 서버 주소, 관리자 토큰으로 씀), `weekly/sessions/<날짜>.json`(참석·대진·완료, 프록시가 씀). 읽기는 GitHub Pages(`https://koozinsong.github.io/tennisweet-data/…`), 화면은 20초마다 갱신. 모임 다음날 0시부터는 읽기 전용.
-- 멤버 폰에는 어떤 토큰도 없습니다. 참석·대진·완료 저장은 **Google Apps Script 웹앱(프록시)** 이 대신 커밋합니다(`tools/gas-proxy/Code.gs`). 프록시는 세션 파일의 `attendance.*`·`done.*`·`schedule` 만 바꿀 수 있고, 대진 저장은 수정 번호(rev)를 비교해 먼저 온 쪽이 남습니다.
-- 로컬(`localhost`)에서는 GitHub 대신 브라우저 안 모의 저장소를 씁니다(게시하기·정기 모임 모두). `?store=live` 를 붙이면 실제 데이터 저장소를 읽습니다.
+- **지금 구성 (관리자 저장)**: 정기 모임 데이터는 이 저장소의 `data/weekly/index.json`(모임 목록)과 `data/weekly/sessions/<날짜>.json`(참석·대진·완료)에 있고, **관리자 토큰**이 게시하기와 같은 방식으로 `main`·`gh-pages` 에 직접 커밋합니다. 방문자는 보기만 하며(참석은 관리자에게 알려 주면 관리자가 입력), 화면은 20초마다 갱신됩니다. 모임 다음날 0시부터는 읽기 전용.
+- **나중 구성 (멤버 직접 저장)**: Google Apps Script 프록시(`tools/gas-proxy/Code.gs`)를 배포하고 관리자 화면의 "저장 서버 주소"에 넣으면 멤버 폰에서도 참석·대진·완료를 저장할 수 있습니다. 그때는 데이터를 별도 저장소(`tennisweet-data`, 코드에 `DATA_BASE`)로 옮겨 프록시 토큰의 권한을 그 저장소로 한정합니다. 아래 설정 절차는 그 단계용입니다.
+- 로컬(`localhost`)에서는 GitHub 대신 브라우저 안 모의 저장소를 씁니다(게시하기·정기 모임 모두). `?store=live` 를 붙이면 실제 데이터를 읽습니다.
 
-### 처음 한 번 설정 (관리자)
+### 멤버 직접 저장(프록시)으로 바꿀 때의 설정
 1. GitHub 에서 저장소 **`tennisweet-data`** 를 공개로 만들기 (README 추가에 체크해 `main` 브랜치가 생기게). Settings → Pages → Source: *Deploy from a branch*, `main` / `/ (root)` 저장.
 2. **관리자 토큰 재발급**: https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* 에 `tennisweet` 와 `tennisweet-data` 둘 다, Permissions: Contents *Read and write*. 관리자 페이지에서 정기 모임을 처음 만들 때 토큰을 다시 물으면 이 토큰을 붙여넣습니다 (이후 게시하기도 같은 토큰).
 3. **프록시용 토큰**: 같은 방법으로 `tennisweet-data` 만 선택한 Contents Read and write 토큰을 하나 더 발급 (앱에 넣지 않고 다음 단계에만 씀).
