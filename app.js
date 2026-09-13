@@ -1474,7 +1474,7 @@
     catch (e) { return { ok: false, code: 'NETWORK', detail: e.message }; }
   }
   // ---- 상태 ----
-  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, busy: false, retry: null, cache: {} };
+  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, busy: false, retry: null, lastMsg: '', cache: {} };
   const ymdOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtDate = (ymd) => { const d = new Date(ymd + 'T00:00:00'); return isNaN(d) ? ymd : `${d.getMonth() + 1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`; };
   const isToday = (ymd) => ymd === ymdOf();
@@ -1517,7 +1517,7 @@
   async function wkSendNow(op) {
     W.busy = true; wkStatus('저장 중…');
     const res = await proxySend(op); W.busy = false;
-    if (res.ok) { if (!W.doc || (res.rev | 0) >= (W.doc.rev | 0)) { try { W.doc = assertWeekly(res.doc); } catch {} } W.retry = null; wkStatus('저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })); renderWeeklyView(); wkUpdateCover(); return true; }
+    if (res.ok) { if (!W.doc || (res.rev | 0) >= (W.doc.rev | 0)) { try { W.doc = assertWeekly(res.doc); } catch {} } W.retry = null; W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
     const msg = { STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '저장 서버 주소가 아직 설정되지 않았습니다 (관리자)', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장소 오류 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     if (res.doc) { try { W.doc = assertWeekly(res.doc); } catch {} }
     W.retry = ['NETWORK', 'BUSY', 'GITHUB'].includes(res.code) ? op : null;
@@ -1547,7 +1547,7 @@
     html += `<div class="wk-status-row"><span id="wk-status" class="sub"></span><button id="wk-retry" class="small" hidden>다시 시도</button></div>`;
     html += wkScheduleHtml(doc, s, closed);
     box.innerHTML = html;
-    wkStatus(W.busy ? '저장 중…' : W.retry ? '저장하지 못한 변경이 있습니다' : '', !!W.retry);
+    wkStatus(W.busy ? '저장 중…' : W.retry ? '저장하지 못한 변경이 있습니다' : W.lastMsg || '', !!W.retry);
     const ni = $('#wk-guest-name'); if (ni && W.edit?.guest && !W.edit.id && !W.edit.name) ni.focus();
   }
   function wkScheduleHtml(doc, s, closed) { return ''; } // 2단계: 대진 생성·완료 체크
