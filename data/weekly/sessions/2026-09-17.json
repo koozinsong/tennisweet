@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 4,
+ "rev": 5,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -24,10 +24,16 @@
    "g": "M",
    "from": "19:00",
    "until": "22:00"
+  },
+  "45sqltb": {
+   "n": "정배근",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-13T14:08:11.199Z"
+ "updatedAt": "2026-09-13T14:08:30.143Z"
 }
