@@ -101,8 +101,18 @@
   function showCover(on) {
     const cv = $('#cover'); if (!cv) return;
     cv.hidden = !on; document.body.classList.toggle('cover-on', on);
-    if (on) { wkUpdateCover(); $('#cover-name').textContent = state.settings.name || '테니스윗 분기 대회'; $('#cover-meta').textContent = [state.settings.date, state.schedule ? `${state.schedule.matches.filter((m) => !m.bye).length}경기` : '', modeLabel()].filter(Boolean).join(' · '); window.scrollTo(0, 0); }
+    if (on) { updateCover(); window.scrollTo(0, 0); }
   }
+  /** 첫 화면 메뉴: 진행 중인 대회가 있으면 큰 버튼이 '경기 일정표', 아니면 '대회'(지난 대회) */
+  function updateCover() {
+    const live = liveTournament(); const s = state.settings;
+    $('#cover-name').textContent = live ? (s.name || '테니스윗 대회') : '테니스윗';
+    $('#cover-meta').textContent = live ? [s.date, `${state.schedule.matches.filter((m) => !m.bye).length}경기`, modeLabel()].filter(Boolean).join(' · ') : (T.index?.events?.length ? `지난 대회 ${T.index.events.length}회` : '');
+    const tb = $('#cover-tour'); if (tb) { tb.dataset.go = live ? 'schedule' : 'tournament'; $('#cover-tour-text').textContent = live ? '경기 일정표' : '대회'; tb.querySelector('use')?.setAttribute('href', live ? '#i-court' : '#i-trophy'); }
+    wkUpdateCover();
+  }
+  /** 진행 중인 대회 = 일정표가 있고 아직 같은 날짜로 보관되지 않은 대회 */
+  const liveTournament = () => !!state.schedule && !(T.index?.events || []).some((e) => e.date && e.date === state.settings.date);
   $('#cover')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-go]'); if (!b) return;
     if (b.dataset.go === 'admin') { adminLogin(); return; }
@@ -112,7 +122,7 @@
 
   // ================= 탭 =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
-  const TAB_GROUP = { schedule: 'tournament', standings: 'tournament', units: 'tournament', setup: 'tournament' }; // 방문자 화면에서 숨긴 탭은 '대회' 탭 소속으로 표시
+  const TAB_GROUP = { schedule: 'tournament', standings: 'tournament', units: 'tournament', setup: 'tournament', venue: 'tournament' }; // 방문자 화면에서 숨긴 탭은 '대회' 탭 소속으로 표시
   function showTab(name) {
     $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name || (viewOnly && TAB_GROUP[name] === b.dataset.tab); b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
@@ -875,10 +885,14 @@
     const box = $('#venue-view'); if (!box) return;
     const v = venueOf(); const f = $('#form-venue');
     if (f) for (const k of VENUE_FIELDS) { const el = f.elements[k]; if (el) el.value = v[k]; }
-    if (!v.name && !v.addr && !v.note) { box.innerHTML = `<p class="hint">${viewOnly ? '회식 장소는 아직 안내되지 않았습니다.' : '아래에서 회식 장소를 입력하세요. 입력한 내용이 이 화면과 첫 화면 메뉴에 표시됩니다.'}</p>`; return; }
+    if (!v.name && !v.addr && !v.note) { box.innerHTML = `<p class="hint">${viewOnly ? '회식 장소는 아직 안내되지 않았습니다.' : '아래에서 회식 장소를 입력하세요. 입력한 내용이 대회 화면에 표시됩니다.'}</p>`; return; }
+    box.innerHTML = venueCardHtml(v);
+  }
+  /** 회식 장소 카드 (대회 화면·보관본 공용) */
+  function venueCardHtml(v) {
     const q = encodeURIComponent([v.name, v.addr].filter(Boolean).join(' '));
     const row = (label, val, extra = '') => (val ? `<div class="vrow"><span class="vk">${esc(label)}</span><span class="vv">${extra || esc(val)}</span></div>` : '');
-    box.innerHTML = `<div class="venue-card">
+    return `<div class="venue-card">
       <div class="venue-head"><svg class="ic"><use href="#i-cup"/></svg><b>${esc(v.name || '회식')}</b>${v.time ? `<span class="venue-time">${esc(v.time)}</span>` : ''}</div>
       ${row('주소', v.addr)}${row('전화', v.phone, `<a href="${esc(telHref(v.phone))}">${esc(v.phone)}</a>`)}${row('메뉴·회비', v.menu)}${row('안내', v.note)}
       <div class="venue-map no-print"><iframe src="https://maps.google.com/maps?q=${q}&z=16&hl=ko&output=embed" title="${esc(v.name || '회식 장소')} 지도" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe></div>
@@ -887,14 +901,14 @@
         <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://map.kakao.com/?q=${q}"><svg class="ic"><use href="#i-pin"/></svg>카카오맵</a>
         <a class="mapbtn" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query=${q}"><svg class="ic"><use href="#i-pin"/></svg>구글 지도</a>
       </div>
-      <p class="hint no-print">${v.addr ? '지도와 버튼은 주소 기준입니다.' : '지도와 버튼은 장소 이름 검색 결과입니다.'}${!v.addr && !viewOnly ? ' 아래에 주소를 입력하면 정확한 위치를 가리킵니다.' : ''}</p>
+      <p class="hint no-print">${v.addr ? '지도와 버튼은 주소 기준입니다.' : '지도와 버튼은 장소 이름 검색 결과입니다.'}</p>
     </div>`;
   }
   $('#form-venue')?.addEventListener('submit', (e) => {
     e.preventDefault(); if (viewOnly) return;
     const fd = new FormData(e.target); const v = {};
     for (const k of VENUE_FIELDS) v[k] = String(fd.get(k) || '').trim().slice(0, k === 'note' ? 200 : k === 'addr' ? 120 : 60);
-    state.settings.venue = v; save(); toast('회식 장소를 저장했습니다 · 게시하기를 누르면 모두에게 반영됩니다');
+    state.settings.venue = v; save(); renderTournament(); toast('회식 장소를 저장했습니다 · 게시하기를 누르면 모두에게 반영됩니다');
   });
 
   function render() {
@@ -1643,7 +1657,7 @@
     const ms = sch.matches.filter((m) => !m.bye).map((m) => { const o = { id: m.id, phase: m.phase, slot: m.slot, court: m.court }; for (const k of ['round', 'group', 'koRound', 'koSize', 'koIndex', 'third', 'aId', 'bId', 'aIds', 'bIds', 'aPlayers', 'bPlayers', 'aLabel', 'bLabel']) if (m[k] != null) o[k] = m[k]; return o; });
     const used = new Set(); ms.forEach((m) => matchPeople(m).filter(Boolean).forEach((x) => used.add(x))); state.units.forEach((u) => u.playerIds.forEach((x) => used.add(x)));
     return { v: 1, id, name: s.name || '', date: s.date || '', archivedAt: new Date().toISOString(),
-      settings: { mode: s.mode, discipline: s.discipline, courts: s.courts, startTime: s.startTime, endTime: s.endTime || '', matchMinutes: s.matchMinutes, breakMinutes: s.breakMinutes, venue: { name: s.venue?.name || '', time: s.venue?.time || '' } },
+      settings: { mode: s.mode, discipline: s.discipline, courts: s.courts, startTime: s.startTime, endTime: s.endTime || '', matchMinutes: s.matchMinutes, breakMinutes: s.breakMinutes, venue: venueOf() },
       players: state.players.filter((p) => used.has(p.id)).map((p) => ({ id: p.id, name: p.name, gender: p.gender || '' })),
       units: state.units.filter((u) => u.playerIds.length).map((u) => ({ id: u.id, name: u.name || '', playerIds: [...u.playerIds] })),
       schedule: { matches: ms, unitIds: [...(sch.unitIds || [])], groups: sch.groups || [], extraSlots: sch.extraSlots || 0 },
@@ -1657,7 +1671,7 @@
     doc.units = (Array.isArray(doc.units) ? doc.units : []).filter((u) => u && ID_RE.test(String(u.id))).map((u) => ({ id: u.id, name: String(u.name || '').slice(0, 30), playerIds: (Array.isArray(u.playerIds) ? u.playerIds : []).filter((x) => typeof x === 'string' && ID_RE.test(x)) }));
     doc.schedule = { matches: Array.isArray(doc.schedule?.matches) ? doc.schedule.matches : [] }; doc.results = doc.results && typeof doc.results === 'object' ? doc.results : {}; assertIds({ schedule: doc.schedule, results: doc.results });
     doc.settings = { ...(doc.settings || {}) }; for (const k of ['courts', 'matchMinutes', 'breakMinutes']) doc.settings[k] = Math.max(0, parseInt(doc.settings[k], 10) || 0); for (const k of ['startTime', 'endTime']) if (!TIME_RE.test(doc.settings[k] || '')) doc.settings[k] = k === 'startTime' ? '09:00' : '';
-    doc.settings.venue = { name: String(doc.settings.venue?.name || '').slice(0, 60), time: String(doc.settings.venue?.time || '').slice(0, 40) };
+    { const v = doc.settings.venue; const LIM = { name: 60, time: 40, addr: 120, phone: 30, menu: 60, note: 200 }; const out = {}; for (const k of Object.keys(LIM)) out[k] = typeof v?.[k] === 'string' ? v[k].trim().slice(0, LIM[k]) : ''; doc.settings.venue = out; }
     doc.name = String(doc.name || '').slice(0, 60); doc.date = /^\d{4}-\d{2}-\d{2}$/.test(String(doc.date || '')) ? doc.date : '';
     return doc;
   }
@@ -1685,6 +1699,7 @@
     }
     if (!ms.length) html += '<p class="hint">점수가 기록된 경기가 없습니다.</p>';
     else html += archivePodium(doc, ms, P, U, scoreOf);
+    const v = s.venue || {}; if (v.name || v.addr || v.note) html += `<h3>회식 장소</h3>${venueCardHtml(v)}`;
     return html;
   }
   /** 보관본 순위 상위 3 (승률 → 경기당 평균 득실 → 승수 → 득게임): 개인전은 선수, 팀전은 개인 기록, 고정조는 조 */
@@ -1707,15 +1722,21 @@
     const n = sch ? sch.matches.filter((m) => !m.bye).length : 0;
     let html = '';
     if (editor) html += `<h3>대회 생성</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
-      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button id="tour-archive" title="이번 대회의 대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button></div>
+      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button><button id="tour-archive" title="이번 대회의 대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button></div>
       <p class="hint">순서: 대회가 끝나면 <b>지난 대회로 보관</b> → <b>새 대회 시작</b> → 대회 설정(이름·날짜·방식) → 선수 탭에서 참가 체크 → 생성 → 게시. 보관에는 대진·참가자·경기 기록이 저장되고 순위표와 NTRP 는 남기지 않습니다.</p></div>`;
     html += '<h3>지난 대회</h3>';
-    if (T.doc) html += archiveHtml(T.doc);
-    else if (!T.index) html += `<p class="hint">${esc(T.indexErr || '불러오는 중…')}</p>`;
-    else if (!T.index.events.length) html += '<p class="hint">보관된 대회가 아직 없습니다.</p>';
-    else html += `<div class="cards">${T.index.events.map((ev) => `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>`).join('')}</div>`;
+    const live = liveTournament();
+    if (T.doc) html += (T.doc.id === LIVE_ID ? `<div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표 (전체)</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button></div>` : '') + archiveHtml(T.doc);
+    else {
+      const items = [];
+      if (live) items.push(`<button class="card tour-item live" data-arch="${LIVE_ID}"><b>${esc(s.name || '이번 대회')} <span class="tag type fm">진행 중</span></b><span class="sub">${esc(s.date || '')}${s.date ? ' · ' : ''}${modeLabel()} · ${n}경기 · 누르면 경기 기록, 전체 일정은 첫 화면의 경기 일정표</span></button>`);
+      if (!T.index) items.push(`<p class="hint">${esc(T.indexErr || '불러오는 중…')}</p>`);
+      else items.push(...T.index.events.map((ev) => `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>`));
+      html += items.length ? `<div class="cards">${items.join('')}</div>` : '<p class="hint">보관된 대회가 아직 없습니다.</p>';
+    }
     box.innerHTML = html;
   }
+  const LIVE_ID = 'live';
   /** 새 대회 시작: 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크를 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
   function newTournament() {
     if (!confirm('새 대회를 시작합니다.\n이 브라우저 작업본의 일정표·점수·팀 구성·회식 안내가 비워지고 참가 체크가 모두 해제됩니다 (선수 명단과 NTRP 는 유지, 게시본은 게시하기 전까지 그대로).\n먼저 "지난 대회로 보관"을 했는지 확인하세요. 계속할까요?')) return;
@@ -1728,9 +1749,10 @@
     const idx = await archRead('archive/index.json');
     if (idx && typeof idx === 'object') T.index = { v: 1, events: (Array.isArray(idx.events) ? idx.events : []).filter((e) => e && ARCH_RE.test(String(e.id || ''))).map((e) => ({ id: String(e.id), name: String(e.name || '').slice(0, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) ? e.date : '', mode: String(e.mode || '').slice(0, 10), players: e.players | 0, matches: e.matches | 0 })).sort((a, b) => (a.date < b.date ? 1 : -1)) };
     else { T.index = { v: 1, events: [] }; T.indexErr = ''; }
-    renderTournament();
+    renderTournament(); if (!$('#cover')?.hidden) updateCover();
   }
   async function openArchive(id) {
+    if (id === LIVE_ID) { const d = buildArchive(LIVE_ID); if (!d) return; try { T.doc = assertArchive(d); } catch { return; } renderTournament(); window.scrollTo(0, 0); return; } // 진행 중인 대회: 게시본 그대로
     if (!ARCH_RE.test(id)) return; const raw = await archRead(`archive/${id}.json`); if (!raw) { toast('보관본을 찾지 못했습니다'); return; }
     try { T.doc = assertArchive(raw); } catch (e) { toast('보관본을 읽을 수 없습니다: ' + e.message); return; }
     renderTournament(); window.scrollTo(0, 0);
@@ -1774,8 +1796,8 @@
       enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
       render();
       const want = (location.hash || '').replace('#', '');
-      if (['weekly', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab(state.schedule ? 'schedule' : 'players'); showCover(true); } // 첫 화면 = 포스터 커버
-      weeklyBoot();
+      if (['weekly', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
+      weeklyBoot(); tournamentRefresh();
       // 방문자: 게시본이 바뀌면 자동 갱신 (현장에서 관리자가 게시하면 곧 반영)
       let lastPub = published?.publishedAt || null;
       setInterval(async () => {
@@ -1802,6 +1824,6 @@
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
     if (await syncTokenFromPublished(published)) toast('게시 토큰을 게시본에서 가져왔습니다 · 바로 게시할 수 있습니다');
-    render(); showTab('players'); weeklyBoot();
+    render(); showTab('players'); weeklyBoot(); tournamentRefresh();
   })();
 })();

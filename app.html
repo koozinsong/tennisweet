@@ -22,13 +22,11 @@
     <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
   </div>
   <nav class="cover-menu" aria-label="메뉴">
-    <div class="cover-title"><span id="cover-name">분기 대회</span><span id="cover-meta" class="sub"></span></div>
-    <button data-go="schedule" class="menu-main"><svg class="ic"><use href="#i-court"/></svg>경기 일정표</button>
+    <div class="cover-title"><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div>
+    <button data-go="weekly" class="menu-main" id="cover-main"><span class="mm-row"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</span><small id="cover-weekly" class="sub"></small></button>
     <div class="cover-grid">
-      <button data-go="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button>
       <button data-go="players"><svg class="ic"><use href="#i-users"/></svg>선수</button>
-      <button data-go="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
-      <button data-go="tournament"><svg class="ic"><use href="#i-calendar"/></svg>대회</button>
+      <button data-go="tournament" id="cover-tour"><svg class="ic"><use href="#i-trophy"/></svg><span id="cover-tour-text">대회</span></button>
       <button data-go="admin" class="only-view"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
     </div>
   </nav>
@@ -36,13 +34,13 @@
 <header class="topbar">
   <button class="brand" id="btn-home" title="첫 화면으로"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
   <nav class="tabs" aria-label="화면 선택">
+    <button data-tab="weekly"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</button>
     <button data-tab="players" class="active"><svg class="ic"><use href="#i-users"/></svg>선수</button>
     <button data-tab="setup" class="tab-sub"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button>
     <button data-tab="units" class="tab-sub"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
     <button data-tab="schedule" class="tab-sub"><svg class="ic"><use href="#i-court"/></svg>일정표</button>
     <button data-tab="standings" class="tab-sub"><svg class="ic"><use href="#i-trophy"/></svg>순위·대진</button>
     <button data-tab="tournament"><svg class="ic"><use href="#i-calendar"/></svg>대회</button>
-    <button data-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>
   </nav>
   <div class="actions">
     <button id="btn-editor" class="only-view primary-light"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
@@ -88,6 +86,30 @@
 </div>
 
 <main>
+<!-- ============ ⑦ 정기 모임 ============ -->
+<section id="tab-weekly" class="tab">
+  <h2>정기 모임</h2>
+  <details class="only-editor wk-admin" open>
+    <summary>관리자: 모임 날짜 만들기 · 저장 서버</summary>
+    <form id="wk-form-session" class="row" autocomplete="off">
+      <label class="inline">날짜 <input name="date" type="date" required></label>
+      <label class="inline">코트 <input name="courts" type="number" min="1" max="6" value="2" style="width:64px"></label>
+      <label class="inline">경기 <select name="matchMinutes" style="width:auto"><option value="30">30분</option><option value="60">60분</option></select></label>
+      <label class="inline">시작 <input name="startTime" type="time" value="18:00" style="width:auto"></label>
+      <label class="inline">종료 <input name="endTime" type="time" value="22:00" style="width:auto"></label>
+      <label class="inline">여복 최소 <input name="minWomenDoubles" type="number" min="0" max="5" value="1" style="width:56px"></label>
+      <button type="submit" class="primary">날짜 만들기</button>
+    </form>
+    <div id="wk-admin-list"></div>
+    <form id="wk-form-proxy" class="row" autocomplete="off">
+      <label class="inline" style="flex:1 1 320px">저장 서버 주소 <input name="proxy" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <button type="submit">저장</button><button type="button" id="wk-ping">연결 확인</button>
+      <span class="hint">멤버의 참석·대진·완료 체크를 저장하는 Apps Script 웹앱 주소입니다 (README 참고).</span>
+    </form>
+  </details>
+  <div id="wk-view"></div>
+</section>
+
 <!-- ============ ① 선수 ============ -->
 <section id="tab-players" class="tab active">
   <h2 id="players-title">선수 명단</h2>
@@ -224,7 +246,7 @@
 
 <!-- ============ ⑥ 회식 장소 ============ -->
 <section id="tab-venue" class="tab">
-  <h2>회식 장소</h2>
+  <h2>회식 장소 <span class="sub">(대회 화면에 함께 표시됩니다)</span></h2>
   <div id="venue-view"></div>
   <form id="form-venue" class="grid only-editor" autocomplete="off">
     <h3 class="span2">회식 안내 수정</h3>

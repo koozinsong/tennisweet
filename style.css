@@ -380,3 +380,48 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 body.view-only .tabs .tab-sub { display: none; } /* 방문자: 대회 설정·팀 구성·일정표·순위는 '대회' 탭 안에서 진입 */
 .score-text { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--court-ink); font-variant-numeric: tabular-nums; }
 .score-text .colon { font-size: 20px; color: var(--muted); }
+.tour-item.live { border-color: var(--accent); background: #faf7ff; }
+
+/* ---- 첫 화면: 정기 모임 큰 버튼 ---- */
+.cover-menu button.menu-main { flex-direction: column; gap: 3px; min-height: 66px; padding: 12px 16px; }
+.cover-menu .mm-row { display: inline-flex; align-items: center; }
+.cover-menu button.menu-main small { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.8); white-space: normal; }
+.cover-grid button.only-view { grid-column: span 2; }
+/* ---- 정기 모임 ---- */
+.wk-admin { border: 1px dashed var(--rule); border-radius: 10px; padding: 8px 12px; margin: 0 0 14px; background: #fbfaf6; }
+.wk-admin summary { font-weight: 700; color: var(--accent-deep); }
+.wk-admin .row { margin: 8px 0; }
+.wk-admin .row label.inline input, .wk-admin .row label.inline select { width: auto; }
+button.chip { cursor: pointer; border: 1px solid transparent; padding: 5px 12px; border-radius: 18px; min-height: 38px; font-size: 15px; font-weight: 600; background: #eef0ec; color: var(--ink); }
+button.chip:hover { border-color: var(--court); }
+.chip.on { background: var(--court); color: #fff; }
+.chip.on.f { background: var(--ff); } .chip.on.m { background: var(--mm); }
+button.chip.sel { outline: 3px solid var(--ball); outline-offset: 1px; }
+.chip.guest { border: 1px dashed var(--muted); }
+.chip.add { background: #fff; border: 1px dashed var(--court); color: var(--court); }
+.chip.me::before { content: "★ "; color: var(--ball-deep); }
+.chip.on.me::before { color: var(--ball); }
+.wk-chip small { margin-left: 4px; font-size: 12px; color: inherit; opacity: .85; font-family: var(--display); font-weight: 600; letter-spacing: .02em; }
+.wk-sessions { margin: 0 0 12px; }
+.wk-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 2px 0 6px; }
+.wk-date { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--court-deep); line-height: 1; }
+.wk-panel { border: 1px solid var(--rule); border-radius: 10px; background: #fbfaf6; padding: 12px; margin: 12px 0; }
+.wk-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 17px; }
+.wk-panel-head input { max-width: 220px; }
+.wk-gender { display: inline-flex; gap: 4px; }
+.wk-hours { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.wk-hours .lbl { flex: 0 0 34px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.hbtn { min-width: 48px; min-height: 42px; font-family: var(--display); font-size: 21px; font-weight: 700; padding: 4px 8px; }
+.hbtn.sel { background: var(--court); color: #fff; border-color: var(--court-deep); }
+.wk-status-row { display: flex; align-items: center; gap: 8px; min-height: 22px; margin: 6px 0; }
+#wk-status.bad { color: var(--danger); }
+button.big { font-size: 17px; padding: 12px 20px; }
+.mcard.wk { cursor: pointer; user-select: none; }
+.mcard.wk.decided { opacity: .55; border-left-color: var(--rule); background: #f6f5f0; }
+.mcard.wk:hover { box-shadow: 0 0 0 2px rgba(10,92,53,.25), var(--shadow); }
+.tag.wk-done { background: var(--win); color: var(--surround); margin-left: auto; }
+.wk-filter .chip.on { background: var(--accent); }
+/* ---- 관리자 모드 구별: 퍼플 헤더 ---- */
+body.editor .topbar { background: linear-gradient(180deg, rgba(75,42,123,.9) 0%, rgba(58,31,97,.95) 100%), url("assets/poster.webp") center 62% / cover no-repeat, var(--accent-deep); }
+body.editor .actions button.primary-light { background: var(--court); border-color: var(--court-deep); }
+body.editor .tabs button.active { border-bottom-color: var(--ball); }
