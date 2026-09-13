@@ -9,6 +9,7 @@
  *  3) 배포 → 새 배포 → 유형 '웹 앱', 실행: '나', 액세스: '모든 사용자' → 웹 앱 URL(…/exec) 을 관리자 화면 정기 모임 → '저장 서버 주소'에 입력
  *  4) 코드를 고치면 배포 → 배포 관리 → 새 버전 (URL 유지)
  *
+ * 읽기: GET ?session=YYYY-MM-DD → { ok, rev, doc } (캐시, Pages 지연 없음)
  * 요청: POST 본문 = JSON 문자열 (Content-Type 없이 → CORS preflight 없음)
  *   { v:1, club:'tennisweet', session:'2026-09-20', op:'set'|'generate'|'ping', path?, value?, base?, by? }
  * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'BUSY'|'GITHUB', rev?, doc? }
@@ -17,13 +18,30 @@ const CLUB = 'tennisweet';
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
-function doGet(e) { return out({ ok: true, v: 1, t: new Date().toISOString() }); }
+/** GET ?session=YYYY-MM-DD → 최신 세션 문서 (쓰기 직후 캐시에 담아 두므로 Pages 반영을 기다리지 않는다). 그 외 → ping */
+function doGet(e) {
+  const sid = e && e.parameter && String(e.parameter.session || '');
+  if (!sid) return out({ ok: true, v: 1, t: new Date().toISOString() });
+  if (!SESSION_RE.test(sid)) return out({ ok: false, code: 'INVALID' });
+  try {
+    const cache = CacheService.getScriptCache(); const hit = cache.get('s:' + sid);
+    if (hit) { const doc = JSON.parse(hit); return out({ ok: true, rev: doc.rev | 0, doc: doc, cached: true }); }
+    const c = cfg(); if (!c.token) return out({ ok: false, code: 'GITHUB' });
+    const cur = ghGet(c, 'data/weekly/sessions/' + sid + '.json', c.branches[0]); if (!cur || !cur.json) return out({ ok: false, code: 'NOSESSION' });
+    cache.put('s:' + sid, JSON.stringify(cur.json), 21600);
+    return out({ ok: true, rev: cur.json.rev | 0, doc: cur.json });
+  } catch (err) { return out({ ok: false, code: 'GITHUB', detail: String(err && err.message || err) }); }
+}
 function doPost(e) {
   let body; try { body = JSON.parse(e.postData.contents); } catch (err) { return out({ ok: false, code: 'INVALID' }); }
   if (!body || typeof body !== 'object' || body.club !== CLUB || !SESSION_RE.test(String(body.session || ''))) return out({ ok: false, code: 'INVALID' });
   if (String(e.postData.contents).length > 65536) return out({ ok: false, code: 'INVALID' });
   if (body.op === 'ping') return out({ ok: true, v: 1, t: new Date().toISOString() });
   const c = cfg(); if (!c.token) return out({ ok: false, code: 'GITHUB', detail: 'GH_TOKEN 속성이 없습니다' });
+  if (body.op === 'refresh') { // 관리자가 파일을 직접 만들거나 지운 뒤: 캐시를 저장소 기준으로 다시 맞춘다
+    try { const cache = CacheService.getScriptCache(); const cur = ghGet(c, 'data/weekly/sessions/' + body.session + '.json', c.branches[0]); if (!cur || !cur.json) { cache.remove('s:' + body.session); return out({ ok: false, code: 'NOSESSION' }); } cache.put('s:' + body.session, JSON.stringify(cur.json), 21600); return out({ ok: true, rev: cur.json.rev | 0, doc: cur.json }); }
+    catch (err) { return out({ ok: false, code: 'GITHUB', detail: String(err && err.message || err) }); }
+  }
   const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return out({ ok: false, code: 'BUSY' });
   try {
     const path = 'data/weekly/sessions/' + body.session + '.json'; // 세션 파일만 쓸 수 있다 (경로는 서버가 정한다)
@@ -34,7 +52,7 @@ function doPost(e) {
       if (closed(doc)) return out({ ok: false, code: 'CLOSED', rev: doc.rev | 0, doc: doc });
       const r = applyWeeklyOp(doc, body); if (!r.ok) return out({ ok: false, code: r.code, rev: doc.rev | 0, doc: doc });
       const content = JSON.stringify(doc, null, 1) + '\n'; const code = ghPut(c, path, content, cur.sha, commitMsg(body, doc), main);
-      if (code === 200 || code === 201) saved = { doc: doc, content: content };
+      if (code === 200 || code === 201) { saved = { doc: doc, content: content }; try { CacheService.getScriptCache().put('s:' + body.session, JSON.stringify(doc), 21600); } catch (err) {} }
       else if (code !== 409 && code !== 422) return out({ ok: false, code: 'GITHUB', detail: 'PUT ' + code });
     }
     if (!saved) return out({ ok: false, code: 'BUSY' });

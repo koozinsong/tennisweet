@@ -1465,11 +1465,16 @@
       const r = applyWeeklyOp(doc, op); if (!r.ok) return { ok: false, code: r.code, rev: doc.rev, doc };
       wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200)); return { ok: true, rev: doc.rev, doc };
     }
+    const url = W.index?.proxy;
+    if (url) { // 프록시가 있으면 관리자도 프록시로 (프록시 캐시가 최신을 유지하도록). 프록시 장애 시 관리자는 자기 토큰으로
+      try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); const j = await r.json(); if (!(adminKey && ['NETWORK', 'GITHUB', 'BUSY'].includes(j?.code))) return j; } // Content-Type 미지정(text/plain) → preflight 없음
+      catch (e) { if (!adminKey) return { ok: false, code: 'NETWORK', detail: e.message }; }
+    }
     if (adminKey) return adminApplyOp(op); // 관리자: 자기 토큰으로 직접 저장
-    const url = W.index?.proxy; if (!url) return { ok: false, code: 'NOPROXY' };
-    try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); return await r.json(); } // Content-Type 미지정(text/plain) → preflight 없음
-    catch (e) { return { ok: false, code: 'NETWORK', detail: e.message }; }
+    return { ok: false, code: 'NOPROXY' };
   }
+  /** 관리자가 세션 파일을 직접 만들거나 지운 뒤 프록시 캐시를 맞춘다 */
+  async function wkProxyRefresh(id) { const url = !WK_MOCK && W.index?.proxy; if (!url) return; try { await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: id, op: 'refresh' }), redirect: 'follow' }); } catch {} }
   /** 관리자 토큰으로 세션 파일에 작업 적용 (프록시와 같은 규칙: 마감 검사 → applyWeeklyOp → 커밋, 동시 변경은 다시 읽어 재시도) */
   async function adminApplyOp(op) {
     let fail = null, result = null;
@@ -1510,8 +1515,14 @@
     renderWeeklyView();
     if (W.id) await wkLoadDoc(W.id); else wkUpdateCover();
   }
+  /** 세션 읽기: 프록시가 있으면 프록시 캐시(저장 직후 최신), 없거나 실패하면 Pages 정적 파일 */
+  async function wkReadSession(id) {
+    const url = !WK_MOCK && W.index?.proxy;
+    if (url) { try { const r = await fetch(`${url}?session=${encodeURIComponent(id)}&_=${Date.now()}`, { redirect: 'follow' }); const j = await r.json(); if (j && j.ok && j.doc) return j.doc; if (j && j.code === 'NOSESSION') return null; } catch {} }
+    return dataRead(`weekly/sessions/${id}.json`);
+  }
   async function wkLoadDoc(id, { quiet = false } = {}) {
-    const raw = await dataRead(`weekly/sessions/${id}.json`); if (W.id !== id) return;
+    const raw = await wkReadSession(id); if (W.id !== id) return;
     if (!raw) { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일을 찾지 못했습니다.'; renderWeeklyView(); } return; }
     let d; try { d = assertWeekly(raw); } catch { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일 형식이 올바르지 않습니다.'; renderWeeklyView(); } return; }
     if (!W.doc || (d.rev | 0) > (W.doc.rev | 0)) { const had = !!W.doc; W.doc = d; W.docErr = ''; renderWeeklyView(); wkUpdateCover(); if (quiet && had) toast('정기 모임 내용이 갱신되었습니다'); }
@@ -1706,7 +1717,7 @@
     if (!confirm(`${fmtDate(id)} 모임을 삭제할까요?${n ? `\n참석 ${n}명의 체크와 대진이 함께 지워집니다.` : ''}`)) return;
     const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 삭제`);
     if (!ok) return;
-    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`); delete wkFresh[`weekly/sessions/${id}.json`];
+    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`); delete wkFresh[`weekly/sessions/${id}.json`]; await wkProxyRefresh(id);
     delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; } toast(`${fmtDate(id)} 모임을 삭제했습니다`); await weeklyRefresh();
   }
   /** 관리자 토큰으로 정기 모임 파일 삭제 (main·gh-pages, 없으면 무시) */
@@ -1734,7 +1745,7 @@
       const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur) { exists = true; return null; } return { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }; }, `정기 모임 ${date} 생성`);
       if (exists) { alert('이미 있는 날짜입니다.'); return; } if (!ok1) return;
       const ok2 = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`);
-      if (ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; await weeklyRefresh(); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      if (ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     } finally { btn.disabled = false; }
   });
   $('#wk-form-proxy')?.addEventListener('submit', async (e) => {

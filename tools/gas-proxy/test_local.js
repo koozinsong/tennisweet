@@ -12,6 +12,7 @@ const gas = {
     if (!opt.method) { const doc = isMain ? store[path] : store['gh:' + path]; if (!doc) return { getResponseCode: () => 404, getContentText: () => '' }; const content = Buffer.from(JSON.stringify(doc)).toString('base64'); shas[key] = shas[key] || 'sha1'; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ sha: shas[key], content }) }; }
     if (isMain) putCalls++; const body = JSON.parse(opt.payload); if ((shas[key] || null) !== (body.sha || null)) return { getResponseCode: () => 409, getContentText: () => '{}' }; if (isMain && conflictOnce) { conflictOnce = false; shas[key] += 'x'; return { getResponseCode: () => 409, getContentText: () => '{}' }; }
     const doc = JSON.parse(Buffer.from(body.content, 'base64').toString('utf8')); if (isMain) store[path] = doc; else store['gh:' + path] = doc; shas[key] = (shas[key] || 'sha1') + 'x'; return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
+  CacheService: { getScriptCache: () => ({ get: (k) => (globalThis.__cache = globalThis.__cache || {})[k] || null, put: (k, v) => { (globalThis.__cache = globalThis.__cache || {})[k] = v; }, remove: (k) => { delete (globalThis.__cache = globalThis.__cache || {})[k]; } }) },
   Date,
 };
 const ctx = vm.createContext(gas); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__doPost = doPost; globalThis.__doGet = doGet;', ctx);
@@ -35,5 +36,6 @@ conflictOnce = true; const before = putCalls; r = call({ ...base, op: 'set', pat
 results.push(['gh-pages copy in sync', JSON.stringify(store['gh:data/weekly/sessions/2026-09-20.json']) === JSON.stringify(store['data/weekly/sessions/2026-09-20.json'])]);
 store['data/weekly/sessions/2026-09-20.json'].date = '2020-01-01'; r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['closed', r.code === 'CLOSED']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['closed blocks attend', r.code === 'CLOSED']);
+{ const g = JSON.parse(ctx.__doGet({ parameter: { session: '2026-09-20' } }).text); results.push(['doGet cached doc', g.ok && g.doc && g.rev === store['data/weekly/sessions/2026-09-20.json'].rev]); const g2 = JSON.parse(ctx.__doGet({ parameter: {} }).text); results.push(['doGet ping', g2.ok && !g2.doc]); const g3 = JSON.parse(ctx.__doGet({ parameter: { session: '2030-01-01' } }).text); results.push(['doGet missing', g3.code === 'NOSESSION']); const rf = call({ ...base, op: 'refresh' }); results.push(['refresh', rf.ok && rf.doc]); const rf2 = call({ ...base, session: '2030-01-01', op: 'refresh' }); results.push(['refresh missing', rf2.code === 'NOSESSION']); }
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);
