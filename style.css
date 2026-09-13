@@ -428,3 +428,5 @@ body.editor .tabs button.active { border-bottom-color: var(--ball); }
 .wk-admin-rows { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
 .wk-admin-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 8px; background: #fbfaf6; }
 .wk-admin-row .sub { flex: 1; }
+button.wk-del { border-color: var(--danger); color: var(--danger); background: #fff; font-weight: 700; }
+button.wk-del:hover { background: var(--danger-bg); }
