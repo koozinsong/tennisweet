@@ -1505,7 +1505,7 @@
     const idx = await dataRead('weekly/index.json');
     if (idx && typeof idx === 'object') {
       W.index = { v: 1, proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0 })) }; W.indexErr = '';
-    } else { W.index = { v: 1, proxy: '', sessions: [] }; W.indexErr = WK_MOCK ? '' : '데이터 저장소에서 모임 목록(weekly/index.json)을 찾지 못했습니다.'; }
+    } else { W.index = { v: 1, proxy: '', sessions: [] }; W.indexErr = WK_MOCK ? '' : (document.body.classList.contains('editor') ? '아직 모임 목록 파일이 없습니다. 위에서 첫 모임을 만들면 생깁니다 (데이터 저장소 tennisweet-data 와 GitHub Pages 가 준비되어 있어야 합니다 — README 참고).' : '아직 만들어진 정기 모임이 없습니다.'); }
     if (!W.id || !wkSessions().some((s) => s.id === W.id)) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; }
     renderWeeklyView();
     if (W.id) await wkLoadDoc(W.id); else wkUpdateCover();
