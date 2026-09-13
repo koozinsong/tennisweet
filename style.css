@@ -423,3 +423,8 @@ button.big { font-size: 17px; padding: 12px 20px; }
 body.editor .topbar { background: linear-gradient(180deg, rgba(75,42,123,.9) 0%, rgba(58,31,97,.95) 100%), url("assets/poster.webp") center 62% / cover no-repeat, var(--accent-deep); }
 body.editor .actions button.primary-light { background: var(--court); border-color: var(--court-deep); }
 body.editor .tabs button.active { border-bottom-color: var(--ball); }
+.wk-summary { margin-top: 14px; } .wk-summary summary { font-weight: 700; color: var(--court-deep); }
+.wk-gen { margin: 12px 0; }
+.wk-admin-rows { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; }
+.wk-admin-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 8px; background: #fbfaf6; }
+.wk-admin-row .sub { flex: 1; }

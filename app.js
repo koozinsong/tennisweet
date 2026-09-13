@@ -112,7 +112,7 @@
     wkUpdateCover();
   }
   /** 진행 중인 대회 = 일정표가 있고 아직 같은 날짜로 보관되지 않은 대회 */
-  const liveTournament = () => !!state.schedule && !(T.index?.events || []).some((e) => e.date && e.date === state.settings.date);
+  const liveTournament = () => !!(state.schedule || (document.body.classList.contains('editor') && state.settings.name)) && !(T.index?.events || []).some((e) => e.date && e.date === state.settings.date);
   $('#cover')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-go]'); if (!b) return;
     if (b.dataset.go === 'admin') { adminLogin(); return; }
@@ -539,6 +539,7 @@
     const menBad = state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 특별 규칙 위반은 사실상 배제
     return (menBad + avoided) * 1e5 + missing * 1e4 + ffShort * 2000 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * 60 + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
+  let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
@@ -549,6 +550,10 @@
     const fmWomenKey = (c) => { const wa = c.slice(0, 2).find((x) => isF[x]), wb = c.slice(2).find((x) => isF[x]); return wa && wb && c.filter((x) => isF[x]).length === 2 ? key(wa, wb) : null; }; // 혼복 코트의 여성 상대 쌍
     ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); isF[p.id] = p.gender === 'F'; });
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
+    if (GEN_HOOK) { // 정기 모임: 지난 모임 이력(가중)과 이미 시작한 시간대의 경기를 카운터에 미리 반영
+      const H = GEN_HOOK.hist || {}; for (const [k, v] of Object.entries(H.partner || {})) partner[k] = (partner[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.opp || {})) opp[k] = (opp[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.fmWomen || {})) fmWomen[k] = (fmWomen[k] || 0) + v * 0.25;
+      for (const m of GEN_HOOK.fixed) { const [a1, a2] = m.aIds.map((x) => x.slice(2)), [b1, b2] = m.bIds.map((x) => x.slice(2)); partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1; for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1; const tp = pairType(a1, a2); if (tp === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1; for (const x of [a1, a2, b1, b2]) { if (played[x] == null) continue; played[x]++; lastPlayed[x] = m.slot; playedSlots[x].add(m.slot); if (tp === 'FM') fmCnt[x]++; else if (tp === 'MM') mmCnt[x]++; } }
+    }
     const menEq = s.fmMenEqual !== false; // 특별 규칙: 혼복은 양쪽 남자 NTRP 동일 (기본 켬)
     const AVOID = new Set(avoidPairIds(s.avoidPairs, ps).map(([x, y]) => key(x, y))); // 특별 규칙: 같은 조 금지 (파트너로 묶지 않음)
     const avoidedCourt = (c) => AVOID.has(key(c[0], c[1])) || AVOID.has(key(c[2], c[3]));
@@ -703,6 +708,7 @@
 
     const matches = []; let round = 0;
     for (let slot = 0; slot < n; slot++) {
+      if (GEN_HOOK && slot < GEN_HOOK.fromSlot) { const fx = GEN_HOOK.fixed.filter((m) => m.slot === slot); if (fx.length) { for (const m of fx) matches.push({ id: uid(), phase: 'rot', round, slot, court: m.court, aIds: m.aIds, bIds: m.bIds }); round++; } continue; } // 이미 시작한 시간대는 그대로
       const avail = availAt(slot);
       const used = new Set(); const courts = [];
       for (const f of forced) if (f.slot === slot) { const c = f.build(used); if (!c) throw new Error(`${f.label}을(를) 편성하지 못했습니다 (같은 시간대에 다른 필수 대진과 선수가 겹쳐 인원이 부족합니다).`); courts.push(c); c.forEach((x) => used.add(x)); }
@@ -1474,7 +1480,7 @@
     catch (e) { return { ok: false, code: 'NETWORK', detail: e.message }; }
   }
   // ---- 상태 ----
-  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, busy: false, retry: null, lastMsg: '', cache: {} };
+  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, busy: false, retry: null, lastMsg: '', cache: {}, hist: null, histFor: null };
   const ymdOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtDate = (ymd) => { const d = new Date(ymd + 'T00:00:00'); return isNaN(d) ? ymd : `${d.getMonth() + 1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`; };
   const isToday = (ymd) => ymd === ymdOf();
@@ -1528,7 +1534,7 @@
   function renderWeeklyView() {
     const box = $('#wk-view'); if (!box) return;
     const editor = document.body.classList.contains('editor'); const list = wkSessions(); const doc = W.doc;
-    const al = $('#wk-admin-list'); if (al) { al.innerHTML = list.length ? `<div class="chips">${list.map((s) => `<span class="chip">${esc(fmtDate(s.date))} <small>코트 ${s.courts} · ${s.matchMinutes}분</small><button class="x" data-wk-del="${esc(s.id)}" title="목록에서 삭제" aria-label="${esc(s.date)} 삭제">×</button></span>`).join('')}</div>` : '<p class="hint">만든 날짜가 없습니다.</p>'; const pi = $('#wk-form-proxy [name=proxy]'); if (pi && document.activeElement !== pi) pi.value = W.index?.proxy || ''; }
+    const al = $('#wk-admin-list'); if (al) { al.innerHTML = list.length ? `<div class="wk-admin-rows">${list.map((s) => `<div class="wk-admin-row"><b>${esc(fmtDate(s.date))}</b><span class="sub">${esc(s.date)} · 코트 ${s.courts} · ${s.matchMinutes}분${W.id === s.id && W.doc ? ` · 참석 ${Object.keys(W.doc.attendance).length}명${W.doc.schedule ? ' · 대진 있음' : ''}` : ''}</span><button class="small danger-text" data-wk-del="${esc(s.id)}">삭제</button></div>`).join('')}</div>` : '<p class="hint">만든 모임이 없습니다.</p>'; const pi = $('#wk-form-proxy [name=proxy]'); if (pi && document.activeElement !== pi) pi.value = W.index?.proxy || ''; }
     if (!W.index) { box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
     if (W.indexErr && !list.length) { box.innerHTML = `<p class="hint">${esc(W.indexErr)}</p>`; return; }
     if (!list.length) { box.innerHTML = `<p class="hint">아직 만들어진 모임 날짜가 없습니다.${editor ? ' 위에서 날짜를 만드세요.' : ' 관리자가 날짜를 만들면 여기서 참석을 체크할 수 있습니다.'}</p>`; return; }
@@ -1550,7 +1556,6 @@
     wkStatus(W.busy ? '저장 중…' : W.retry ? '저장하지 못한 변경이 있습니다' : W.lastMsg || '', !!W.retry);
     const ni = $('#wk-guest-name'); if (ni && W.edit?.guest && !W.edit.id && !W.edit.name) ni.focus();
   }
-  function wkScheduleHtml(doc, s, closed) { return ''; } // 2단계: 대진 생성·완료 체크
   function wkPanelHtml(s) {
     const e = W.edit; const hours = wkHours(s); const H = (h) => String(h).padStart(2, '0') + ':00';
     const hb = (kind, list) => list.map((h) => `<button class="hbtn ${e[kind] === H(h) ? 'sel' : ''}" data-wk-hour="${H(h)}" data-wk-kind="${kind}">${h}</button>`).join('');
@@ -1559,7 +1564,7 @@
       <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" ${isNew ? '' : 'disabled'}><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
       <div class="wk-hours"><span class="lbl">도착</span>${hb('from', hours)}</div>
       <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', hours.map((h) => h + 1))}</div>
-      <div class="row"><button id="wk-save" class="primary">${esc(e.from.slice(0, 2))}~${esc(e.until.slice(0, 2))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? '<button id="wk-absent" class="danger-text">불참</button>' : ''}<button id="wk-close">닫기</button></div>
+      <div class="row"><button id="wk-save" class="primary">${esc(e.from.slice(0, 2))}~${esc(e.until.slice(0, 2))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
     </div>`;
   }
   function wkOpen(id) {
@@ -1588,14 +1593,126 @@
     const gb = t.closest('[data-wk-gender]'); if (gb && W.edit) { W.edit.gender = gb.dataset.wkGender; renderWeeklyView(); return; }
     if (t.closest('#wk-close')) { W.edit = null; renderWeeklyView(); return; }
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
-    if (t.closest('#wk-absent') && W.edit) { const { id, name } = W.edit; W.edit = null; if (confirm(`${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
+    if (t.closest('#wk-absent') && W.edit) { const { id, name, guest } = W.edit; W.edit = null; if (confirm(guest ? `게스트 ${name} 님을 이 모임에서 삭제할까요?` : `${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
     if (t.closest('#wk-retry') && W.retry) { const op = W.retry; W.retry = null; wkQueue = wkQueue.then(() => wkSendNow(op)).catch(() => {}); return; }
-    const del = t.closest('[data-wk-del]'); if (del) { const id = del.dataset.wkDel; if (!confirm(`${fmtDate(id)} 모임을 목록에서 뺄까요? (파일은 남습니다)`)) return; if (await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 목록에서 제거`)) { toast('목록에서 뺐습니다'); await weeklyRefresh(); } return; }
+    const del = t.closest('[data-wk-del]'); if (del) { await wkDeleteSession(del.dataset.wkDel); return; }
     await wkScheduleClick(t);
   });
-  async function wkScheduleClick(t) {} // 2단계: 생성·완료 체크 버튼
   $('#tab-weekly')?.addEventListener('input', (e) => { if (e.target.id === 'wk-guest-name' && W.edit) W.edit.name = e.target.value; });
   $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } });
+  // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP 0, 특별 규칙 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
+  function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
+  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}`).join(',')).toString(36);
+  function generateWeeklySchedule(doc, hist, fromSlot, gen) {
+    const ps = wkAttendees(doc); const s = wkSettings(doc);
+    const fixed = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
+    const inputHash = wkInputHash(doc); const seed = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}`) % 1000000; // 같은 참석 상태면 어느 기기에서 눌러도 같은 판
+    const saved = { players: state.players, settings: state.settings, nt: new Map(ntrp) };
+    state.players = ps; state.settings = s; ntrp.clear();
+    GEN_HOOK = { fromSlot, fixed, hist: hist || null };
+    try {
+      const sch = generateRotation(s, seed);
+      const matches = sch.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })).sort((a, b) => a.slot - b.slot || a.court - b.court);
+      return { seed, gen, fromSlot, inputHash, at: new Date().toISOString(), by: W.me || '', matches };
+    } finally { GEN_HOOK = null; state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
+  }
+  /** 최근 6회 모임의 파트너·상대·혼복 여성 상대 횟수 (완료 체크된 경기만, 없으면 편성 전체를 절반 가중) — 골고루 섞기용 */
+  async function wkHistory(curId) {
+    if (W.histFor === curId && W.hist) return W.hist;
+    const cur = wkSessions().find((x) => x.id === curId); const past = cur ? wkSessions().filter((x) => x.id !== curId && x.date < cur.date).slice(0, 6) : [];
+    const H = { partner: {}, opp: {}, fmWomen: {}, sessions: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
+    for (let k = 0; k < past.length; k++) {
+      let d = W.cache[past[k].id]; if (!d) { d = await dataRead(`weekly/sessions/${past[k].id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[past[k].id] = d; }
+      if (!d?.schedule?.matches?.length) continue; H.sessions++;
+      const ms = d.schedule.matches; const dn = ms.filter((m) => d.done[m.id]); const use = dn.length ? dn : ms; const w = Math.pow(0.8, k) * (dn.length ? 1 : 0.5);
+      for (const m of use) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); add(H.partner, key(A[0], A[1]), w); add(H.partner, key(B[0], B[1]), w); for (const x of A) for (const y of B) add(H.opp, key(x, y), w); const g = (x) => d.attendance[x]?.g; const wa = A.filter((x) => g(x) === 'F'), wb = B.filter((x) => g(x) === 'F'); if (wa.length === 1 && wb.length === 1) add(H.fmWomen, key(wa[0], wb[0]), w); }
+    }
+    W.hist = H; W.histFor = curId; return H;
+  }
+  async function wkGenerate(mode) {
+    const doc = W.doc; if (!doc || wkClosed(doc)) return; const s = wkSettings(doc); const att = wkAttendees(doc);
+    if (att.length < 4) { toast('4명 이상 참석해야 대진을 만들 수 있습니다'); return; }
+    const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1;
+    if (mode === 'left') { fromSlot = wkFromSlot(doc, s); gen = doc.schedule?.gen || 1; if (fromSlot === 0 && hasDone && !confirm('아직 시작 전이라 전체를 다시 만듭니다. 완료 표시가 지워질 수 있습니다. 계속할까요?')) return; }
+    else if (mode === 'reshuffle') { if (!confirm(hasDone ? '완료 표시된 경기가 있습니다. 전체를 새로 섞으면 완료 표시도 지워집니다. 계속할까요?' : '대진을 새로 섞을까요? 다른 분들 화면도 함께 바뀝니다.')) return; gen = (doc.schedule?.gen || 0) + 1; }
+    $$('#wk-gen, #wk-regen-left, #wk-reshuffle').forEach((b) => { b.disabled = true; }); wkStatus('대진 만드는 중…');
+    try {
+      const hist = await wkHistory(doc.id); await new Promise((r) => setTimeout(r, 30));
+      const sch = generateWeeklySchedule(doc, hist, fromSlot, gen);
+      await wkSend({ op: 'generate', base: doc.rev, value: sch });
+    } catch (err) { alert('대진을 만들지 못했습니다: ' + err.message); renderWeeklyView(); }
+  }
+  const wkSlotStatus = (t0, t1) => { const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); return cur >= t0 && cur < t1 ? 'live' : cur >= t1 ? 'past' : ''; };
+  function wkCardHtml(m, doc, done, closed) {
+    const nm = (x) => esc(wkName(doc, x.slice(2))); const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
+    const ta = [g(m.aIds[0]), g(m.aIds[1])].sort().join(''), tb = [g(m.bIds[0]), g(m.bIds[1])].sort().join('');
+    const code = ta === tb ? ta.toLowerCase() : ''; const label = ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`;
+    const gone = [...m.aIds, ...m.bIds].some((x) => !doc.attendance[x.slice(2)]); // 불참으로 바뀐 사람이 포함된 경기
+    return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시'}">
+      <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag ${code ? 'type ' + code : 'bad'}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}</div>
+      <div class="mbody"><div class="side"><div><b>${nm(m.aIds[0])}</b> · <b>${nm(m.aIds[1])}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side"><div><b>${nm(m.bIds[0])}</b> · <b>${nm(m.bIds[1])}</b></div></div></div></div>`;
+  }
+  function wkScheduleHtml(doc, s, closed) {
+    let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date);
+    if (!closed) {
+      const stale = sch && sch.inputHash !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s);
+      if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>`;
+      else html += `<div class="row wk-gen"><span class="sub">대진 #${sch.seed}${sch.gen > 1 ? ` (${sch.gen}번째)` : ''}${sch.by ? ' · ' + esc(wkName(doc, sch.by)) : ''}${sch.at ? ' · ' + new Date(sch.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>${stale ? '<span class="warn">참석이 바뀌었습니다</span>' : ''}${stale && left ? `<button id="wk-regen-left" class="primary">${fromSlot > 0 ? '남은 시간대 다시 짜기' : '대진 다시 만들기'}</button>` : ''}<button id="wk-reshuffle" class="small">다시 섞기</button></div>`;
+    }
+    if (sch) {
+      const ms = [...sch.matches].sort((a, b) => a.slot - b.slot || a.court - b.court);
+      const filter = W.filter || (today && !closed ? 'left' : 'all'); const doneN = ms.filter((m) => doc.done[m.id]).length;
+      html += `<div class="row wk-filter"><button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${ms.length - doneN}</button><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button>${closed ? '' : '<span class="hint">경기가 끝나면 카드를 눌러 완료 표시하세요.</span>'}</div>`;
+      html += '<div class="legend"><span class="tag type fm">혼복</span><span class="tag type mm">남복</span><span class="tag type ff">여복</span></div>';
+      const nSlots = ms.length ? Math.max(...ms.map((m) => m.slot)) + 1 : 0; let shown = 0;
+      for (let slot = 0; slot < nSlots; slot++) {
+        let rows = ms.filter((m) => m.slot === slot); if (filter === 'left') rows = rows.filter((m) => !doc.done[m.id]); if (!rows.length) continue; shown += rows.length;
+        const t0 = slotStartMin(s, slot), t1 = t0 + s.matchMinutes; const st8 = today ? wkSlotStatus(t0, t1) : '';
+        html += `<div class="slot ${st8}"><div class="slot-title"><span class="t">${hhmm(t0)}</span><span class="to">~ ${hhmm(t1)}</span>${st8 === 'live' ? '<span class="live">진행 중</span>' : ''}</div><div class="cards match-cards">${rows.map((m) => wkCardHtml(m, doc, !!doc.done[m.id], closed)).join('')}</div></div>`;
+      }
+      if (!shown) html += `<p class="hint">${filter === 'left' ? '남은 대진이 없습니다. 모두 완료했습니다 🎾' : '경기가 없습니다.'}</p>`;
+      html += wkSummaryHtml(doc, s, ms);
+    } else if (closed) html += '<p class="hint">이 모임에는 대진이 없었습니다.</p>';
+    return html;
+  }
+  /** 인당 경기 수 요약 (접기) */
+  function wkSummaryHtml(doc, s, ms) {
+    const att = wkAttendees(doc); if (!att.length || !ms.length) return '';
+    const games = {}, tc = {}; const g = (id) => (doc.attendance[id]?.g === 'F' ? 'F' : 'M');
+    for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const t = [g(A[0]), g(A[1])].sort().join(''); for (const x of [...A, ...B]) { games[x] = (games[x] || 0) + 1; (tc[x] ??= { FF: 0, FM: 0, MM: 0 })[t]++; } }
+    const rows = [...att].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || a.name.localeCompare(b.name, 'ko'));
+    const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
+    return `<details class="wk-summary"><summary>인당 경기 수 (최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기)</summary><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th></tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; return `<tr><td><b>${esc(p.name)}</b>${p.guest ? ' <span class="sub">게스트</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${games[p.id] || 0}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td></tr>`; }).join('')}</tbody></table></div></details>`;
+  }
+  async function wkScheduleClick(t) {
+    if (t.closest('#wk-gen')) { await wkGenerate('full'); return; }
+    if (t.closest('#wk-regen-left')) { await wkGenerate('left'); return; }
+    if (t.closest('#wk-reshuffle')) { await wkGenerate('reshuffle'); return; }
+    const fb = t.closest('[data-wk-filter]'); if (fb) { W.filter = fb.dataset.wkFilter; renderWeeklyView(); return; }
+    const card = t.closest('[data-wk-done]'); if (card && W.doc && !wkClosed(W.doc)) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
+  }
+  /** 관리자: 모임 삭제 (목록에서 빼고 세션 파일도 지움) */
+  async function wkDeleteSession(id) {
+    if (!SESSION_RE.test(id)) return;
+    const d = W.id === id ? W.doc : (W.cache[id] || null); const n = d ? Object.keys(d.attendance || {}).length : null;
+    if (!confirm(`${fmtDate(id)} 모임을 삭제할까요?${n ? `\n참석 ${n}명의 체크와 대진이 함께 지워집니다.` : ''}`)) return;
+    const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 삭제`);
+    if (!ok) return;
+    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`);
+    delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; } toast(`${fmtDate(id)} 모임을 삭제했습니다`); await weeklyRefresh();
+  }
+  /** 관리자 토큰으로 데이터 저장소 파일 삭제 (없으면 무시) */
+  async function dataAdminDelete(path, msg) {
+    if (WK_MOCK) { wkMock.set(path, null); return true; }
+    const tok = await loadToken(); if (!tok) return false;
+    try {
+      const url = `https://api.github.com/repos/${GH.owner}/${GH_DATA.repo}/contents/${path}`;
+      const cur = await fetch(`${url}?ref=${GH_DATA.branch}&_=${Date.now()}`, { headers: ghHeaders(tok), cache: 'no-store' }); if (cur.status === 404) return true; if (!cur.ok) return false;
+      const { sha } = await cur.json();
+      const res = await fetch(url, { method: 'DELETE', headers: { ...ghHeaders(tok), 'Content-Type': 'application/json' }, body: JSON.stringify({ message: msg, sha, branch: GH_DATA.branch }) });
+      if (!res.ok) toast('파일 삭제는 실패했지만 목록에서는 뺐습니다'); return res.ok;
+    } catch { return false; }
+  }
   // ---- 관리자: 날짜 만들기 · 프록시 주소 ----
   $('#wk-form-session')?.addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target; const fd = new FormData(f); const date = String(fd.get('date') || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
@@ -1724,7 +1841,7 @@
     if (editor) {
       html += `<h3>대회 생성</h3><div class="tour-card"><form id="tour-form-new" class="row" autocomplete="off"><label class="inline" style="flex:1 1 260px">대회명 <input name="name" maxlength="60" required placeholder="예: 2026년 4분기 테니스윗 대회"></label><label class="inline">날짜 <input name="date" type="date" style="width:auto"></label><button type="submit" class="primary">🆕 대회 만들기</button></form>
         <p class="hint">만든 뒤 <b>대회 설정</b>(방식·코트·시간) → <b>선수</b> 탭에서 참가 체크 → 생성 → 게시 순서입니다. 진행 중인 대회가 있으면 먼저 지난 대회로 보관하세요.</p></div>`;
-      if (sch || s.name) html += `<h3>${live ? '진행 중인 대회' : '현재 작업본'}</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}${live ? '' : ' · 같은 날짜의 보관본이 있음'}</span></div>
+      if (live) html += `<h3>진행 중인 대회</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
         <div class="row"><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>${sch ? '<button id="tour-archive" title="대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button>' : ''}</div></div>`;
     }
     html += '<h3>지난 대회</h3>';
@@ -1795,7 +1912,7 @@
     const it = e.target.closest('[data-arch]'); if (it) await openArchive(it.dataset.arch);
   });
 
-  window.tennisweet = { weekly: { W, applyOp: applyWeeklyOp, refresh: weeklyRefresh, mock: wkMock, send: wkSend }, archive: { T, build: buildArchive, refresh: tournamentRefresh }, _genOnce: (seed) => generateRotationOnce(state.settings, seed), _score: scheduleScore, syncTokenFromPublished, hasToken: () => !!localStorage.getItem(TOKEN_KEY), getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
+  window.tennisweet = { weekly: { W, applyOp: applyWeeklyOp, refresh: weeklyRefresh, mock: wkMock, send: wkSend, generate: generateWeeklySchedule, history: wkHistory }, archive: { T, build: buildArchive, refresh: tournamentRefresh }, _genOnce: (seed) => generateRotationOnce(state.settings, seed), _score: scheduleScore, syncTokenFromPublished, hasToken: () => !!localStorage.getItem(TOKEN_KEY), getState: () => JSON.parse(JSON.stringify(state)), setState: async (d) => { state = normalize(d); await decryptAll(); commit(); }, isAdmin: () => !!adminKey };
 
   // ================= 시작 =================
   (async () => {
