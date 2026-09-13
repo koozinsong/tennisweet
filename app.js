@@ -1440,14 +1440,20 @@
   };
   // 저장 위치: 지금은 코드 저장소의 data/weekly/… (관리자 토큰으로 main·gh-pages 에 커밋). 프록시를 붙이면 별도 저장소(DATA_BASE)로 옮긴다
   const WK_PATH = (path) => 'data/' + path;
+  const wkFresh = {}; // 관리자가 방금 쓴 파일: Pages 반영(약 30초~1분)까지는 읽기보다 이 값을 우선
+  const newer = (a, b) => { if (!a) return false; if (!b) return true; if (a.rev != null || b.rev != null) return (a.rev | 0) > (b.rev | 0); return String(a.updatedAt || '') > String(b.updatedAt || ''); };
   async function dataRead(path) {
     if (WK_MOCK) return wkMock.get(path);
-    try { const r = await fetch(WK_PATH(path) + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
+    let got = null; try { const r = await fetch(WK_PATH(path) + '?_=' + Date.now(), { cache: 'no-store' }); if (r.ok) got = await r.json(); } catch {}
+    const f = wkFresh[path]; if (f && Date.now() - f.t < 5 * 60000 && newer(f.v, got)) return JSON.parse(JSON.stringify(f.v));
+    return got;
   }
   /** 관리자 토큰으로 정기 모임 파일 갱신: mutate(json|null) → 새 json (null 이면 중단) */
   async function dataAdminUpdate(path, mutate, msg) {
     if (WK_MOCK) { const next = mutate(wkMock.get(path)); if (next == null) return false; wkMock.set(path, next); return true; }
-    return repoAdminUpdate(WK_PATH(path), mutate, msg);
+    let written = null; const ok = await repoAdminUpdate(WK_PATH(path), (cur) => { const next = mutate(cur); if (next != null) written = next; return next; }, msg);
+    if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
+    return ok;
   }
   const wkCanWrite = () => WK_MOCK || !!adminKey || !!W.index?.proxy; // 저장 수단: 로컬 모의 / 관리자 토큰 / 프록시
   const wkClosed = (doc) => doc?.status === 'closed' || (/^\d{4}-\d{2}-\d{2}$/.test(doc?.date || '') && Date.parse(doc.date + 'T00:00:00+09:00') + 86400000 <= Date.now()); // 모임 다음날 0시(KST)부터 읽기 전용
@@ -1475,6 +1481,7 @@
       result = doc; return doc;
     }, wkCommitMsg(op));
     if (fail) return fail; if (!ok || !result) return { ok: false, code: 'GITHUB' };
+    wkFresh[`weekly/sessions/${op.session}.json`] = { v: JSON.parse(JSON.stringify(result)), t: Date.now() };
     return { ok: true, rev: result.rev, doc: result };
   }
   const wkCommitMsg = (op) => { const who = op.by ? ` by ${String(op.by).slice(0, 20)}` : ''; return op.op === 'set' ? `정기 모임 ${op.session} ${op.path}${op.value == null ? ' 삭제' : ''}${who}` : `정기 모임 ${op.session} 대진 ${op.value ? '#' + (op.value.seed | 0) : '삭제'}${who}`; };
@@ -1699,7 +1706,7 @@
     if (!confirm(`${fmtDate(id)} 모임을 삭제할까요?${n ? `\n참석 ${n}명의 체크와 대진이 함께 지워집니다.` : ''}`)) return;
     const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 삭제`);
     if (!ok) return;
-    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`);
+    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`); delete wkFresh[`weekly/sessions/${id}.json`];
     delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; } toast(`${fmtDate(id)} 모임을 삭제했습니다`); await weeklyRefresh();
   }
   /** 관리자 토큰으로 정기 모임 파일 삭제 (main·gh-pages, 없으면 무시) */
