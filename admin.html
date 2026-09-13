@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>테니스윗 관리자</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&display=swap" data-font="1">
+<link rel="stylesheet" href="style.css?gate=1">
+<style>
+  .login { max-width: 420px; margin: 40px auto; background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 28px 24px; }
+  .login h1 { font-size: 22px; margin: 0 0 6px; color: var(--court-deep); }
+  .login p { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+  .login input[type=password] { font-size: 18px; padding: 12px; }
+  .login button { width: 100%; margin-top: 12px; padding: 12px; font-size: 16px; }
+  .err { color: var(--danger); font-size: 14px; margin-top: 10px; min-height: 18px; }
+  .back { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body data-page="admin">
+<script src="loader.js"></script>
+<div id="gate">
+  <header class="topbar"><div class="brand"><span class="ball" aria-hidden="true"></span>테니스윗 <span>관리자</span></div></header>
+  <main>
+    <form class="login" id="login">
+      <h1>🔐 관리자 로그인</h1>
+      <p>비밀번호를 입력하면 선수 정보(NTRP 포함)·팀 구성·일정 생성·결과 입력을 할 수 있습니다.</p>
+      <label>비밀번호 <input type="password" id="pw" autocomplete="current-password" autofocus required></label>
+      <button type="submit" class="primary">로그인</button>
+      <div class="err" id="err"></div>
+      <a class="back" href="./">← 일정표 보기로 돌아가기</a>
+    </form>
+  </main>
+</div>
+<script>
+(async () => {
+  const ADMIN_SALT = 'tennisweet-v1';
+  const ADMIN_HASH = 'd662b5254226a2bc02011aa385a0e4c734fe29f7ad067728c76b149ca396fd9e'; // PBKDF2 120k 검증값 (app.js 와 동일)
+  const verifier = async (pw) => { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(ADMIN_SALT + '-verify'), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); };
+  const ok = async (pw) => !!pw && (await verifier(pw)) === ADMIN_HASH;
+  // 로그인 성공 → 같은 페이지 안에 관리자 앱(index.html 의 화면)을 불러와 편집 모드로 실행
+  async function boot() { document.title = '테니스윗 관리자'; await TennisweetLoader.boot({ page: 'admin' }); }
+  if (await ok(sessionStorage.getItem('tennisweet.pw'))) { boot(); return; }
+  const f = document.getElementById('login'), err = document.getElementById('err'), pwEl = document.getElementById('pw');
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault(); err.textContent = '';
+    if (!(await ok(pwEl.value))) { err.textContent = '비밀번호가 틀렸습니다.'; pwEl.select(); return; }
+    sessionStorage.setItem('tennisweet.pw', pwEl.value); boot();
+  });
+})();
+</script>
+</body>
+</html>

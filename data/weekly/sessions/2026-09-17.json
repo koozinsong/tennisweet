@@ -1,0 +1,164 @@
+{
+ "v": 1,
+ "id": "2026-09-17",
+ "date": "2026-09-17",
+ "status": "open",
+ "rev": 26,
+ "settings": {
+  "startTime": "19:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1
+ },
+ "attendance": {
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "19:00",
+   "until": "20:00"
+  },
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "45sqltb": {
+   "n": "정배근",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "19:00",
+   "until": "20:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "df9dtam": {
+   "n": "성기호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:gf9qpx": {
+   "n": "남 게스트",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "g:4n15ld": {
+   "n": "여 게스트",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": {
+  "seed": 897920,
+  "gen": 4,
+  "fromSlot": 0,
+  "inputHash": "16g4k83",
+  "at": "2026-09-13T15:04:09.245Z",
+  "by": "t4lcpvt",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g:gf9qpx"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:g:4n15ld",
+     "p:df9dtam"
+    ],
+    "bIds": [
+     "p:g261xhp",
+     "p:g:gf9qpx"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:g:4n15ld",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:6kn0dof",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s4c1",
+    "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:g261xhp",
+     "p:df9dtam"
+    ],
+    "bIds": [
+     "p:g:gf9qpx",
+     "p:ibws5ld"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
+    "court": 1,
+    "aIds": [
+     "p:g:4n15ld",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:45sqltb",
+     "p:g261xhp"
+    ]
+   }
+  ]
+ },
+ "done": {},
+ "createdAt": "2026-09-13T14:05:47.838Z",
+ "updatedAt": "2026-09-13T15:04:10.552Z"
+}
