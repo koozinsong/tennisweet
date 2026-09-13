@@ -440,3 +440,6 @@ button.wk-del:hover { background: var(--danger-bg); }
 .mcard .gname::after, table .gname::after { content: " G"; font-size: 11px; font-weight: 800; color: #d97706; }
 .tag.type.mix { background: #dff3f5; color: #0e7c86; } .mcard.t-mix { border-left-color: #0e7c86; }
 .tag.gtag { background: #fde3c4; color: #7a3f00; }
+.wk-ch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-basis: 100%; }
+.wk-ch-row #wk-court-hours { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.wk-ch { font-family: var(--display); font-size: 15px; }
