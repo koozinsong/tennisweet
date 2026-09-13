@@ -537,6 +537,7 @@
       const ps = activePlayers(); const exp = {}; ps.forEach((p) => { exp[p.id] = 0; });
       if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) { const av = ps.filter((p) => playerAvailable(p, st, sl)); const f = Math.min(1, courtsAtSlot(st, sl) * 4 / Math.max(1, av.length)); av.forEach((p) => { exp[p.id] += f; }); }
       const dev = ps.map((p) => (games[p.id] || 0) - exp[p.id]); spread = dev.length ? Math.max(...dev) - Math.min(...dev) : 0;
+      let below = 0; for (const p of ps) { let av = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) if (playerAvailable(p, st, sl)) av++; const minG = Math.min(av, 2); if ((games[p.id] || 0) < minG) below += minG - (games[p.id] || 0); } spread += below * 20; // 최소 경기 수(2, 시간대가 1개면 1) 미달은 크게 불리 (×60 → 1200/경기)
     } else { const g = Object.values(games); spread = g.length ? Math.max(...g) - Math.min(...g) : 0; }
     // 3연속 출전 횟수
     const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
@@ -575,7 +576,10 @@
     // 정기 모임 공정성: (a) 기대 경기 수(참석 시간대마다 자리/인원 비율 누적) 대비 부족한 사람 먼저, (b) 남은 시간대가 적은 사람(곧 가는 사람) 먼저
     const weekly = !!GEN_HOOK; const EXP = {}; ps.forEach((p) => { EXP[p.id] = 0; }); let AVG_REMAIN = 0;
     const remainOf = (p, slot) => { let r = 0; for (let i = slot; i < n; i++) if (playerAvailable(p, s, i)) r++; return r; };
-    const prio = (p, slot) => (weekly ? (played[p.id] - EXP[p.id]) * 100 - 40 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) : played[p.id] * 100) + (slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id]);
+    const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
+    // 최소 보장: 참석 시간대가 2개 이상이면 최소 2경기, 1개면 1경기. 남은 시간대를 다 뛰어야 채울 수 있으면 최우선(-300)
+    const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
+    const prio = (p, slot) => (weekly ? (played[p.id] - EXP[p.id]) * 100 - 40 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) : played[p.id] * 100) + (slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id]);
     const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
