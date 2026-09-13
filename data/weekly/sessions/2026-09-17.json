@@ -1,0 +1,19 @@
+{
+ "v": 1,
+ "id": "2026-09-17",
+ "date": "2026-09-17",
+ "status": "open",
+ "rev": 0,
+ "settings": {
+  "startTime": "19:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1
+ },
+ "attendance": {},
+ "schedule": null,
+ "done": {},
+ "createdAt": "2026-09-13T14:05:47.838Z"
+}
