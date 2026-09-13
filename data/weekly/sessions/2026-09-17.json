@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 3,
+ "rev": 4,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -18,10 +18,16 @@
    "g": "F",
    "from": "19:00",
    "until": "20:00"
+  },
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-13T14:07:16.346Z"
+ "updatedAt": "2026-09-13T14:08:11.199Z"
 }
