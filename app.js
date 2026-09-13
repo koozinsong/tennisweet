@@ -1496,8 +1496,8 @@
   const fmtDate = (ymd) => { const d = new Date(ymd + 'T00:00:00'); return isNaN(d) ? ymd : `${d.getMonth() + 1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`; };
   const isToday = (ymd) => ymd === ymdOf();
   const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
-  const wkSessions = () => [...(W.index?.sessions || [])].sort((a, b) => (a.date < b.date ? 1 : -1)); // 최신 먼저
-  function wkDefaultId() { const today = ymdOf(); const up = wkSessions().filter((s) => s.date >= today); return up.length ? up[up.length - 1].id : wkSessions()[0]?.id || null; } // 오늘 이후 중 가장 가까운 날, 없으면 최근
+  const wkSessions = () => [...(W.index?.sessions || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)); // 날짜순 (지난 모임 → 다가오는 모임)
+  function wkDefaultId() { const today = ymdOf(); const list = wkSessions(); const up = list.filter((s) => s.date >= today); return up.length ? up[0].id : list[list.length - 1]?.id || null; } // 오늘 이후 중 가장 가까운 날, 없으면 가장 최근
   const wkSettings = (doc) => ({ ...DEFAULT_SETTINGS, ...(doc?.settings || {}), fmMenEqual: false, mustFace: '', sameNtrpGame: '', avoidPairs: '', date: doc?.date || '' });
   function wkHours(s) { const a = Math.ceil(toMin(s.startTime) / 60), b = Math.floor(toMin(s.endTime) / 60); const out = []; for (let h = a; h < b; h++) out.push(h); return out; }
   const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
@@ -1555,7 +1555,7 @@
     if (!W.index) { box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
     if (W.indexErr && !list.length) { box.innerHTML = `<p class="hint">${esc(W.indexErr)}</p>`; return; }
     if (!list.length) { box.innerHTML = `<p class="hint">아직 만들어진 모임 날짜가 없습니다.${editor ? ' 위에서 날짜를 만드세요.' : ' 관리자가 날짜를 만들면 여기서 참석을 체크할 수 있습니다.'}</p>`; return; }
-    let html = `<div class="chips wk-sessions">${list.slice(0, 10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
+    let html = `<div class="chips wk-sessions">${list.slice(-10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
     const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
     const cnt = (h) => att.filter((p) => toMin(p.from) <= h * 60 && toMin(p.until) >= (h + 1) * 60).length;
@@ -1636,7 +1636,7 @@
   /** 최근 6회 모임의 파트너·상대·혼복 여성 상대 횟수 (완료 체크된 경기만, 없으면 편성 전체를 절반 가중) — 골고루 섞기용 */
   async function wkHistory(curId) {
     if (W.histFor === curId && W.hist) return W.hist;
-    const cur = wkSessions().find((x) => x.id === curId); const past = cur ? wkSessions().filter((x) => x.id !== curId && x.date < cur.date).slice(0, 6) : [];
+    const cur = wkSessions().find((x) => x.id === curId); const past = cur ? wkSessions().filter((x) => x.id !== curId && x.date < cur.date).reverse().slice(0, 6) : []; // 가까운 과거부터 6회
     const H = { partner: {}, opp: {}, fmWomen: {}, sessions: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
     for (let k = 0; k < past.length; k++) {
       let d = W.cache[past[k].id]; if (!d) { d = await dataRead(`weekly/sessions/${past[k].id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[past[k].id] = d; }
