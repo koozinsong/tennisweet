@@ -377,3 +377,4 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .tour-item { text-align: left; cursor: pointer; align-items: flex-start; font: inherit; }
 .tour-item:hover { border-color: var(--court); background: #f6faf7; }
 .chip.f { background: var(--ff-bg); color: var(--ff); }
+body.view-only .tabs .tab-sub { display: none; } /* 방문자: 대회 설정·팀 구성·일정표·순위는 '대회' 탭 안에서 진입 */

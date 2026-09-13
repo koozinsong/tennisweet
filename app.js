@@ -112,8 +112,9 @@
 
   // ================= 탭 =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  const TAB_GROUP = { schedule: 'tournament', standings: 'tournament', units: 'tournament', setup: 'tournament' }; // 방문자 화면에서 숨긴 탭은 '대회' 탭 소속으로 표시
   function showTab(name) {
-    $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name || (viewOnly && TAB_GROUP[name] === b.dataset.tab); b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
     render();
     if (name === 'weekly') weeklyRefresh(); if (name === 'tournament') tournamentRefresh();
