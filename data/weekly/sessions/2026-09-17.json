@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 0,
+ "rev": 1,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -12,8 +12,17 @@
   "courts": 3,
   "minWomenDoubles": 1
  },
- "attendance": {},
+ "attendance": {
+  "g:test1": {
+   "n": "테스트게스트",
+   "g": "F",
+   "from": "19:00",
+   "until": "21:00",
+   "guest": true
+  }
+ },
  "schedule": null,
  "done": {},
- "createdAt": "2026-09-13T14:05:47.838Z"
+ "createdAt": "2026-09-13T14:05:47.838Z",
+ "updatedAt": "2026-09-13T14:07:02.231Z"
 }
