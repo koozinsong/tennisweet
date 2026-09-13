@@ -118,13 +118,13 @@
     if (b.dataset.go === 'admin') { adminLogin(); return; }
     showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + b.dataset.go);
   });
-  $('#btn-home')?.addEventListener('click', () => { if (viewOnly) { showCover(true); history.replaceState(null, '', location.pathname); } else showTab('schedule'); });
+  $('#btn-home')?.addEventListener('click', () => { showCover(true); history.replaceState(null, '', location.pathname); });
 
   // ================= 탭 =================
   $$('.tabs button').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
   const TAB_GROUP = { schedule: 'tournament', standings: 'tournament', units: 'tournament', setup: 'tournament', venue: 'tournament' }; // 방문자 화면에서 숨긴 탭은 '대회' 탭 소속으로 표시
   function showTab(name) {
-    $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name || (viewOnly && TAB_GROUP[name] === b.dataset.tab); b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name || TAB_GROUP[name] === b.dataset.tab; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
     render();
     if (name === 'weekly') weeklyRefresh(); if (name === 'tournament') tournamentRefresh();
@@ -1824,6 +1824,6 @@
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
     if (await syncTokenFromPublished(published)) toast('게시 토큰을 게시본에서 가져왔습니다 · 바로 게시할 수 있습니다');
-    render(); showTab('players'); weeklyBoot(); tournamentRefresh();
+    render(); { const want = (location.hash || '').replace('#', ''); if (['weekly', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } } weeklyBoot(); tournamentRefresh();
   })();
 })();

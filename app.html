@@ -89,24 +89,27 @@
 <!-- ============ ⑦ 정기 모임 ============ -->
 <section id="tab-weekly" class="tab">
   <h2>정기 모임</h2>
-  <details class="only-editor wk-admin" open>
-    <summary>관리자: 모임 날짜 만들기 · 저장 서버</summary>
-    <form id="wk-form-session" class="row" autocomplete="off">
-      <label class="inline">날짜 <input name="date" type="date" required></label>
-      <label class="inline">코트 <input name="courts" type="number" min="1" max="6" value="2" style="width:64px"></label>
-      <label class="inline">경기 <select name="matchMinutes" style="width:auto"><option value="30">30분</option><option value="60">60분</option></select></label>
-      <label class="inline">시작 <input name="startTime" type="time" value="18:00" style="width:auto"></label>
-      <label class="inline">종료 <input name="endTime" type="time" value="22:00" style="width:auto"></label>
-      <label class="inline">여복 최소 <input name="minWomenDoubles" type="number" min="0" max="5" value="1" style="width:56px"></label>
-      <button type="submit" class="primary">날짜 만들기</button>
-    </form>
-    <div id="wk-admin-list"></div>
-    <form id="wk-form-proxy" class="row" autocomplete="off">
-      <label class="inline" style="flex:1 1 320px">저장 서버 주소 <input name="proxy" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <button type="submit">저장</button><button type="button" id="wk-ping">연결 확인</button>
-      <span class="hint">멤버의 참석·대진·완료 체크를 저장하는 Apps Script 웹앱 주소입니다 (README 참고).</span>
-    </form>
-  </details>
+  <div class="only-editor" id="wk-admin">
+    <h3>정기 모임 생성</h3>
+    <div class="tour-card">
+      <form id="wk-form-session" class="row" autocomplete="off">
+        <label class="inline">날짜 <input name="date" type="date" required></label>
+        <label class="inline">코트 <input name="courts" type="number" min="1" max="6" value="2" style="width:64px"></label>
+        <label class="inline">경기 <select name="matchMinutes" style="width:auto"><option value="30">30분</option><option value="60">60분</option></select></label>
+        <label class="inline">시작 <input name="startTime" type="time" value="18:00" style="width:auto"></label>
+        <label class="inline">종료 <input name="endTime" type="time" value="22:00" style="width:auto"></label>
+        <label class="inline">여복 최소 <input name="minWomenDoubles" type="number" min="0" max="5" value="1" style="width:56px"></label>
+        <button type="submit" class="primary">🆕 정기 모임 만들기</button>
+      </form>
+      <div id="wk-admin-list"></div>
+      <form id="wk-form-proxy" class="row" autocomplete="off">
+        <label class="inline" style="flex:1 1 320px">저장 서버 주소 <input name="proxy" placeholder="https://script.google.com/macros/s/…/exec"></label>
+        <button type="submit">저장</button><button type="button" id="wk-ping">연결 확인</button>
+      </form>
+      <p class="hint">모임을 만들면 멤버가 그 날짜에 참석을 체크하고 대진을 만들 수 있습니다. 저장 서버 주소는 멤버의 참석·대진·완료 체크를 저장하는 Apps Script 웹앱 주소입니다 (README 참고).</p>
+    </div>
+    <h3>모임</h3>
+  </div>
   <div id="wk-view"></div>
 </section>
 

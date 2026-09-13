@@ -51,12 +51,12 @@ a { color: var(--court); }
 
 /* ---- 헤더: 잔디 코트 (포스터를 배경으로 은은하게) ---- */
 .topbar {
-  display: grid; grid-template-columns: 1fr auto; grid-template-areas: "brand actions" "tabs tabs"; align-items: center; gap: 8px 18px; padding: 14px 20px 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "brand actions" "tabs tabs"; align-items: center; gap: 8px 18px; padding: 14px 20px 0;
   background: linear-gradient(180deg, rgba(10,92,53,.88) 0%, rgba(7,69,42,.94) 100%), url("assets/poster.webp") center 62% / cover no-repeat, var(--court-deep);
   color: var(--line);
 }
 .brand { grid-area: brand; } .actions { grid-area: actions; justify-content: flex-end; } .tabs { grid-area: tabs; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.01em; min-width: 0; background: transparent; border: 0; color: #fff; padding: 0; font-family: inherit; cursor: pointer; text-align: left; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.01em; min-width: 0; white-space: nowrap; background: transparent; border: 0; color: #fff; padding: 0; font-family: inherit; cursor: pointer; text-align: left; }
 .brand:hover { border: 0; }
 .brand .ball { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f3ff8a, var(--ball) 55%, var(--ball-deep)); position: relative; flex: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .brand .ball::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.85); border-color: rgba(255,255,255,.85) transparent rgba(255,255,255,.85) transparent; transform: rotate(35deg); }
@@ -377,7 +377,7 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .tour-item { text-align: left; cursor: pointer; align-items: flex-start; font: inherit; }
 .tour-item:hover { border-color: var(--court); background: #f6faf7; }
 .chip.f { background: var(--ff-bg); color: var(--ff); }
-body.view-only .tabs .tab-sub { display: none; } /* 방문자: 대회 설정·팀 구성·일정표·순위는 '대회' 탭 안에서 진입 */
+.tabs .tab-sub { display: none; } /* 대회 설정·팀 구성·일정표·순위·회식은 '대회' 탭 안에서 진입 (방문자·관리자 동일) */
 .score-text { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--court-ink); font-variant-numeric: tabular-nums; }
 .score-text .colon { font-size: 20px; color: var(--muted); }
 .tour-item.live { border-color: var(--accent); background: #faf7ff; }
@@ -388,10 +388,8 @@ body.view-only .tabs .tab-sub { display: none; } /* 방문자: 대회 설정·�
 .cover-menu button.menu-main small { font-size: 13px; font-weight: 500; color: rgba(255,255,255,.8); white-space: normal; }
 .cover-grid button.only-view { grid-column: span 2; }
 /* ---- 정기 모임 ---- */
-.wk-admin { border: 1px dashed var(--rule); border-radius: 10px; padding: 8px 12px; margin: 0 0 14px; background: #fbfaf6; }
-.wk-admin summary { font-weight: 700; color: var(--accent-deep); }
-.wk-admin .row { margin: 8px 0; }
-.wk-admin .row label.inline input, .wk-admin .row label.inline select { width: auto; }
+#wk-admin { margin-bottom: 6px; }
+#wk-admin .row label.inline input, #wk-admin .row label.inline select { width: auto; }
 button.chip { cursor: pointer; border: 1px solid transparent; padding: 5px 12px; border-radius: 18px; min-height: 38px; font-size: 15px; font-weight: 600; background: #eef0ec; color: var(--ink); }
 button.chip:hover { border-color: var(--court); }
 .chip.on { background: var(--court); color: #fff; }
