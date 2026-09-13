@@ -378,3 +378,5 @@ a.btn-like { display: inline-block; border: 1px solid var(--court-deep); backgro
 .tour-item:hover { border-color: var(--court); background: #f6faf7; }
 .chip.f { background: var(--ff-bg); color: var(--ff); }
 body.view-only .tabs .tab-sub { display: none; } /* 방문자: 대회 설정·팀 구성·일정표·순위는 '대회' 탭 안에서 진입 */
+.score-text { display: inline-flex; align-items: center; gap: 6px; font-family: var(--display); font-size: 24px; font-weight: 700; color: var(--court-ink); font-variant-numeric: tabular-nums; }
+.score-text .colon { font-size: 20px; color: var(--muted); }

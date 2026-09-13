@@ -1646,15 +1646,16 @@
       settings: { mode: s.mode, discipline: s.discipline, courts: s.courts, startTime: s.startTime, endTime: s.endTime || '', matchMinutes: s.matchMinutes, breakMinutes: s.breakMinutes, venue: { name: s.venue?.name || '', time: s.venue?.time || '' } },
       players: state.players.filter((p) => used.has(p.id)).map((p) => ({ id: p.id, name: p.name, gender: p.gender || '' })),
       units: state.units.filter((u) => u.playerIds.length).map((u) => ({ id: u.id, name: u.name || '', playerIds: [...u.playerIds] })),
-      schedule: { matches: ms, unitIds: [...(sch.unitIds || [])], groups: sch.groups || [], extraSlots: sch.extraSlots || 0 } };
+      schedule: { matches: ms, unitIds: [...(sch.unitIds || [])], groups: sch.groups || [], extraSlots: sch.extraSlots || 0 },
+      results: Object.fromEntries(Object.entries(state.results || {}).filter(([mid, arr]) => ms.some((m) => m.id === mid) && Array.isArray(arr) && arr.some((r) => r && (r.a !== '' || r.b !== ''))).map(([mid, arr]) => [mid, arr.map((r) => ({ a: String(r?.a ?? ''), b: String(r?.b ?? '') }))])) };
   }
   /** 외부에서 온 보관본 검증: id 형식·금지 키 제거 (이중 방어) */
   function assertArchive(doc) {
     if (!doc || typeof doc !== 'object' || !ARCH_RE.test(String(doc.id || ''))) throw new Error('보관본 형식 오류');
-    for (const k of ['results', 'ntrpEnc', 'ghTokenEnc', 'mustFace', 'sameNtrpGame', 'avoidPairs', 'notes']) delete doc[k];
+    for (const k of ['ntrpEnc', 'ghTokenEnc', 'mustFace', 'sameNtrpGame', 'avoidPairs', 'notes']) delete doc[k];
     doc.players = (Array.isArray(doc.players) ? doc.players : []).filter((p) => p && ID_RE.test(String(p.id))).map((p) => ({ id: p.id, name: String(p.name || '').slice(0, 30), gender: p.gender === 'F' ? 'F' : p.gender === 'M' ? 'M' : '' }));
     doc.units = (Array.isArray(doc.units) ? doc.units : []).filter((u) => u && ID_RE.test(String(u.id))).map((u) => ({ id: u.id, name: String(u.name || '').slice(0, 30), playerIds: (Array.isArray(u.playerIds) ? u.playerIds : []).filter((x) => typeof x === 'string' && ID_RE.test(x)) }));
-    doc.schedule = { matches: Array.isArray(doc.schedule?.matches) ? doc.schedule.matches : [] }; assertIds({ schedule: doc.schedule });
+    doc.schedule = { matches: Array.isArray(doc.schedule?.matches) ? doc.schedule.matches : [] }; doc.results = doc.results && typeof doc.results === 'object' ? doc.results : {}; assertIds({ schedule: doc.schedule, results: doc.results });
     doc.settings = { ...(doc.settings || {}) }; for (const k of ['courts', 'matchMinutes', 'breakMinutes']) doc.settings[k] = Math.max(0, parseInt(doc.settings[k], 10) || 0); for (const k of ['startTime', 'endTime']) if (!TIME_RE.test(doc.settings[k] || '')) doc.settings[k] = k === 'startTime' ? '09:00' : '';
     doc.settings.venue = { name: String(doc.settings.venue?.name || '').slice(0, 60), time: String(doc.settings.venue?.time || '').slice(0, 40) };
     doc.name = String(doc.name || '').slice(0, 60); doc.date = /^\d{4}-\d{2}-\d{2}$/.test(String(doc.date || '')) ? doc.date : '';
@@ -1668,27 +1669,46 @@
     const people = (m, sd) => m[sd + 'Players'] ? m[sd + 'Players'].filter(Boolean) : (m[sd + 'Ids'] || [m[sd + 'Id']]).filter(Boolean).flatMap((id) => U[id]?.playerIds || []);
     const side = (m, sd) => m[sd + 'Players'] ? `<div>${un(m[sd + 'Id'])}<div class="sub">${m[sd + 'Players'].map((id) => (id ? pn(id) : '<i>미정</i>')).join(' · ')}</div></div>` : m[sd + 'Ids'] ? `<div>${m[sd + 'Ids'].map(un).join(' · ')}</div>` : `<div>${m[sd + 'Id'] ? un(m[sd + 'Id']) : `<span class="tbd">${esc(m[sd + 'Label'] || '미정')}</span>`}</div>`;
     const s = doc.settings; const slotT = (i) => hhmm(toMin(s.startTime || '09:00') + i * ((s.matchMinutes || 30) + (s.breakMinutes || 0)));
-    const ms = [...doc.schedule.matches].filter((m) => !m.bye).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0) || (a.court ?? 0) - (b.court ?? 0));
-    let html = `<div class="row"><button id="arch-back">← 지난 대회 목록</button></div><div class="tour-card"><div class="tour-head"><b>${esc(doc.name || doc.id)}</b><span class="sub">${esc(doc.date)}${doc.date ? ' · ' : ''}${MODE_KO[s.mode] || ''} · 코트 ${s.courts || '?'}면 · ${ms.length}경기${s.venue.name ? ` · 회식 ${esc(s.venue.name)}` : ''}</span></div>
-      <div class="chips">${doc.players.map((p) => `<span class="chip ${p.gender === 'F' ? 'f' : ''}">${esc(p.name)}</span>`).join('') || '<span class="tbd">참가자 정보 없음</span>'}</div><p class="hint">대진만 보관합니다. 점수와 순위는 남기지 않습니다.</p></div>`;
+    const R = doc.results || {}; const scoreOf = (m) => { const arr = R[m.id]; if (!Array.isArray(arr)) return null; const r = arr.find((x) => x && (x.a !== '' || x.b !== '')); if (!r) return null; const a = Number(r.a), b = Number(r.b); return { a: r.a, b: r.b, w: r.a !== '' && r.b !== '' ? (a > b ? 'a' : b > a ? 'b' : '') : '' }; };
+    const nameOf = (m, sd) => m[sd + 'Players'] ? (U[m[sd + 'Id']] ? (U[m[sd + 'Id']].name || '') : '') || m[sd + 'Players'].map((id) => P[id]?.name || '?').join('·') : m[sd + 'Ids'] ? m[sd + 'Ids'].map((id) => U[id]?.name || U[id]?.playerIds.map((x) => P[x]?.name || '?').join('·') || '?').join(' · ') : U[m[sd + 'Id']] ? (U[m[sd + 'Id']].name || U[m[sd + 'Id']].playerIds.map((x) => P[x]?.name || '?').join('·')) : '';
+    const ms = [...doc.schedule.matches].filter((m) => !m.bye && scoreOf(m)).sort((a, b) => (a.slot ?? 0) - (b.slot ?? 0) || (a.court ?? 0) - (b.court ?? 0)); // 점수가 기록된 경기만
+    let html = `<div class="row"><button id="arch-back">← 지난 대회 목록</button></div><div class="tour-card"><div class="tour-head"><b>${esc(doc.name || doc.id)}</b><span class="sub">${esc(doc.date)}${doc.date ? ' · ' : ''}${MODE_KO[s.mode] || ''} · 코트 ${s.courts || '?'}면 · 기록 ${ms.length}경기${s.venue.name ? ` · 회식 ${esc(s.venue.name)}` : ''}</span></div>
+      <div class="chips">${doc.players.map((p) => `<span class="chip ${p.gender === 'F' ? 'f' : ''}">${esc(p.name)}</span>`).join('') || '<span class="tbd">참가자 정보 없음</span>'}</div></div>`;
     const nSlots = ms.length ? Math.max(...ms.map((m) => m.slot ?? 0)) + 1 : 0;
     for (let slot = 0; slot < nSlots; slot++) {
       const rows = ms.filter((m) => (m.slot ?? 0) === slot); if (!rows.length) continue;
       html += `<div class="slot"><div class="slot-title"><span class="t">${slotT(slot)}</span><span class="to">~ ${slotT(slot + 1)}</span></div><div class="cards match-cards">${rows.map((m) => {
         const A = people(m, 'a'), B = people(m, 'b'); const ta = A.length === 2 ? A.map(g).sort().join('') : '', tb = B.length === 2 ? B.map(g).sort().join('') : ''; const code = ta && ta === tb ? ta.toLowerCase() : '';
         const ph = m.phase === 'ko' ? `<span class="tag">${esc(m.third ? '3·4위전' : m.koSize === 2 ? '결승' : m.koSize === 4 ? '준결승' : `${m.koSize}강`)}</span>` : m.phase === 'group' ? `<span class="tag">${GROUP_NAMES[m.group] || ''}조</span>` : '';
-        return `<div class="mcard ${code ? 't-' + code : ''}"><div class="mhead"><b class="court">${m.court ?? ''}<small>코트</small></b>${ph}${code ? `<span class="tag type ${code}">${TYPE_LABEL[ta]}</span>` : ''}</div><div class="mbody"><div class="side">${side(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side">${side(m, 'b')}</div></div></div>`; }).join('')}</div></div>`;
+        const sc = scoreOf(m); const foot = sc ? `<div class="mfoot"><span class="score-text"><b>${esc(sc.a || '-')}</b><span class="colon">:</span><b>${esc(sc.b || '-')}</b></span>${sc.w ? `<span class="done">${esc(nameOf(m, sc.w))} 승</span>` : ''}</div>` : '';
+        return `<div class="mcard ${code ? 't-' + code : ''} ${sc?.w ? 'decided' : ''}"><div class="mhead"><b class="court">${m.court ?? ''}<small>코트</small></b>${ph}${code ? `<span class="tag type ${code}">${TYPE_LABEL[ta]}</span>` : ''}</div><div class="mbody"><div class="side ${sc?.w === 'a' ? 'w' : ''}">${side(m, 'a')}</div><div class="vs" aria-hidden="true"></div><div class="side ${sc?.w === 'b' ? 'w' : ''}">${side(m, 'b')}</div></div>${foot}</div>`; }).join('')}</div></div>`;
     }
-    if (!ms.length) html += '<p class="hint">경기 기록이 없습니다.</p>';
+    if (!ms.length) html += '<p class="hint">점수가 기록된 경기가 없습니다.</p>';
+    else html += archivePodium(doc, ms, P, U, scoreOf);
     return html;
+  }
+  /** 보관본 순위 상위 3 (승률 → 경기당 평균 득실 → 승수 → 득게임): 개인전은 선수, 팀전은 개인 기록, 고정조는 조 */
+  function archivePodium(doc, ms, P, U, scoreOf) {
+    const mode = doc.settings.mode; const rows = {}; const row = (id) => (rows[id] ??= { id, p: 0, w: 0, l: 0, d: 0, gf: 0, ga: 0 });
+    for (const m of ms) {
+      const sc = scoreOf(m); if (!sc || sc.a === '' || sc.b === '') continue; const a = Number(sc.a), b = Number(sc.b); if (!Number.isFinite(a) || !Number.isFinite(b)) continue;
+      const A = mode === 'team' ? (m.aPlayers || []).filter(Boolean) : (m.aIds || [m.aId]).filter(Boolean), B = mode === 'team' ? (m.bPlayers || []).filter(Boolean) : (m.bIds || [m.bId]).filter(Boolean);
+      A.forEach((id) => { const r = row(id); r.p++; r.gf += a; r.ga += b; if (a > b) r.w++; else if (b > a) r.l++; else r.d++; });
+      B.forEach((id) => { const r = row(id); r.p++; r.gf += b; r.ga += a; if (b > a) r.w++; else if (a > b) r.l++; else r.d++; });
+    }
+    const list = Object.values(rows).filter((r) => r.p > 0).sort(fairCmp).slice(0, 3); if (!list.length) return '';
+    const nameOf = (id) => mode === 'team' ? (P[id]?.name || '?') : U[id] ? (U[id].name || U[id].playerIds.map((x) => P[x]?.name || '?').join('·')) : '?';
+    const medal = ['🥇', '🥈', '🥉'];
+    return `<h3>${mode === 'team' ? '개인 기록 상위 3' : '순위 상위 3'} <span class="sub">(승률 → 경기당 평균 득실 → 승수)</span></h3>
+      <ol class="podium">${list.map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(nameOf(r.id))}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 승률 ${pct(r)} · 평균 득실 ${avgStr(r)}</span></li>`).join('')}</ol>`;
   }
   function renderTournament() {
     const box = $('#tour-view'); if (!box) return; const s = state.settings, sch = state.schedule; const editor = document.body.classList.contains('editor');
     const n = sch ? sch.matches.filter((m) => !m.bye).length : 0;
     let html = '';
     if (editor) html += `<h3>대회 생성</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
-      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button id="tour-archive" title="이번 대회의 대진과 참가자를 지난 대회 목록에 보관 (점수·순위 제외)">📦 지난 대회로 보관</button></div>
-      <p class="hint">순서: 대회가 끝나면 <b>지난 대회로 보관</b> → <b>새 대회 시작</b> → 대회 설정(이름·날짜·방식) → 선수 탭에서 참가 체크 → 생성 → 게시. 보관은 대진·참가자만 저장하고 점수·순위·NTRP 는 남기지 않습니다.</p></div>`;
+      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button id="tour-archive" title="이번 대회의 대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button></div>
+      <p class="hint">순서: 대회가 끝나면 <b>지난 대회로 보관</b> → <b>새 대회 시작</b> → 대회 설정(이름·날짜·방식) → 선수 탭에서 참가 체크 → 생성 → 게시. 보관에는 대진·참가자·경기 기록이 저장되고 순위표와 NTRP 는 남기지 않습니다.</p></div>`;
     html += '<h3>지난 대회</h3>';
     if (T.doc) html += archiveHtml(T.doc);
     else if (!T.index) html += `<p class="hint">${esc(T.indexErr || '불러오는 중…')}</p>`;
@@ -1718,7 +1738,7 @@
   async function archiveCurrent() {
     if (!state.schedule) { alert('보관할 일정표가 없습니다.'); return; }
     const s = state.settings; const def = s.date ? `${s.date.slice(0, 4)}-q${Math.ceil((parseInt(s.date.slice(5, 7), 10) || 1) / 3)}` : '';
-    const id = prompt('보관 이름 (영문·숫자·하이픈, 예: 2026-q3)\n대진과 참가자만 저장되고 점수·순위·NTRP 는 저장되지 않습니다.', def); if (id == null) return;
+    const id = prompt('보관 이름 (영문·숫자·하이픈, 예: 2026-q3)\n대진·참가자·경기 기록이 저장됩니다. 순위표와 NTRP 는 저장되지 않습니다.', def); if (id == null) return;
     if (!ARCH_RE.test(id.trim())) { alert('영문·숫자·하이픈만, 30자 이내로 입력하세요.'); return; }
     const doc = buildArchive(id.trim()); if (!doc) return;
     const btn = $('#tour-archive'); if (btn) { btn.disabled = true; btn.textContent = '보관 중…'; }
