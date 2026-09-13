@@ -917,9 +917,10 @@
     state.settings.venue = v; save(); renderTournament(); toast('회식 장소를 저장했습니다 · 게시하기를 누르면 모두에게 반영됩니다');
   });
 
+  function renderHeader() { const admin = document.body.dataset.page === 'admin'; const live = liveTournament(); $('#hdr-title').textContent = [live ? state.settings.name : '', admin ? '관리자' : ''].filter(Boolean).join(' · '); document.title = admin ? '테니스윗 관리자' : '테니스윗'; }
   function render() {
     hydrateSettings();
-    { const admin = document.body.dataset.page === 'admin'; const live = typeof liveTournament === 'function' && liveTournament(); $('#hdr-title').textContent = [live ? state.settings.name : '', admin ? '관리자' : ''].filter(Boolean).join(' · '); document.title = admin ? '테니스윗 관리자' : '테니스윗'; }
+    renderHeader();
     $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
     const ap = $('#chk-autopub'); if (ap) ap.checked = localStorage.getItem('tennisweet.autopub') === '1';
     renderPlayers(); renderUnits();
@@ -1903,7 +1904,7 @@
     const idx = await archRead('archive/index.json');
     if (idx && typeof idx === 'object') T.index = { v: 1, events: (Array.isArray(idx.events) ? idx.events : []).filter((e) => e && ARCH_RE.test(String(e.id || ''))).map((e) => ({ id: String(e.id), name: String(e.name || '').slice(0, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) ? e.date : '', mode: String(e.mode || '').slice(0, 10), players: e.players | 0, matches: e.matches | 0 })).sort((a, b) => (a.date < b.date ? 1 : -1)) };
     else { T.index = { v: 1, events: [] }; T.indexErr = ''; }
-    renderTournament(); if (!$('#cover')?.hidden) updateCover();
+    renderTournament(); renderHeader(); if (!$('#cover')?.hidden) updateCover();
   }
   async function openArchive(id) {
     if (id === LIVE_ID) { const d = buildArchive(LIVE_ID); if (!d) return; try { T.doc = assertArchive(d); } catch { return; } renderTournament(); window.scrollTo(0, 0); return; } // 진행 중인 대회: 게시본 그대로
