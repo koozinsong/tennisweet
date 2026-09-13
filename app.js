@@ -1727,17 +1727,19 @@
       const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur) { exists = true; return null; } return { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }; }, `정기 모임 ${date} 생성`);
       if (exists) { alert('이미 있는 날짜입니다.'); return; } if (!ok1) return;
       const ok2 = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`);
-      if (ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다`); W.id = id; W.doc = null; await weeklyRefresh(); }
+      if (ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; await weeklyRefresh(); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     } finally { btn.disabled = false; }
   });
   $('#wk-form-proxy')?.addEventListener('submit', async (e) => {
     e.preventDefault(); const url = String(new FormData(e.target).get('proxy') || '').trim();
     if (url && !PROXY_RE.test(url)) { alert('Apps Script 웹앱 주소 형식이 아닙니다 (https://script.google.com/macros/s/…/exec).'); return; }
-    if (await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.proxy = url; idx.updatedAt = new Date().toISOString(); return idx; }, '정기 모임 저장 서버 주소 설정')) { toast(url ? '저장 서버 주소를 저장했습니다' : '저장 서버 주소를 지웠습니다'); await weeklyRefresh(); }
+    const st = $('#wk-proxy-status'); if (st) st.textContent = '저장 중…';
+    if (await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.proxy = url; idx.updatedAt = new Date().toISOString(); return idx; }, '정기 모임 저장 서버 주소 설정')) { toast(url ? '저장 서버 주소를 저장했습니다' : '저장 서버 주소를 지웠습니다'); if (st) st.textContent = (url ? '✓ 저장됨 ' : '✓ 지움 ') + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); await weeklyRefresh(); } else if (st) st.textContent = '저장 실패';
   });
   $('#wk-ping')?.addEventListener('click', async () => {
     const url = String($('#wk-form-proxy [name=proxy]')?.value || '').trim(); if (WK_MOCK) { toast('로컬 모의 저장소에서는 확인할 수 없습니다'); return; } if (!PROXY_RE.test(url)) { toast('주소를 먼저 입력하세요'); return; }
-    try { const r = await fetch(url + '?op=ping&_=' + Date.now(), { redirect: 'follow' }); const j = await r.json(); toast(j.ok ? `연결됨 · 서버 시각 ${new Date(j.t).toLocaleTimeString('ko-KR')}` : '응답은 왔지만 형식이 다릅니다'); } catch (e) { toast('연결 실패: ' + e.message); }
+    const st = $('#wk-proxy-status'); if (st) st.textContent = '확인 중…';
+    try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: '2000-01-01', op: 'ping' }), redirect: 'follow' }); const j = await r.json(); const msg = j.ok ? `✓ 연결됨 · 서버 시각 ${new Date(j.t).toLocaleTimeString('ko-KR')}` : '응답은 왔지만 형식이 다릅니다'; toast(msg); if (st) st.textContent = msg; } catch (e) { toast('연결 실패: ' + e.message); if (st) st.textContent = '✗ 연결 실패: ' + e.message; }
   });
   function weeklyBoot() { const f = $('#wk-form-session [name=date]'); if (f && !f.value) { const d = new Date(); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); f.value = ymdOf(d); } weeklyRefresh(); } // 기본값: 다음 토요일
 
