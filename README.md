@@ -1,4 +1,4 @@
-# 🎾 테니스윗 분기 대회 일정표
+# 🎾 테니스윗 클럽 앱 (정기 모임 · 분기 대회)
 
 빌드 없는 정적 웹 앱 (HTML/CSS/JS). GitHub Pages 로 배포됩니다.
 
@@ -33,6 +33,22 @@
 - 수동 게시: **내보내기** → 받은 `tournament.json` 을 `data/` 에 덮어쓰고 `git push`. (또는 Claude Code 로 파일 직접 수정 후 push)
 - 현장에서 즉시 공유: **🔗 공유 링크** — 현재 상태 전체를 링크에 담아 카톡 등으로 전달 (읽기 전용 스냅샷)
 - **NTRP 는 관리자 비밀번호로 AES-GCM 암호화**되어 저장됩니다. 저장소 JSON 을 열어도 평문이 보이지 않습니다. 비밀번호 변경은 `app.js` 와 `admin.html` 의 `ADMIN_HASH`(PBKDF2-SHA256, salt `tennisweet-v1-verify`, 120000회) 를 바꾸고, 기존 NTRP 는 새 비밀번호로 다시 입력해야 합니다. 게시본이 공개 파일이므로 비밀번호는 추측하기 어려운 것으로 두는 편이 안전합니다.
+
+## 정기 모임 (주간 모임: 참석 체크 → 누구나 대진 생성 → 완료 체크)
+
+- 화면: 첫 화면 **정기 모임** → 날짜 칩 → 이름을 눌러 도착·퇴장 시각 선택(참석 저장) → **대진 생성** 버튼 → 시간대별 카드, 카드를 누르면 완료(다시 누르면 취소), "남은 대진" 필터. 게스트는 [+ 게스트]로 그 날짜에만 추가(이름·남/여 필수). 참석이 바뀌면 "남은 시간대 다시 짜기"로 아직 시작하지 않은 시간대만 다시 만듭니다. 최근 6회 모임에서 같이 뛴 파트너·상대는 벌점을 받아 다음 주에는 다른 사람과 붙습니다.
+- 관리자: 정기 모임 탭 위의 **정기 모임 생성** 카드에서 날짜·코트·경기 시간·시작/종료·여복 최소를 넣고 만들기. 목록의 🗑 삭제로 지웁니다. **게시하기는 필요 없습니다** — 정기 모임 데이터는 저장 즉시 반영됩니다.
+- 데이터는 별도 저장소 **`koozinsong/tennisweet-data`** 의 정적 파일입니다: `weekly/index.json`(모임 목록·저장 서버 주소, 관리자 토큰으로 씀), `weekly/sessions/<날짜>.json`(참석·대진·완료, 프록시가 씀). 읽기는 GitHub Pages(`https://koozinsong.github.io/tennisweet-data/…`), 화면은 20초마다 갱신. 모임 다음날 0시부터는 읽기 전용.
+- 멤버 폰에는 어떤 토큰도 없습니다. 참석·대진·완료 저장은 **Google Apps Script 웹앱(프록시)** 이 대신 커밋합니다(`tools/gas-proxy/Code.gs`). 프록시는 세션 파일의 `attendance.*`·`done.*`·`schedule` 만 바꿀 수 있고, 대진 저장은 수정 번호(rev)를 비교해 먼저 온 쪽이 남습니다.
+- 로컬(`localhost`)에서는 GitHub 대신 브라우저 안 모의 저장소를 씁니다(게시하기·정기 모임 모두). `?store=live` 를 붙이면 실제 데이터 저장소를 읽습니다.
+
+### 처음 한 번 설정 (관리자)
+1. GitHub 에서 저장소 **`tennisweet-data`** 를 공개로 만들기 (README 추가에 체크해 `main` 브랜치가 생기게). Settings → Pages → Source: *Deploy from a branch*, `main` / `/ (root)` 저장.
+2. **관리자 토큰 재발급**: https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* 에 `tennisweet` 와 `tennisweet-data` 둘 다, Permissions: Contents *Read and write*. 관리자 페이지에서 정기 모임을 처음 만들 때 토큰을 다시 물으면 이 토큰을 붙여넣습니다 (이후 게시하기도 같은 토큰).
+3. **프록시용 토큰**: 같은 방법으로 `tennisweet-data` 만 선택한 Contents Read and write 토큰을 하나 더 발급 (앱에 넣지 않고 다음 단계에만 씀).
+4. **Apps Script 배포**: https://script.google.com → 새 프로젝트 → `Code.gs` 내용을 `tools/gas-proxy/Code.gs` 로 교체 → ⚙ 프로젝트 설정 → 스크립트 속성에 `GH_TOKEN` = 3 의 토큰 → 배포 → 새 배포 → 유형 *웹 앱*, 실행: **나**, 액세스: **모든 사용자** → 웹 앱 URL(`…/exec`) 복사.
+5. 관리자 페이지 → 정기 모임 → 정기 모임 생성 카드의 **저장 서버 주소**에 URL 붙여넣고 저장 → **연결 확인**이 "연결됨"이면 끝. 코드를 고치면 배포 → 배포 관리 → 새 버전(URL 유지).
+6. 로컬에서 프록시 로직만 검증: `node tools/gas-proxy/test_local.js`.
 
 ## 로컬 실행
 ```bash
