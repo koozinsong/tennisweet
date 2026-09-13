@@ -1237,6 +1237,7 @@
   // ================= 게시본 (저장소 data/tournament.json) =================
   const EDITOR_FLAG = 'tennisweet.editor';
   async function loadPublished() {
+    if (WK_MOCK) { const m = wkMock.get('data/tournament.json'); if (m) return m; } // 로컬: 모의 게시본이 있으면 그것을
     try { const res = await fetch('data/tournament.json?_=' + Date.now(), { cache: 'no-store' }); if (!res.ok) return null; return await res.json(); } catch { return null; } // CDN 캐시 우회
   }
   function toast(msg, ms = 3500) { const t = $('#toast'); if (!t) return; t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms); }
@@ -1302,6 +1303,11 @@
     try {
       if (!assertTypesOk()) return;
       if (!state.schedule && !confirm('아직 일정표가 없습니다. 선수·설정만 게시할까요?')) return;
+      if (WK_MOCK) { // 로컬 테스트: GitHub 대신 브라우저 모의 저장소에 게시 → 같은 브라우저의 방문자 화면(localhost)에 반영
+        const publishedAt = new Date().toISOString(); const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt };
+        wkMock.set('data/tournament.json', JSON.parse(JSON.stringify(out))); state.publishedAt = publishedAt; state.basePublishedAt = publishedAt; save();
+        toast('로컬 모의 게시 완료 · 이 브라우저의 방문자 화면(localhost:8090)에 반영됩니다. 실제 저장소에는 올라가지 않습니다', 6000); bannerAdmin(`로컬 모의 게시 ${new Date(publishedAt).toLocaleTimeString('ko-KR')} (GitHub 미반영)`); return;
+      }
       let tok = await loadToken();
       if (!tok) { tok = await askToken(); if (!tok) { toast('게시를 취소했습니다 (토큰 없음)'); return; } await saveToken(tok); }
       const publishedAt = new Date().toISOString();
