@@ -3,7 +3,7 @@
  "id": "2026-09-18",
  "date": "2026-09-18",
  "status": "open",
- "rev": 1,
+ "rev": 2,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -23,5 +23,5 @@
  "schedule": null,
  "done": {},
  "createdAt": "2026-09-13T14:10:19.549Z",
- "updatedAt": "2026-09-13T14:16:57.943Z"
+ "updatedAt": "2026-09-13T14:17:03.399Z"
 }
