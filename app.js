@@ -1660,12 +1660,14 @@
     }
     if (sch) {
       const ms = [...sch.matches].sort((a, b) => a.slot - b.slot || a.court - b.court);
-      const filter = W.filter || (today && !closed ? 'left' : 'all'); const doneN = ms.filter((m) => doc.done[m.id]).length;
-      html += `<div class="row wk-filter"><button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${ms.length - doneN}</button><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button>${closed ? '' : '<span class="hint">경기가 끝나면 카드를 눌러 완료 표시하세요.</span>'}</div>`;
+      const filter = W.filter || (today && !wkClosed(doc) ? 'left' : 'all');
+      const isPast = (m) => today && wkSlotStatus(slotStartMin(s, m.slot), slotStartMin(s, m.slot) + s.matchMinutes) === 'past'; // 시간이 지난 경기는 완료 체크 없이도 '남은 대진'에서 빠진다
+      const isLeft = (m) => !doc.done[m.id] && !isPast(m); const leftN = ms.filter(isLeft).length;
+      html += `<div class="row wk-filter"><button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${leftN}</button><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button>${closed ? '' : '<span class="hint">시간이 지난 경기는 자동으로 빠지고, 일찍 끝난 경기는 카드를 눌러 완료 표시할 수 있습니다.</span>'}</div>`;
       html += '<div class="legend"><span class="tag type fm">혼복</span><span class="tag type mm">남복</span><span class="tag type ff">여복</span></div>';
       const nSlots = ms.length ? Math.max(...ms.map((m) => m.slot)) + 1 : 0; let shown = 0;
       for (let slot = 0; slot < nSlots; slot++) {
-        let rows = ms.filter((m) => m.slot === slot); if (filter === 'left') rows = rows.filter((m) => !doc.done[m.id]); if (!rows.length) continue; shown += rows.length;
+        let rows = ms.filter((m) => m.slot === slot); if (filter === 'left') rows = rows.filter(isLeft); if (!rows.length) continue; shown += rows.length;
         const t0 = slotStartMin(s, slot), t1 = t0 + s.matchMinutes; const st8 = today ? wkSlotStatus(t0, t1) : '';
         html += `<div class="slot ${st8}"><div class="slot-title"><span class="t">${hhmm(t0)}</span><span class="to">~ ${hhmm(t1)}</span>${st8 === 'live' ? '<span class="live">진행 중</span>' : ''}</div><div class="cards match-cards">${rows.map((m) => wkCardHtml(m, doc, !!doc.done[m.id], closed)).join('')}</div></div>`;
       }
