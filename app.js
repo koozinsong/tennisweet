@@ -1685,15 +1685,24 @@
   function renderTournament() {
     const box = $('#tour-view'); if (!box) return; const s = state.settings, sch = state.schedule; const editor = document.body.classList.contains('editor');
     const n = sch ? sch.matches.filter((m) => !m.bye).length : 0;
-    let html = `<div class="tour-card"><div class="tour-head"><b>${esc(s.name || '이번 대회')}</b><span class="sub">${esc(s.date || '')}${s.date ? ' · ' : ''}${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
-      <div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button>${s.mode === 'team' ? '<button data-go-tab="units"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>' : ''}${editor ? '<button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button id="tour-archive" class="only-editor" title="이번 대회의 대진과 참가자를 지난 대회 목록에 보관 (점수·순위 제외)">📦 지난 대회로 보관</button>' : ''}</div>
-      ${editor ? '<p class="hint">보관하면 <code>data/archive/</code> 에 대진·참가자만 저장되어 지난 대회 목록에 나타납니다. 점수·순위·NTRP 는 저장되지 않습니다. 보관 뒤에도 이번 대회는 그대로 남으므로, 다음 대회를 준비할 때 설정을 바꾸고 새로 생성하면 됩니다.</p>' : ''}</div>`;
+    let html = '';
+    if (editor) html += `<h3>대회 생성</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
+      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button id="tour-archive" title="이번 대회의 대진과 참가자를 지난 대회 목록에 보관 (점수·순위 제외)">📦 지난 대회로 보관</button></div>
+      <p class="hint">순서: 대회가 끝나면 <b>지난 대회로 보관</b> → <b>새 대회 시작</b> → 대회 설정(이름·날짜·방식) → 선수 탭에서 참가 체크 → 생성 → 게시. 보관은 대진·참가자만 저장하고 점수·순위·NTRP 는 남기지 않습니다.</p></div>`;
     html += '<h3>지난 대회</h3>';
     if (T.doc) html += archiveHtml(T.doc);
     else if (!T.index) html += `<p class="hint">${esc(T.indexErr || '불러오는 중…')}</p>`;
     else if (!T.index.events.length) html += '<p class="hint">보관된 대회가 아직 없습니다.</p>';
     else html += `<div class="cards">${T.index.events.map((ev) => `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>`).join('')}</div>`;
     box.innerHTML = html;
+  }
+  /** 새 대회 시작: 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크를 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
+  function newTournament() {
+    if (!confirm('새 대회를 시작합니다.\n이 브라우저 작업본의 일정표·점수·팀 구성·회식 안내가 비워지고 참가 체크가 모두 해제됩니다 (선수 명단과 NTRP 는 유지, 게시본은 게시하기 전까지 그대로).\n먼저 "지난 대회로 보관"을 했는지 확인하세요. 계속할까요?')) return;
+    state.schedule = null; state.results = {}; state.units = []; state.editMode = false; state.meFilter = undefined;
+    state.settings = { ...state.settings, name: '', date: '', mustFace: '', sameNtrpGame: '', avoidPairs: '', venue: { name: '', time: '', addr: '', phone: '', menu: '', note: '' } };
+    state.players.forEach((p) => { p.active = false; p.from = ''; p.until = ''; });
+    save(); showTab('setup'); toast('대회 설정(이름·날짜·방식)을 입력한 뒤 선수 탭에서 참가를 체크하고 생성하세요', 6000);
   }
   async function tournamentRefresh() {
     const idx = await archRead('archive/index.json');
@@ -1724,6 +1733,7 @@
   $('#tab-tournament')?.addEventListener('click', async (e) => {
     const go = e.target.closest('[data-go-tab]'); if (go) { showTab(go.dataset.goTab); history.replaceState(null, '', '#' + go.dataset.goTab); return; }
     if (e.target.closest('#tour-archive')) { await archiveCurrent(); return; }
+    if (e.target.closest('#tour-new')) { newTournament(); return; }
     if (e.target.closest('#arch-back')) { T.doc = null; renderTournament(); return; }
     const it = e.target.closest('[data-arch]'); if (it) await openArchive(it.dataset.arch);
   });
