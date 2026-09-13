@@ -157,11 +157,10 @@
   $('#btn-players-none').addEventListener('click', () => { state.players.forEach((p) => (p.active = false)); commit(); });
   function renderPlayers() {
     const act = state.players.filter((p) => p.active).length;
-    $('#players-title').textContent = `선수 명단 (${state.players.length}명 · 대회 참가 ${act}명)`;
-    if (viewOnly) {
-      $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
-        <td>${i + 1}</td><td>${p.active ? '✅' : '—'}</td><td><b>${esc(p.name)}</b></td><td>${p.gender === 'M' ? '남' : p.gender === 'F' ? '여' : ''}</td>
-        <td class="only-editor"></td><td>${esc(p.from || '')}</td><td>${esc(p.until || '')}</td><td class="only-editor"></td><td class="sub">${esc(p.note || '')}</td><td></td></tr>`).join('');
+    $('#players-title').textContent = viewOnly ? `선수 명단 (${state.players.length}명)` : `선수 명단 (${state.players.length}명 · 대회 참가 ${act}명)`;
+    if (viewOnly) { // 방문자: 이름·성별만 (대회 참가·합류·퇴장은 관리자 화면에서만)
+      const ps = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      $('#tbl-players tbody').innerHTML = ps.map((p, i) => `<tr><td>${i + 1}</td><td class="only-editor"></td><td><b>${esc(p.name)}</b></td><td>${p.gender === 'M' ? '남' : p.gender === 'F' ? '여' : ''}</td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td></td></tr>`).join('');
       return;
     }
     $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
