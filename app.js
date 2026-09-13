@@ -642,18 +642,18 @@
         return pairsOf(M) >= fm ? M : null;
       };
       // 1) 선발: 여성 수(짝수) 분할 후보 중 선발 우선순위 합이 최선에 가까운 것들에서 무작위 선택 (시도마다 다른 구성 탐색)
-      let kSel = k, pick = null;
+      let kSel = k, pick = null; const mixOk = !!(GEN_HOOK && GEN_HOOK.mixOk); // 정기 모임: 여성이 홀수로 남으면 잡복(여+남 vs 남+남)도 허용해 코트를 최대한 채운다
       for (; kSel >= 1; kSel--) {
         const need = kSel * 4;
         const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
         const cands = [];
-        for (let t = ffForce ? 4 : 0; t <= Wav.length; t += 2) {
+        for (let t = ffForce ? 4 : 0; t <= Wav.length; t += mixOk ? 1 : 2) {
           if (need - t < 0 || need - t > Mav.length) continue;
           const fmOk = !!menFor(t, kSel, false); // 혼복 남자 짝이 안 나오면 여복 코트로 여성을 담는 변형도 후보에 (가점 없이)
           for (const asFF of ((ffPossible || !fmOk) && t >= 4 ? [false, true] : [false])) {
             const M = menFor(t, kSel, asFF); if (!M) continue;
             const sum = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + M.reduce((a, id) => a + score(playerById(id)), 0);
-            cands.push({ t, asFF, M, sum: sum - (asFF ? (ffForce ? 1e9 : 150) : 0), dist: Math.abs(t - ideal) });
+            cands.push({ t, asFF, M, sum: sum - (asFF ? (ffForce ? 1e9 : 150) : 0) + (t % 2 ? 250 : 0), dist: Math.abs(t - ideal) }); // 잡복이 되는 홀수 분할은 같은 코트 수를 채울 다른 길이 있으면 뒤로 (여성이 모자랄 때만)
           }
         }
         if (cands.length) {
@@ -685,6 +685,7 @@
           if (j < 0) { aside.push(x); continue; }
           const y = m.splice(j, 1)[0]; courts.push([w.pop(), x, w.pop(), y]);
         }
+        if (w.length === 1 && mixOk && m.length + aside.length >= 3) { m.push(...aside); aside.length = 0; courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); } // 잡복: 여+남 vs 남+남
         if (w.length) continue; // 여성이 남음 → 이 배치는 실패
         m.push(...aside);
         while (courts.length < kk && m.length >= 4) courts.push([m.pop(), m.pop(), m.pop(), m.pop()]);
@@ -1627,7 +1628,7 @@
     const inputHash = wkInputHash(doc); const seed = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}`) % 1000000; // 같은 참석 상태면 어느 기기에서 눌러도 같은 판
     const saved = { players: state.players, settings: state.settings, nt: new Map(ntrp) };
     state.players = ps; state.settings = s; ntrp.clear();
-    GEN_HOOK = { fromSlot, fixed, hist: hist || null };
+    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true };
     try {
       const sch = generateRotation(s, seed);
       const matches = sch.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })).sort((a, b) => a.slot - b.slot || a.court - b.court);
@@ -1662,12 +1663,12 @@
   }
   const wkSlotStatus = (t0, t1) => { const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); return cur >= t0 && cur < t1 ? 'live' : cur >= t1 ? 'past' : ''; };
   function wkCardHtml(m, doc, done, closed) {
-    const nm = (x) => { const a = doc.attendance[x.slice(2)]; return (a?.guest ? '<span class="gname">' : '<span>') + esc(wkName(doc, x.slice(2))) + '</span>'; }; const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
+    const nm = (x) => { const a = doc.attendance[x.slice(2)]; return `<span class="${a?.guest ? 'gname ' + (a.g === 'F' ? 'f' : 'm') : ''}">${esc(wkName(doc, x.slice(2)))}</span>`; }; const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
     const ta = [g(m.aIds[0]), g(m.aIds[1])].sort().join(''), tb = [g(m.bIds[0]), g(m.bIds[1])].sort().join('');
-    const code = ta === tb ? ta.toLowerCase() : ''; const label = ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`;
+    const code = ta === tb ? ta.toLowerCase() : 'mix'; const label = ta === tb ? TYPE_LABEL[ta] : '잡복';
     const gone = [...m.aIds, ...m.bIds].some((x) => !doc.attendance[x.slice(2)]); // 불참으로 바뀐 사람이 포함된 경기
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시'}">
-      <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag ${code ? 'type ' + code : 'bad'}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}</div>
+      <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}</div>
       <div class="mbody"><div class="side"><div><b>${nm(m.aIds[0])}</b> · <b>${nm(m.aIds[1])}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side"><div><b>${nm(m.bIds[0])}</b> · <b>${nm(m.bIds[1])}</b></div></div></div></div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
@@ -1699,11 +1700,12 @@
   function wkSummaryHtml(doc, s, ms) {
     const att = wkAttendees(doc); if (!att.length || !ms.length) return '';
     const games = {}, tc = {}; const g = (id) => (doc.attendance[id]?.g === 'F' ? 'F' : 'M');
-    for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const t = [g(A[0]), g(A[1])].sort().join(''); for (const x of [...A, ...B]) { games[x] = (games[x] || 0) + 1; (tc[x] ??= { FF: 0, FM: 0, MM: 0 })[t]++; } }
+    const typeOf = (m) => { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const ta = [g(A[0]), g(A[1])].sort().join(''), tb = [g(B[0]), g(B[1])].sort().join(''); return ta === tb ? ta : 'MIX'; };
+    for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const t = typeOf(m); for (const x of [...A, ...B]) { games[x] = (games[x] || 0) + 1; (tc[x] ??= { FF: 0, FM: 0, MM: 0, MIX: 0 })[t]++; } }
     const rows = [...att].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || a.name.localeCompare(b.name, 'ko'));
     const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
-    const tot = { FM: 0, MM: 0, FF: 0 }; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)); tot[[g(A[0]), g(A[1])].sort().join('')]++; }
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th></tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : ''}">${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}${p.guest ? ' <span class="tag gtag">게스트</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b class="${p.guest ? 'gname ' + (p.gender === 'F' ? 'f' : 'm') : ''}">${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}${p.guest ? ' <span class="tag gtag">게스트</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
   }
   async function wkScheduleClick(t) {
     if (t.closest('#wk-gen')) { await wkGenerate('full'); return; }
