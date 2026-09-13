@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 2,
+ "rev": 3,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -13,13 +13,6 @@
   "minWomenDoubles": 1
  },
  "attendance": {
-  "g:test1": {
-   "n": "테스트게스트",
-   "g": "F",
-   "from": "19:00",
-   "until": "21:00",
-   "guest": true
-  },
   "t4lcpvt": {
    "n": "고서영",
    "g": "F",
@@ -30,5 +23,5 @@
  "schedule": null,
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-13T14:07:07.236Z"
+ "updatedAt": "2026-09-13T14:07:16.346Z"
 }
