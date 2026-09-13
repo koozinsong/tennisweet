@@ -1739,14 +1739,15 @@
     e.preventDefault(); const f = e.target; const fd = new FormData(f); const date = String(fd.get('date') || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     const st = { startTime: String(fd.get('startTime') || '18:00'), endTime: String(fd.get('endTime') || '22:00'), matchMinutes: Math.max(5, parseInt(fd.get('matchMinutes'), 10) || 30), breakMinutes: 0, courts: Math.max(1, parseInt(fd.get('courts'), 10) || 2), minWomenDoubles: Math.max(0, parseInt(fd.get('minWomenDoubles'), 10) || 0) };
     if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime) || toMin(st.startTime) >= toMin(st.endTime)) { alert('시작·종료 시각을 확인하세요.'); return; }
-    const id = date; const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
+    const id = date; const btn = f.querySelector('button[type=submit]'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
-      let exists = false;
-      const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur) { exists = true; return null; } return { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }; }, `정기 모임 ${date} 생성`);
-      if (exists) { alert('이미 있는 날짜입니다.'); return; } if (!ok1) return;
-      const ok2 = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`);
-      if (ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
-    } finally { btn.disabled = false; }
+      if (wkSessions().some((x) => x.id === id)) { alert('이미 있는 날짜입니다.'); return; }
+      const [ok1, ok2] = await Promise.all([ // 세션 파일과 목록을 동시에 (각각 원본·사본 동시 커밋)
+        dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => cur || { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }, `정기 모임 ${date} 생성`),
+        dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`),
+      ]);
+      if (ok1 && ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+    } finally { btn.disabled = false; btn.innerHTML = label; }
   });
   $('#wk-form-proxy')?.addEventListener('submit', async (e) => {
     e.preventDefault(); const url = String(new FormData(e.target).get('proxy') || '').trim();
@@ -1780,9 +1781,10 @@
     for (let retry = 0; retry < 2; retry++) {
       try {
         const cur = await ghGetJson(tok, path, 'main'); const next = mutate(cur); if (next == null) return false;
-        const content = JSON.stringify(next, null, 1) + '\n'; const fails = [];
-        for (const br of GH.branches) { try { await ghPutFile(tok, br, content, msg, { path }); } catch (e) { if (br === 'main') throw e; fails.push(br); } }
-        if (fails.length) toast(`${fails.join(', ')} 사본은 다음 배포 때 반영됩니다`);
+        const content = JSON.stringify(next, null, 1) + '\n';
+        const rs = await Promise.allSettled(GH.branches.map((br) => ghPutFile(tok, br, content, msg, { path }))); // 원본·서빙 사본 동시에
+        if (rs[0].status === 'rejected') throw rs[0].reason;
+        const fails = GH.branches.filter((_, i) => rs[i].status === 'rejected'); if (fails.length) toast(`${fails.join(', ')} 사본은 다음 배포 때 반영됩니다`);
         return true;
       } catch (e) {
         if ((e.message === 'AUTH' || e.message === 'NOPERM') && retry === 0) { forgetToken(); const t2 = await askToken(e.message === 'AUTH' ? '토큰이 거부되었습니다 (만료·오타). 새 토큰을 넣어 주세요.' : '이 토큰으로는 저장소에 쓸 수 없습니다. 새 토큰을 넣어 주세요.'); if (!t2) return false; await saveToken(t2); tok = t2; continue; }
