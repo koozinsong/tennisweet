@@ -919,7 +919,7 @@
 
   function render() {
     hydrateSettings();
-    $('#hdr-title').textContent = (state.settings.name || '분기 대회 일정표') + (document.body.dataset.page === 'admin' ? ' · 관리자' : '');
+    { const admin = document.body.dataset.page === 'admin'; const live = typeof liveTournament === 'function' && liveTournament(); $('#hdr-title').textContent = [live ? state.settings.name : '', admin ? '관리자' : ''].filter(Boolean).join(' · '); document.title = admin ? '테니스윗 관리자' : '테니스윗'; }
     $$('.inp-minff').forEach((el) => { el.value = state.settings.minWomenDoubles ?? 1; });
     const ap = $('#chk-autopub'); if (ap) ap.checked = localStorage.getItem('tennisweet.autopub') === '1';
     renderPlayers(); renderUnits();
