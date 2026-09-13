@@ -1719,13 +1719,15 @@
   }
   function renderTournament() {
     const box = $('#tour-view'); if (!box) return; const s = state.settings, sch = state.schedule; const editor = document.body.classList.contains('editor');
-    const n = sch ? sch.matches.filter((m) => !m.bye).length : 0;
+    const n = sch ? sch.matches.filter((m) => !m.bye).length : 0; const live = liveTournament();
     let html = '';
-    if (editor) html += `<h3>대회 생성</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
-      <div class="row"><button id="tour-new" class="primary">🆕 새 대회 시작</button><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button><button id="tour-archive" title="이번 대회의 대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button></div>
-      <p class="hint">순서: 대회가 끝나면 <b>지난 대회로 보관</b> → <b>새 대회 시작</b> → 대회 설정(이름·날짜·방식) → 선수 탭에서 참가 체크 → 생성 → 게시. 보관에는 대진·참가자·경기 기록이 저장되고 순위표와 NTRP 는 남기지 않습니다.</p></div>`;
+    if (editor) {
+      html += `<h3>대회 생성</h3><div class="tour-card"><form id="tour-form-new" class="row" autocomplete="off"><label class="inline" style="flex:1 1 260px">대회명 <input name="name" maxlength="60" required placeholder="예: 2026년 4분기 테니스윗 대회"></label><label class="inline">날짜 <input name="date" type="date" style="width:auto"></label><button type="submit" class="primary">🆕 대회 만들기</button></form>
+        <p class="hint">만든 뒤 <b>대회 설정</b>(방식·코트·시간) → <b>선수</b> 탭에서 참가 체크 → 생성 → 게시 순서입니다. 진행 중인 대회가 있으면 먼저 지난 대회로 보관하세요.</p></div>`;
+      if (sch || s.name) html += `<h3>${live ? '진행 중인 대회' : '현재 작업본'}</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}${live ? '' : ' · 같은 날짜의 보관본이 있음'}</span></div>
+        <div class="row"><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>${sch ? '<button id="tour-archive" title="대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button>' : ''}</div></div>`;
+    }
     html += '<h3>지난 대회</h3>';
-    const live = liveTournament();
     if (T.doc) html += (T.doc.id === LIVE_ID ? `<div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표 (전체)</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button></div>` : '') + archiveHtml(T.doc);
     else {
       const items = [];
@@ -1735,6 +1737,15 @@
       html += items.length ? `<div class="cards">${items.join('')}</div>` : '<p class="hint">보관된 대회가 아직 없습니다.</p>';
     }
     box.innerHTML = html;
+    const f = $('#tour-form-new [name=date]'); if (f && !f.value) f.value = ymdOf();
+  }
+  /** 새 대회 만들기: 이름·날짜를 넣고 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
+  function newTournament(name, date) {
+    if (state.schedule && liveTournament() && !confirm(`진행 중인 대회 '${state.settings.name || ''}' 의 일정표·점수가 이 브라우저 작업본에서 지워집니다 (게시본은 게시하기 전까지 그대로).\n아직 보관하지 않았다면 취소하고 먼저 "지난 대회로 보관"을 하세요. 계속할까요?`)) return;
+    state.schedule = null; state.results = {}; state.units = []; state.editMode = false; state.meFilter = undefined;
+    state.settings = { ...state.settings, name, date, mustFace: '', sameNtrpGame: '', avoidPairs: '', venue: { name: '', time: '', addr: '', phone: '', menu: '', note: '' } };
+    state.players.forEach((p) => { p.active = false; p.from = ''; p.until = ''; });
+    save(); showTab('setup'); toast(`'${name}' 대회를 만들었습니다 · 방식·코트·시간을 정한 뒤 선수 탭에서 참가를 체크하세요`, 6000);
   }
   const LIVE_ID = 'live';
   /** 새 대회 시작: 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크를 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
@@ -1772,10 +1783,14 @@
       if (ok2) { toast(`'${doc.name || doc.id}' 을(를) 지난 대회로 보관했습니다`, 5000); T.doc = null; await tournamentRefresh(); }
     } finally { if (btn) { btn.disabled = false; btn.textContent = '📦 지난 대회로 보관'; } }
   }
+  $('#tab-tournament')?.addEventListener('submit', (e) => {
+    if (e.target.id !== 'tour-form-new') return; e.preventDefault(); const fd = new FormData(e.target);
+    const name = String(fd.get('name') || '').trim().slice(0, 60); const date = String(fd.get('date') || ''); if (!name) return;
+    newTournament(name, /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '');
+  });
   $('#tab-tournament')?.addEventListener('click', async (e) => {
     const go = e.target.closest('[data-go-tab]'); if (go) { showTab(go.dataset.goTab); history.replaceState(null, '', '#' + go.dataset.goTab); return; }
     if (e.target.closest('#tour-archive')) { await archiveCurrent(); return; }
-    if (e.target.closest('#tour-new')) { newTournament(); return; }
     if (e.target.closest('#arch-back')) { T.doc = null; renderTournament(); return; }
     const it = e.target.closest('[data-arch]'); if (it) await openArchive(it.dataset.arch);
   });
