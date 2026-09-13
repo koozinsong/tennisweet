@@ -2,6 +2,14 @@
  "v": 1,
  "sessions": [
   {
+   "id": "2026-09-18",
+   "date": "2026-09-18",
+   "courts": 2,
+   "matchMinutes": 30,
+   "startTime": "19:00",
+   "endTime": "22:00"
+  },
+  {
    "id": "2026-09-17",
    "date": "2026-09-17",
    "courts": 3,
@@ -11,5 +19,5 @@
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbw5xwCB9VPCx0mCDLjAK_h31dhvu1F0UfAEyJzE4M34liubIMLCdx3Rf60I1tHrOFeO1A/exec",
- "updatedAt": "2026-09-13T14:05:51.401Z"
+ "updatedAt": "2026-09-13T14:10:23.157Z"
 }
