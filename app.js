@@ -1561,7 +1561,7 @@
     const cnt = (h) => att.filter((p) => toMin(p.from) <= h * 60 && toMin(p.until) >= (h + 1) * 60).length;
     html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · 코트 ${s.courts}면 · ${s.matchMinutes}분 경기</span>${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${esc(name)}${a ? `<small>${esc(a.from.slice(0, 2))}~${esc(a.until.slice(0, 2))}</small>` : ''}</button>`;
+    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? `<span class="gmark">G${a?.g === 'F' ? '♀' : ''}</span>` : ''}${esc(name)}${a ? `<small>${esc(a.from.slice(0, 2))}~${esc(a.until.slice(0, 2))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
     html += `<h3>참석 ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
       <p class="hint">${wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
@@ -1661,7 +1661,7 @@
   }
   const wkSlotStatus = (t0, t1) => { const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); return cur >= t0 && cur < t1 ? 'live' : cur >= t1 ? 'past' : ''; };
   function wkCardHtml(m, doc, done, closed) {
-    const nm = (x) => esc(wkName(doc, x.slice(2))); const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
+    const nm = (x) => { const a = doc.attendance[x.slice(2)]; return (a?.guest ? '<span class="gname">' : '<span>') + esc(wkName(doc, x.slice(2))) + '</span>'; }; const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
     const ta = [g(m.aIds[0]), g(m.aIds[1])].sort().join(''), tb = [g(m.bIds[0]), g(m.bIds[1])].sort().join('');
     const code = ta === tb ? ta.toLowerCase() : ''; const label = ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`;
     const gone = [...m.aIds, ...m.bIds].some((x) => !doc.attendance[x.slice(2)]); // 불참으로 바뀐 사람이 포함된 경기
@@ -1702,7 +1702,7 @@
     const rows = [...att].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || a.name.localeCompare(b.name, 'ko'));
     const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
     const tot = { FM: 0, MM: 0, FF: 0 }; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)); tot[[g(A[0]), g(A[1])].sort().join('')]++; }
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th></tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b>${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}${p.guest ? ' <span class="sub">게스트</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th></tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : ''}">${esc(p.name)}</b>${p.gender === 'F' ? ' <span class="sub">여</span>' : ''}${p.guest ? ' <span class="tag gtag">게스트</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td></tr>`; }).join('')}</tbody></table></div></div>`;
   }
   async function wkScheduleClick(t) {
     if (t.closest('#wk-gen')) { await wkGenerate('full'); return; }
