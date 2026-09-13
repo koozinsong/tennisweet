@@ -39,16 +39,16 @@
 - 화면: 첫 화면 **정기 모임** → 날짜 칩 → 이름을 눌러 도착·퇴장 시각 선택(참석 저장) → **대진 생성** 버튼 → 시간대별 카드, 카드를 누르면 완료(다시 누르면 취소), "남은 대진" 필터. 게스트는 [+ 게스트]로 그 날짜에만 추가(이름·남/여 필수). 참석이 바뀌면 "남은 시간대 다시 짜기"로 아직 시작하지 않은 시간대만 다시 만듭니다. 최근 6회 모임에서 같이 뛴 파트너·상대는 벌점을 받아 다음 주에는 다른 사람과 붙습니다.
 - 관리자: 정기 모임 탭 위의 **정기 모임 생성** 카드에서 날짜·코트·경기 시간·시작/종료·여복 최소를 넣고 만들기. 목록의 🗑 삭제로 지웁니다. **게시하기는 필요 없습니다** — 정기 모임 데이터는 저장 즉시 반영됩니다.
 - **지금 구성 (관리자 저장)**: 정기 모임 데이터는 이 저장소의 `data/weekly/index.json`(모임 목록)과 `data/weekly/sessions/<날짜>.json`(참석·대진·완료)에 있고, **관리자 토큰**이 게시하기와 같은 방식으로 `main`·`gh-pages` 에 직접 커밋합니다. 방문자는 보기만 하며(참석은 관리자에게 알려 주면 관리자가 입력), 화면은 20초마다 갱신됩니다. 모임 다음날 0시부터는 읽기 전용.
-- **나중 구성 (멤버 직접 저장)**: Google Apps Script 프록시(`tools/gas-proxy/Code.gs`)를 배포하고 관리자 화면의 "저장 서버 주소"에 넣으면 멤버 폰에서도 참석·대진·완료를 저장할 수 있습니다. 그때는 데이터를 별도 저장소(`tennisweet-data`, 코드에 `DATA_BASE`)로 옮겨 프록시 토큰의 권한을 그 저장소로 한정합니다. 아래 설정 절차는 그 단계용입니다.
+- **멤버 직접 저장 (프록시)**: Google Apps Script 웹앱(`tools/gas-proxy/Code.gs`)을 배포하고 관리자 화면 정기 모임 → "저장 서버 주소"에 넣으면, 멤버 폰에서 참석·대진·완료를 저장할 수 있습니다. 폰에는 토큰이 없고, 프록시가 자기 토큰으로 `data/weekly/sessions/<날짜>.json` 만 커밋합니다(다른 파일은 쓸 수 없음, 값도 검증). 대진 저장은 수정 번호(rev)를 비교해 먼저 온 쪽이 남습니다.
 - 로컬(`localhost`)에서는 GitHub 대신 브라우저 안 모의 저장소를 씁니다(게시하기·정기 모임 모두). `?store=live` 를 붙이면 실제 데이터를 읽습니다.
 
-### 멤버 직접 저장(프록시)으로 바꿀 때의 설정
-1. GitHub 에서 저장소 **`tennisweet-data`** 를 공개로 만들기 (README 추가에 체크해 `main` 브랜치가 생기게). Settings → Pages → Source: *Deploy from a branch*, `main` / `/ (root)` 저장.
-2. **관리자 토큰 재발급**: https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* 에 `tennisweet` 와 `tennisweet-data` 둘 다, Permissions: Contents *Read and write*. 관리자 페이지에서 정기 모임을 처음 만들 때 토큰을 다시 물으면 이 토큰을 붙여넣습니다 (이후 게시하기도 같은 토큰).
-3. **프록시용 토큰**: 같은 방법으로 `tennisweet-data` 만 선택한 Contents Read and write 토큰을 하나 더 발급 (앱에 넣지 않고 다음 단계에만 씀).
-4. **Apps Script 배포**: https://script.google.com → 새 프로젝트 → `Code.gs` 내용을 `tools/gas-proxy/Code.gs` 로 교체 → ⚙ 프로젝트 설정 → 스크립트 속성에 `GH_TOKEN` = 3 의 토큰 → 배포 → 새 배포 → 유형 *웹 앱*, 실행: **나**, 액세스: **모든 사용자** → 웹 앱 URL(`…/exec`) 복사.
-5. 관리자 페이지 → 정기 모임 → 정기 모임 생성 카드의 **저장 서버 주소**에 URL 붙여넣고 저장 → **연결 확인**이 "연결됨"이면 끝. 코드를 고치면 배포 → 배포 관리 → 새 버전(URL 유지).
-6. 로컬에서 프록시 로직만 검증: `node tools/gas-proxy/test_local.js`.
+### 프록시 설정 (한 번만, 약 10분)
+1. **프록시용 토큰**: https://github.com/settings/personal-access-tokens/new → Repository access: *Only select repositories* → `koozinsong/tennisweet` → Permissions → Repository permissions → **Contents: Read and write** → 생성. (관리자 토큰과 별개. 앱에는 넣지 않습니다.)
+2. https://script.google.com → **새 프로젝트** → 편집기의 `Code.gs` 내용을 지우고 `tools/gas-proxy/Code.gs` 전체를 붙여넣기 → 저장(💾).
+3. 왼쪽 ⚙ **프로젝트 설정** → 아래 **스크립트 속성** → 속성 추가: 이름 `GH_TOKEN`, 값 = 1 의 토큰 → 저장.
+4. 오른쪽 위 **배포 → 새 배포** → 유형 선택(⚙) **웹 앱** → 실행 사용자 **나**, 액세스 권한 **모든 사용자** → 배포. 권한 확인창이 뜨면 계정 선택 → "확인되지 않은 앱" 경고에서 *고급 → (프로젝트명)(안전하지 않음)으로 이동* → 허용. **웹 앱 URL**(`https://script.google.com/macros/s/…/exec`) 복사.
+5. 관리자 페이지 → 정기 모임 → 정기 모임 생성 카드 → **저장 서버 주소**에 URL 붙여넣고 **저장** → **연결 확인**이 "연결됨"이면 완료. 이제 방문자 화면에서도 참석·대진·완료가 저장됩니다.
+6. 코드를 고쳤을 때: Apps Script 에서 배포 → **배포 관리** → ✏ → 버전 *새 버전* → 배포 (URL 유지). 로컬 검증: `node tools/gas-proxy/test_local.js`.
 
 ## 로컬 실행
 ```bash

@@ -1,6 +1,6 @@
 // 로컬 검증: GAS 전역을 흉내 내어 Code.gs 의 doPost 를 실행 (node tools/gas-proxy/test_local.js)
 const fs = require('fs'); const vm = require('vm');
-const store = { 'weekly/sessions/2026-09-20.json': { v: 1, id: '2026-09-20', date: '2026-09-20', status: 'open', rev: 0, settings: { startTime: '18:00', endTime: '22:00', matchMinutes: 30, breakMinutes: 0, courts: 2, minWomenDoubles: 1 }, attendance: {}, schedule: null, done: {} } };
+const store = { 'data/weekly/sessions/2026-09-20.json': { v: 1, id: '2026-09-20', date: '2026-09-20', status: 'open', rev: 0, settings: { startTime: '18:00', endTime: '22:00', matchMinutes: 30, breakMinutes: 0, courts: 2, minWomenDoubles: 1 }, attendance: {}, schedule: null, done: {} } };
 const shas = {}; let putCalls = 0, conflictOnce = false;
 const gas = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => ({ GH_TOKEN: 'tok' }[k] || null) }) },
@@ -8,10 +8,10 @@ const gas = {
   ContentService: { createTextOutput: (s) => ({ setMimeType: () => ({ text: s }) }), MimeType: { JSON: 'json' } },
   Utilities: { base64Decode: (s) => Buffer.from(s, 'base64'), base64Encode: (s) => Buffer.from(s, 'utf8').toString('base64'), newBlob: (buf) => ({ getDataAsString: () => buf.toString('utf8') }), Charset: { UTF_8: 'utf8' } },
   UrlFetchApp: { fetch: (url, opt = {}) => {
-    const m = url.match(/contents\/(.+?)(\?|$)/); const path = m[1];
-    if (!opt.method) { const doc = store[path]; if (!doc) return { getResponseCode: () => 404, getContentText: () => '' }; const content = Buffer.from(JSON.stringify(doc)).toString('base64'); shas[path] = shas[path] || 'sha1'; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ sha: shas[path], content }) }; }
-    putCalls++; const body = JSON.parse(opt.payload); if (body.sha !== shas[path]) return { getResponseCode: () => 409, getContentText: () => '{}' }; if (conflictOnce) { conflictOnce = false; shas[path] += 'x'; return { getResponseCode: () => 409, getContentText: () => '{}' }; }
-    store[path] = JSON.parse(Buffer.from(body.content, 'base64').toString('utf8')); shas[path] += 'x'; return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
+    const m = url.match(/contents\/(.+?)(\?|$)/); const path = m[1]; const br = (url.match(/ref=([^&]+)/) || [])[1] || (opt.payload && JSON.parse(opt.payload).branch); const key = br + ':' + path; const isMain = br === 'main';
+    if (!opt.method) { const doc = isMain ? store[path] : store['gh:' + path]; if (!doc) return { getResponseCode: () => 404, getContentText: () => '' }; const content = Buffer.from(JSON.stringify(doc)).toString('base64'); shas[key] = shas[key] || 'sha1'; return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ sha: shas[key], content }) }; }
+    if (isMain) putCalls++; const body = JSON.parse(opt.payload); if ((shas[key] || null) !== (body.sha || null)) return { getResponseCode: () => 409, getContentText: () => '{}' }; if (isMain && conflictOnce) { conflictOnce = false; shas[key] += 'x'; return { getResponseCode: () => 409, getContentText: () => '{}' }; }
+    const doc = JSON.parse(Buffer.from(body.content, 'base64').toString('utf8')); if (isMain) store[path] = doc; else store['gh:' + path] = doc; shas[key] = (shas[key] || 'sha1') + 'x'; return { getResponseCode: () => 200, getContentText: () => '{}' }; } },
   Date,
 };
 const ctx = vm.createContext(gas); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__doPost = doPost; globalThis.__doGet = doGet;', ctx);
@@ -32,7 +32,8 @@ r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push([
 r = call({ ...base, op: 'set', path: 'evil.x', value: 1 }); results.push(['bad path invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '<b>x</b>'.repeat(10), g: 'M', from: '18:00', until: '22:00' } }); results.push(['name clipped 20', r.ok && r.doc.attendance.h0teikh.n.length === 20]);
 conflictOnce = true; const before = putCalls; r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['409 retry', r.ok && putCalls - before === 2]);
-store['weekly/sessions/2026-09-20.json'].date = '2020-01-01'; r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['closed', r.code === 'CLOSED']);
+results.push(['gh-pages copy in sync', JSON.stringify(store['gh:data/weekly/sessions/2026-09-20.json']) === JSON.stringify(store['data/weekly/sessions/2026-09-20.json'])]);
+store['data/weekly/sessions/2026-09-20.json'].date = '2020-01-01'; r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['closed', r.code === 'CLOSED']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['closed blocks attend', r.code === 'CLOSED']);
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);
