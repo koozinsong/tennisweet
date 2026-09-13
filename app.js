@@ -1610,8 +1610,8 @@
   // ================= ⑧ 대회 페이지 (이번 대회 + 지난 대회 보관 — 대진과 참가자만, 점수·순위·NTRP 는 저장하지 않음) =================
   const ARCH_RE = /^[A-Za-z0-9_-]{1,30}$/;
   const T = { index: null, indexErr: '', doc: null };
-  async function archRead(path) { // 코드 저장소 data/archive/… (정적 파일). 로컬은 모의 저장소
-    if (WK_MOCK) return wkMock.get('data/' + path);
+  async function archRead(path) { // 코드 저장소 data/archive/… (정적 파일). 로컬은 모의 저장소에 있으면 그것을, 없으면 실제 파일
+    if (WK_MOCK) { const m = wkMock.get('data/' + path); if (m) return m; }
     try { const r = await fetch('data/' + path + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
   }
   async function ghGetJson(tok, path, branch) {

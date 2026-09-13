@@ -1,0 +1,439 @@
+{
+ "v": 1,
+ "id": "2026-q3",
+ "name": "2026년 3분기 테니스윗 대회",
+ "date": "2026-09-11",
+ "archivedAt": "2026-09-13T12:59:47.092Z",
+ "settings": {
+  "mode": "rotation",
+  "discipline": "doubles",
+  "courts": 3,
+  "startTime": "19:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "venue": {
+   "name": "통속으로",
+   "time": "22:00부터 (경기 종료 직후)"
+  }
+ },
+ "players": [
+  {
+   "id": "h0teikh",
+   "name": "송국진",
+   "gender": "M"
+  },
+  {
+   "id": "t4lcpvt",
+   "name": "고서영",
+   "gender": "F"
+  },
+  {
+   "id": "lvcpucm",
+   "name": "박상용",
+   "gender": "M"
+  },
+  {
+   "id": "ibws5ld",
+   "name": "박석환",
+   "gender": "M"
+  },
+  {
+   "id": "nba8nn1",
+   "name": "윤성환",
+   "gender": "M"
+  },
+  {
+   "id": "k45yesm",
+   "name": "이정선",
+   "gender": "F"
+  },
+  {
+   "id": "243v8q3",
+   "name": "김지선",
+   "gender": "F"
+  },
+  {
+   "id": "smnajd5",
+   "name": "윤성민",
+   "gender": "M"
+  },
+  {
+   "id": "uzqomod",
+   "name": "이상학",
+   "gender": "M"
+  },
+  {
+   "id": "t5tmwl5",
+   "name": "정다운",
+   "gender": "F"
+  },
+  {
+   "id": "45sqltb",
+   "name": "정배근",
+   "gender": "M"
+  },
+  {
+   "id": "6kn0dof",
+   "name": "승철홍",
+   "gender": "M"
+  },
+  {
+   "id": "fm3bdg7",
+   "name": "이원근",
+   "gender": "M"
+  },
+  {
+   "id": "18qv5bz",
+   "name": "신윤호",
+   "gender": "M"
+  }
+ ],
+ "units": [
+  {
+   "id": "p:h0teikh",
+   "name": "",
+   "playerIds": [
+    "h0teikh"
+   ]
+  },
+  {
+   "id": "p:t4lcpvt",
+   "name": "",
+   "playerIds": [
+    "t4lcpvt"
+   ]
+  },
+  {
+   "id": "p:lvcpucm",
+   "name": "",
+   "playerIds": [
+    "lvcpucm"
+   ]
+  },
+  {
+   "id": "p:ibws5ld",
+   "name": "",
+   "playerIds": [
+    "ibws5ld"
+   ]
+  },
+  {
+   "id": "p:nba8nn1",
+   "name": "",
+   "playerIds": [
+    "nba8nn1"
+   ]
+  },
+  {
+   "id": "p:k45yesm",
+   "name": "",
+   "playerIds": [
+    "k45yesm"
+   ]
+  },
+  {
+   "id": "p:243v8q3",
+   "name": "",
+   "playerIds": [
+    "243v8q3"
+   ]
+  },
+  {
+   "id": "p:smnajd5",
+   "name": "",
+   "playerIds": [
+    "smnajd5"
+   ]
+  },
+  {
+   "id": "p:uzqomod",
+   "name": "",
+   "playerIds": [
+    "uzqomod"
+   ]
+  },
+  {
+   "id": "p:t5tmwl5",
+   "name": "",
+   "playerIds": [
+    "t5tmwl5"
+   ]
+  },
+  {
+   "id": "p:45sqltb",
+   "name": "",
+   "playerIds": [
+    "45sqltb"
+   ]
+  },
+  {
+   "id": "p:6kn0dof",
+   "name": "",
+   "playerIds": [
+    "6kn0dof"
+   ]
+  },
+  {
+   "id": "p:fm3bdg7",
+   "name": "",
+   "playerIds": [
+    "fm3bdg7"
+   ]
+  },
+  {
+   "id": "p:18qv5bz",
+   "name": "",
+   "playerIds": [
+    "18qv5bz"
+   ]
+  }
+ ],
+ "schedule": {
+  "matches": [
+   {
+    "id": "mnwrjqm",
+    "phase": "rot",
+    "slot": 0,
+    "court": 1,
+    "round": 0,
+    "aIds": [
+     "p:h0teikh",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:fm3bdg7",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "1zraakh",
+    "phase": "rot",
+    "slot": 1,
+    "court": 1,
+    "round": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:fm3bdg7"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "q4iot7g",
+    "phase": "rot",
+    "slot": 1,
+    "court": 2,
+    "round": 1,
+    "aIds": [
+     "p:nba8nn1",
+     "p:h0teikh"
+    ],
+    "bIds": [
+     "p:ibws5ld",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "3kuxhnu",
+    "phase": "rot",
+    "slot": 2,
+    "court": 1,
+    "round": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:smnajd5"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:18qv5bz"
+    ]
+   },
+   {
+    "id": "02ct8j0",
+    "phase": "rot",
+    "slot": 2,
+    "court": 2,
+    "round": 2,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:h0teikh"
+    ]
+   },
+   {
+    "id": "8urnvlj",
+    "phase": "rot",
+    "slot": 2,
+    "court": 3,
+    "round": 2,
+    "aIds": [
+     "p:nba8nn1",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "a458nyg",
+    "phase": "rot",
+    "slot": 3,
+    "court": 1,
+    "round": 3,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:t4lcpvt"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:243v8q3"
+    ]
+   },
+   {
+    "id": "eww8va3",
+    "phase": "rot",
+    "slot": 3,
+    "court": 2,
+    "round": 3,
+    "aIds": [
+     "p:fm3bdg7",
+     "p:smnajd5"
+    ],
+    "bIds": [
+     "p:6kn0dof",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "jl87xyq",
+    "phase": "rot",
+    "slot": 3,
+    "court": 3,
+    "round": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:18qv5bz",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "peed4im",
+    "phase": "rot",
+    "slot": 4,
+    "court": 1,
+    "round": 4,
+    "aIds": [
+     "p:243v8q3",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:h0teikh"
+    ]
+   },
+   {
+    "id": "qzz3lmj",
+    "phase": "rot",
+    "slot": 4,
+    "court": 2,
+    "round": 4,
+    "aIds": [
+     "p:k45yesm",
+     "p:18qv5bz"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "xr4lfd9",
+    "phase": "rot",
+    "slot": 4,
+    "court": 3,
+    "round": 4,
+    "aIds": [
+     "p:uzqomod",
+     "p:fm3bdg7"
+    ],
+    "bIds": [
+     "p:smnajd5",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "d4egagz",
+    "phase": "rot",
+    "slot": 5,
+    "court": 1,
+    "round": 5,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:smnajd5"
+    ]
+   },
+   {
+    "id": "qb5k7g3",
+    "phase": "rot",
+    "slot": 5,
+    "court": 2,
+    "round": 5,
+    "aIds": [
+     "p:6kn0dof",
+     "p:fm3bdg7"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:h0teikh"
+    ]
+   },
+   {
+    "id": "ghxgpjx",
+    "phase": "rot",
+    "slot": 5,
+    "court": 3,
+    "round": 5,
+    "aIds": [
+     "p:45sqltb",
+     "p:18qv5bz"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:lvcpucm"
+    ]
+   }
+  ],
+  "unitIds": [
+   "p:h0teikh",
+   "p:t4lcpvt",
+   "p:lvcpucm",
+   "p:ibws5ld",
+   "p:nba8nn1",
+   "p:k45yesm",
+   "p:243v8q3",
+   "p:smnajd5",
+   "p:uzqomod",
+   "p:t5tmwl5",
+   "p:45sqltb",
+   "p:6kn0dof",
+   "p:fm3bdg7",
+   "p:18qv5bz"
+  ],
+  "groups": [],
+  "extraSlots": 0
+ }
+}
