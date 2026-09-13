@@ -432,7 +432,7 @@ button.wk-del { border-color: var(--danger); color: var(--danger); background: #
 button.wk-del:hover { background: var(--danger-bg); }
 /* 게스트는 주황 계열로 구별 */
 .chip.guest { border: 1px dashed #b45f06; color: #7a3f00; background: #fff3e0; }
-.chip.on.guest { border: 2px dashed rgba(255,255,255,.9); } /* 게스트도 남(파랑)·여(로즈) 색은 그대로, 점선 테두리 + G 로 구별 */
+.chip.on.guest { border: 2px dashed rgba(255,255,255,.9); color: #fff; } /* 게스트도 남(파랑)·여(로즈) 색은 그대로, 점선 테두리 + G 로 구별 */
 .chip.on.guest.m { background: var(--mm); } .chip.on.guest.f { background: var(--ff); }
 .gmark { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .02em; background: #d97706; color: #fff; border-radius: 6px; padding: 0 4px; margin-right: 5px; }
 .chip.guest:not(.on) .gmark { background: #fde3c4; }
