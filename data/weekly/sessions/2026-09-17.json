@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 34,
+ "rev": 35,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -63,11 +63,11 @@
   }
  },
  "schedule": {
-  "seed": 252491,
+  "seed": 619490,
   "gen": 4,
   "fromSlot": 0,
-  "inputHash": "9whivf",
-  "at": "2026-09-14T04:37:32.941Z",
+  "inputHash": "1vs7nav",
+  "at": "2026-09-14T04:38:40.355Z",
   "by": "k45yesm",
   "matches": [
    {
@@ -101,11 +101,11 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:6kn0dof",
-     "p:ibws5ld"
+     "p:uzqomod",
+     "p:df9dtam"
     ],
     "bIds": [
-     "p:df9dtam",
+     "p:6kn0dof",
      "p:g261xhp"
     ]
    },
@@ -114,12 +114,12 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:6kn0dof",
+     "p:ibws5ld",
      "p:df9dtam"
     ],
     "bIds": [
-     "p:45sqltb",
-     "p:g261xhp"
+     "p:g261xhp",
+     "p:45sqltb"
     ]
    },
    {
@@ -127,12 +127,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:45sqltb",
-     "p:6kn0dof"
+     "p:6kn0dof",
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:df9dtam",
-     "p:ibws5ld"
+     "p:ibws5ld",
+     "p:45sqltb"
     ]
    },
    {
@@ -140,17 +140,17 @@
     "slot": 5,
     "court": 1,
     "aIds": [
-     "p:df9dtam",
-     "p:6kn0dof"
+     "p:uzqomod",
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:45sqltb",
-     "p:ibws5ld"
+     "p:df9dtam",
+     "p:6kn0dof"
     ]
    }
   ]
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-14T04:38:22.140Z"
+ "updatedAt": "2026-09-14T04:38:41.748Z"
 }
