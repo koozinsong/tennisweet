@@ -1723,9 +1723,9 @@
     if (sch) {
       const ms = [...sch.matches].sort((a, b) => a.slot - b.slot || a.court - b.court);
       const filter = W.filter || (today && !wkClosed(doc) ? 'left' : 'all');
-      const isPast = (m) => today && wkSlotStatus(slotStartMin(s, m.slot), slotStartMin(s, m.slot) + s.matchMinutes) === 'past'; // 시간이 지난 경기는 완료 체크 없이도 '남은 대진'에서 빠진다
-      const isLeft = (m) => !doc.done[m.id] && !isPast(m); const leftN = ms.filter(isLeft).length;
-      html += `<div class="row wk-filter"><button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${leftN}</button><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button>${closed ? '' : '<span class="hint">시간이 지난 경기는 자동으로 빠지고, 일찍 끝난 경기는 카드를 눌러 완료 표시할 수 있습니다.</span>'}</div>`;
+      const isLeft = (m) => !doc.done[m.id]; // 예정 시각과 무관하게 완료 표시한 경기만 '남은 대진'에서 뺀다
+      const leftN = ms.filter(isLeft).length;
+      html += `<div class="row wk-filter"><button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${leftN}</button><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button>${closed ? '' : '<span class="hint">카드를 눌러 완료 표시한 경기만 남은 대진에서 빠집니다.</span>'}</div>`;
       html += '<div class="legend"><span class="tag type fm">혼복</span><span class="tag type mm">남복</span><span class="tag type ff">여복</span></div>';
       const nSlots = ms.length ? Math.max(...ms.map((m) => m.slot)) + 1 : 0; let shown = 0;
       for (let slot = 0; slot < nSlots; slot++) {
