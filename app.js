@@ -657,7 +657,7 @@
         return pairsOf(M) >= fm ? M : null;
       };
       // 1) 선발: 여성 수(짝수) 분할 후보 중 선발 우선순위 합이 최선에 가까운 것들에서 무작위 선택 (시도마다 다른 구성 탐색)
-      let kSel = k, pick = null; const mixOk = !!(GEN_HOOK && GEN_HOOK.mixOk); // 정기 모임: 여성이 홀수로 남으면 잡복(여+남 vs 남+남)도 허용해 코트를 최대한 채운다
+      let kSel = k, pick = null; const mixOk = !!(GEN_HOOK && GEN_HOOK.mixOk); // 정기 모임: 여성이 홀수로 남으면 잡복(여+상위 남자 vs 남+남)도 허용해 코트를 최대한 채운다
       for (; kSel >= 1; kSel--) {
         const need = kSel * 4;
         const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
@@ -683,6 +683,7 @@
       const kk = Math.floor((W.length + M.length) / 4); if (kk < 1) return [];
       // 2) 구성: 여성 2명씩 혼복 코트(양쪽 1명씩, 남자는 같은 NTRP 짝), 코트가 모자라면 여성 4명 여복 코트, 나머지는 남복 코트. 여러 번 섞어 파트너·상대 중복 최소 조합 선택
       const totalCost = (cs) => cs.reduce((a, c) => a + courtCost(c), 0);
+      const mixPartnerTop = (c) => { if (!mixOk) return true; const wi = c.findIndex((id) => isF[id]); if (wi < 0 || c.filter((id) => isF[id]).length !== 1) return true; const partner = c[wi ^ 1]; return c.every((id, i) => i === wi || NT[partner] >= NT[id]); };
       let best = null, bestCost = Infinity;
       for (let t = 0; t < 40; t++) {
         // 무작위 초기 배치: 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치
@@ -700,7 +701,11 @@
           if (j < 0) { aside.push(x); continue; }
           const y = m.splice(j, 1)[0]; courts.push([w.pop(), x, w.pop(), y]);
         }
-        if (w.length === 1 && mixOk && m.length + aside.length >= 3) { m.push(...aside); aside.length = 0; courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); } // 잡복: 여+남 vs 남+남
+        if (w.length === 1 && mixOk && m.length + aside.length >= 3) {
+          m.push(...aside); aside.length = 0;
+          let pi = 0; for (let i = 1; i < m.length; i++) if (NT[m[i]] > NT[m[pi]] || (NT[m[i]] === NT[m[pi]] && fmCnt[m[i]] - mmCnt[m[i]] < fmCnt[m[pi]] - mmCnt[m[pi]])) pi = i;
+          const partner = m.splice(pi, 1)[0]; courts.push([w.pop(), partner, m.pop(), m.pop()]);
+        } // 잡복: 여성은 남은 남성 중 최고 NTRP와 같은 조
         if (w.length) continue; // 여성이 남음 → 이 배치는 실패
         m.push(...aside);
         while (courts.length < kk && m.length >= 4) courts.push([m.pop(), m.pop(), m.pop(), m.pop()]);
@@ -714,6 +719,7 @@
           const x = courts[c1][p1], y = courts[c2][p2]; if (isF[x] !== isF[y]) continue; // 성별이 같아야 종류(남복/여복/혼복) 유지
           const before = courtCost(courts[c1]) + (c1 !== c2 ? courtCost(courts[c2]) : 0);
           courts[c1][p1] = y; courts[c2][p2] = x;
+          if (!mixPartnerTop(courts[c1]) || (c1 !== c2 && !mixPartnerTop(courts[c2]))) { courts[c1][p1] = x; courts[c2][p2] = y; continue; }
           const after = courtCost(courts[c1]) + (c1 !== c2 ? courtCost(courts[c2]) : 0);
           if (after <= before) cost += after - before; else { courts[c1][p1] = x; courts[c2][p2] = y; }
         }
