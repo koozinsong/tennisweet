@@ -1525,7 +1525,7 @@
   const hhmm = (min) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
   const wkSessions = () => [...(W.index?.sessions || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)); // 날짜순 (지난 모임 → 다가오는 모임)
   function wkDefaultId() { const today = ymdOf(); const list = wkSessions(); const up = list.filter((s) => s.date >= today); return up.length ? up[0].id : list[list.length - 1]?.id || null; } // 오늘 이후 중 가장 가까운 날, 없으면 가장 최근
-  const wkSettings = (doc) => ({ ...DEFAULT_SETTINGS, ...(doc?.settings || {}), fmMenEqual: false, mustFace: '', sameNtrpGame: '', avoidPairs: '', date: doc?.date || '' });
+  const wkSettings = (doc) => ({ ...DEFAULT_SETTINGS, ...(doc?.settings || {}), fmMenEqual: true, mustFace: '', sameNtrpGame: '', avoidPairs: '', date: doc?.date || '' });
   function wkHours(s) { const a = Math.ceil(toMin(s.startTime) / 60), b = Math.floor(toMin(s.endTime) / 60); const out = []; for (let h = a; h < b; h++) out.push(h); return out; }
   /** 코트 수 표시: 시간대별로 다르면 "18~20시 2면 · 20~22시 3면" */
   function wkCourtsLabel(s) {
