@@ -162,7 +162,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "6Lq8CMLnC7bnw3o6.zW/R/d1dvrs8ncqKbC6gl9B5zA=="
     },
     {
       "id": "g261xhp",
@@ -172,7 +173,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "kMzeJ6casb7adWcX.w1ffI3ZWWkx+Q8z0eML928+s+Q=="
     },
     {
       "id": "uqb3sp3",
@@ -182,7 +184,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "IiXNgXf0YPVV3EOX.fulkXYLUN7t7jvZoPfJ4OmU="
     },
     {
       "id": "ev1tqiv",
@@ -192,7 +195,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "QvUiBqd9DFEPc4p1.Yz0d1xGEzHVmB071G9kBMBue0A=="
     },
     {
       "id": "328ljva",
@@ -202,7 +206,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "cHvo7TuZ1Ta8FcJ3.QF7WIDOj4G4LjmLEP9lOdFY="
     },
     {
       "id": "df9dtam",
@@ -212,7 +217,8 @@
       "until": "",
       "tag": "",
       "note": "",
-      "active": false
+      "active": false,
+      "ntrpEnc": "lL0QrwFpoxXxpi8L.ie/UBhu5NM2gFWg3uZHvBv4="
     }
   ],
   "settings": {
@@ -688,6 +694,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-09-13T12:47:20.036Z",
-  "ghTokenEnc": "H+N3QjoNhUz5eoTw.eopX1E4nTCEWJQo2V9EC1hLrvQhM8Ap3lU6ZNqY87cGBfqDjBvzaZDqshH5tl8r99fCnnsOzWLNQSVhsuOfqBv15O2SWSwqNQyF6Tjl39VNc8NaKeyqis3HFzAy97DDMOt2ToYvkTNsQkPEf0g=="
+  "publishedAt": "2026-09-16T01:54:05.469Z",
+  "ghTokenEnc": "arm5gZOULRiHUTHw./LHKP14QMwG+64uD+3Mun5fsfg8Vpv7liHKK3alIpNnnyLkG6JSK+aJ1wcQ7bpyP5ZEcsBVuBjX0Myw5jncavpOCXj3im1D2mM8V2Z3mVsCDHsEG9iEkaJ6xb27KcyY3XxLBC2Cvc68UIbJTEA=="
 }
