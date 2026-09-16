@@ -12,7 +12,7 @@
  * 읽기: GET ?session=YYYY-MM-DD → { ok, rev, doc } (캐시, Pages 지연 없음)
  * 요청: POST 본문 = JSON 문자열 (Content-Type 없이 → CORS preflight 없음)
  *   { v:1, club:'tennisweet', session:'2026-09-20', op:'set'|'generate'|'ping', path?, value?, base?, by? }
- * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'BUSY'|'GITHUB', rev?, doc? }
+ * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB', rev?, doc? }
  */
 const CLUB = 'tennisweet';
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
@@ -38,9 +38,11 @@ function doPost(e) {
   if (String(e.postData.contents).length > 65536) return out({ ok: false, code: 'INVALID' });
   if (body.op === 'ping') return out({ ok: true, v: 1, t: new Date().toISOString() });
   const c = cfg(); if (!c.token) return out({ ok: false, code: 'GITHUB', detail: 'GH_TOKEN 속성이 없습니다' });
-  if (body.op === 'refresh') { // 관리자가 파일을 직접 만들거나 지운 뒤: 캐시를 저장소 기준으로 다시 맞춘다
+  if (body.op === 'refresh') { // 관리자가 파일을 직접 만들거나 지우거나 직접 저장한 뒤: 캐시를 저장소 기준으로 다시 맞춘다 (쓰기와 같은 잠금 — 진행 중인 멤버 쓰기의 cache.put 을 옛 문서로 덮지 않도록)
+    const rlock = LockService.getScriptLock(); if (!rlock.tryLock(20000)) return out({ ok: false, code: 'BUSY' });
     try { const cache = CacheService.getScriptCache(); const cur = ghGet(c, 'data/weekly/sessions/' + body.session + '.json', c.branches[0]); if (!cur || !cur.json) { cache.remove('s:' + body.session); return out({ ok: false, code: 'NOSESSION' }); } cache.put('s:' + body.session, JSON.stringify(cur.json), 21600); return out({ ok: true, rev: cur.json.rev | 0, doc: cur.json }); }
     catch (err) { return out({ ok: false, code: 'GITHUB', detail: String(err && err.message || err) }); }
+    finally { rlock.releaseLock(); }
   }
   const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return out({ ok: false, code: 'BUSY' });
   try {
@@ -89,6 +91,7 @@ function applyWeeklyOp(doc, op) {
     if (op.value == null) delete doc[coll][key];
     else if (coll === 'attendance') {
       const v = op.value; if (!v || typeof v.n !== 'string' || !v.n.trim() || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from) || !TIME_RE.test(v.until) || v.from >= v.until) return { code: 'INVALID' };
+      if (!doc.attendance[key] && Object.keys(doc.attendance).length >= 80) return { code: 'FULL' }; // 파일 무한 팽창 방지
       doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}) };
     } else { if (op.value !== true || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.done[key] = true; }
   } else if (op.op === 'generate') {
@@ -99,7 +102,8 @@ function applyWeeklyOp(doc, op) {
       if (!v || !Array.isArray(v.matches) || v.matches.length > 64) return { code: 'INVALID' };
       for (const x of v.matches) if (!x || !MID_RE.test(String(x.id)) || !Number.isInteger(x.slot) || !Number.isInteger(x.court) || ![x.aIds, x.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' };
       doc.schedule = { seed: v.seed | 0, gen: v.gen | 0, fromSlot: v.fromSlot | 0, inputHash: String(v.inputHash || '').slice(0, 16), at: String(v.at || '').slice(0, 30), by: String(v.by || '').slice(0, 20), matches: v.matches.map((x) => ({ id: x.id, slot: x.slot, court: x.court, aIds: x.aIds, bIds: x.bIds })) };
-      const ids = new Set(v.matches.map((x) => x.id)); doc.done = doc.done || {}; for (const k of Object.keys(doc.done)) if (!ids.has(k)) delete doc.done[k];
+      const fs = v.fromSlot | 0; const keep = new Set(fs > 0 ? v.matches.filter((x) => (x.slot | 0) < fs).map((x) => x.id) : []); // 전체 재편성(다시 섞기)은 완료 표시를 모두 비우고, 남은 시간대만 다시 짠 경우는 그대로 둔 시간대의 완료만 남긴다
+      doc.done = doc.done || {}; for (const k of Object.keys(doc.done)) if (!keep.has(k)) delete doc.done[k];
     }
   } else return { code: 'INVALID' };
   doc.rev = (doc.rev | 0) + 1; doc.updatedAt = new Date().toISOString();

@@ -37,5 +37,37 @@ results.push(['gh-pages copy in sync', JSON.stringify(store['gh:data/weekly/sess
 store['data/weekly/sessions/2026-09-20.json'].date = '2020-01-01'; r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['closed', r.code === 'CLOSED']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['closed blocks attend', r.code === 'CLOSED']);
 { const g = JSON.parse(ctx.__doGet({ parameter: { session: '2026-09-20' } }).text); results.push(['doGet cached doc', g.ok && g.doc && g.rev === store['data/weekly/sessions/2026-09-20.json'].rev]); const g2 = JSON.parse(ctx.__doGet({ parameter: {} }).text); results.push(['doGet ping', g2.ok && !g2.doc]); const g3 = JSON.parse(ctx.__doGet({ parameter: { session: '2030-01-01' } }).text); results.push(['doGet missing', g3.code === 'NOSESSION']); const rf = call({ ...base, op: 'refresh' }); results.push(['refresh', rf.ok && rf.doc]); const rf2 = call({ ...base, session: '2030-01-01', op: 'refresh' }); results.push(['refresh missing', rf2.code === 'NOSESSION']); }
+// ---- 완료 표시 정리: 전체 재편성(다시 섞기)은 모두 비우고, 부분 재편성은 그대로 둔 시간대만 유지 ----
+{ const d = store['data/weekly/sessions/2026-09-20.json']; d.date = '2099-01-01'; // 다시 열기
+  const two = [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:c'], bIds: ['p:b', 'p:d'] }];
+  let g = call({ ...base, op: 'generate', base: d.rev, value: { seed: 5, gen: 1, fromSlot: 0, inputHash: 'x', matches: two } }); results.push(['generate two', g.ok]);
+  g = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); g = call({ ...base, op: 'set', path: 'done.s1c1', value: true }); results.push(['two done', g.ok && g.doc.done.s0c1 && g.doc.done.s1c1]);
+  g = call({ ...base, op: 'generate', base: g.rev, value: { seed: 6, gen: 2, fromSlot: 1, inputHash: 'x', matches: two } }); results.push(['partial regen keeps slot<1 done only', g.ok && g.doc.done.s0c1 === true && !g.doc.done.s1c1]);
+  g = call({ ...base, op: 'generate', base: g.rev, value: { seed: 7, gen: 3, fromSlot: 0, inputHash: 'x', matches: two } }); results.push(['reshuffle clears all done', g.ok && Object.keys(g.doc.done).length === 0]);
+  // ---- 참석 상한 80 ----
+  let last = null; for (let i = 0; i < 80; i++) last = call({ ...base, op: 'set', path: 'attendance.z' + i, value: { n: 'p' + i, g: 'M', from: '18:00', until: '22:00' } });
+  const full = call({ ...base, op: 'set', path: 'attendance.zz', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['attendance cap 80 → FULL', full.code === 'FULL']);
+  const upd = call({ ...base, op: 'set', path: 'attendance.z1', value: { n: 'p1b', g: 'M', from: '19:00', until: '22:00' } }); results.push(['cap allows updating existing', upd.ok]);
+  const rm = call({ ...base, op: 'set', path: 'attendance.z1', value: null }); results.push(['cap allows delete', rm.ok]);
+}
+// ---- 사본 일치: app.js 의 applyWeeklyOp 와 Code.gs 의 applyWeeklyOp 가 같은 입력에 같은 결과 ----
+{ const app = fs.readFileSync(__dirname + '/../../app.js', 'utf8');
+  const fn = app.slice(app.indexOf('  function applyWeeklyOp(doc, op) {'), app.indexOf('  /** 외부에서 온 세션 문서 검증'));
+  const consts = [app.match(/const ID_RE = [^\n]+;/)[0], app.match(/const TIME_RE = [^\n]+;/)[0]].join('\n');
+  const appCtx = vm.createContext({ Date }); vm.runInContext(consts + '\n' + fn + '\nglobalThis.__apply = applyWeeklyOp;', appCtx);
+  const gsCtx = vm.createContext({ ...gas }); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__apply = applyWeeklyOp;', gsCtx);
+  const seq = [
+    { op: 'set', path: 'attendance.a', value: { n: 'A', g: 'M', from: '18:00', until: '22:00' } }, { op: 'set', path: 'attendance.b', value: { n: 'B', g: 'F', from: '18:00', until: '20:00', guest: true } },
+    { op: 'set', path: 'attendance.b', value: { n: 'B', g: 'F', from: '99:00', until: '20:00' } }, { op: 'set', path: 'bogus.x', value: 1 },
+    { op: 'generate', base: 9, value: null }, { op: 'generate', base: 2, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:c'], bIds: ['p:b', 'p:d'] }] } },
+    { op: 'set', path: 'done.s0c1', value: true }, { op: 'set', path: 'done.s1c1', value: true }, { op: 'set', path: 'done.s9c9', value: true },
+    { op: 'generate', base: 5, value: { seed: 2, gen: 2, fromSlot: 1, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:d'], bIds: ['p:b', 'p:c'] }] } },
+    { op: 'generate', base: 6, value: { seed: 3, gen: 3, fromSlot: 0, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] } },
+    { op: 'generate', base: 7, value: null },
+  ];
+  const run = (ctx) => { const doc = { v: 1, id: '2026-09-20', date: '2099-01-01', status: 'open', rev: 0, attendance: {}, schedule: null, done: {} }; const codes = []; for (const op of seq) { const r = ctx.__apply(doc, { v: 1, club: 'tennisweet', session: '2026-09-20', ...op }); codes.push(r.ok ? 'ok' : r.code); } delete doc.updatedAt; return JSON.stringify({ doc, codes }); };
+  const a = run(appCtx), b = run(gsCtx); results.push(['app.js ↔ Code.gs applyWeeklyOp parity', a === b]); if (a !== b) console.log('APP', a, '\nGS ', b);
+  results.push(['parity sequence exercised codes', /INVALID/.test(a) && /STALE/.test(a) && /"ok","ok"/.test(a)]);
+}
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);
