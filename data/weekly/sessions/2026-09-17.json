@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 39,
+ "rev": 40,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -67,6 +67,12 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": {
@@ -211,5 +217,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-16T00:03:27.226Z"
+ "updatedAt": "2026-09-16T00:09:33.793Z"
 }
