@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 93,
+ "rev": 94,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -230,10 +230,10 @@
     "court": 2,
     "aIds": [
      "p:lvcpucm",
-     "p:6kn0dof"
+     "p:ev1tqiv"
     ],
     "bIds": [
-     "p:ev1tqiv",
+     "p:6kn0dof",
      "p:nba8nn1"
     ]
    },
@@ -295,5 +295,5 @@
   "s0c1": true
  },
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T02:06:10.805Z"
+ "updatedAt": "2026-09-17T02:06:15.428Z"
 }
