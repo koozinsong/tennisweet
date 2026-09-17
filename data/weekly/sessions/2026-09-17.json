@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 87,
+ "rev": 88,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -230,11 +230,11 @@
     "court": 2,
     "aIds": [
      "p:lvcpucm",
-     "p:uzqomod"
+     "p:df9dtam"
     ],
     "bIds": [
      "p:328ljva",
-     "p:df9dtam"
+     "p:uzqomod"
     ]
    },
    {
@@ -293,5 +293,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T01:53:45.334Z"
+ "updatedAt": "2026-09-17T02:00:00.597Z"
 }
