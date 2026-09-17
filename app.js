@@ -169,20 +169,21 @@
   $('#btn-players-none').addEventListener('click', () => { state.players.forEach((p) => (p.active = false)); commit(); });
   function renderPlayers() {
     const act = state.players.filter((p) => p.active).length;
-    $('#players-title').textContent = viewOnly ? `선수 명단 (${state.players.length}명)` : `선수 명단 (${state.players.length}명 · 대회 참가 ${act}명)`;
+    $('#tab-players').classList.toggle('no-tour', !liveTournament()); // 대회 전용 열(참가·합류·퇴장·묶음)은 진행 중인 대회가 있을 때만
+    $('#players-title').textContent = viewOnly || !liveTournament() ? `선수 명단 (${state.players.length}명)` : `선수 명단 (${state.players.length}명 · 대회 참가 ${act}명)`;
     if (viewOnly) { // 방문자: 이름·성별만 (대회 참가·합류·퇴장은 관리자 화면에서만)
       const ps = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
       $('#tbl-players tbody').innerHTML = ps.map((p, i) => `<tr><td>${i + 1}</td><td class="only-editor"></td><td><b>${esc(p.name)}</b></td><td>${p.gender === 'M' ? '남' : p.gender === 'F' ? '여' : ''}</td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td class="only-editor"></td><td></td></tr>`).join('');
       return;
     }
     $('#tbl-players tbody').innerHTML = state.players.map((p, i) => `<tr class="${p.active ? '' : 'inactive'}">
-      <td>${i + 1}</td><td><input type="checkbox" data-pid="${esc(p.id)}" aria-label="${esc(p.name)} 참가" ${p.active ? 'checked' : ''}></td>
+      <td>${i + 1}</td><td class="tour-col"><input type="checkbox" data-pid="${esc(p.id)}" aria-label="${esc(p.name)} 참가" ${p.active ? 'checked' : ''}></td>
       <td><input class="cell" data-pid="${esc(p.id)}" data-field="name" value="${esc(p.name)}"></td>
       <td><select class="cell" data-pid="${esc(p.id)}" data-field="gender"><option value="">-</option><option value="M" ${p.gender === 'M' ? 'selected' : ''}>남</option><option value="F" ${p.gender === 'F' ? 'selected' : ''}>여</option></select></td>
       <td class="only-editor">${adminKey ? `<input class="cell" type="number" step="0.5" min="1" max="7" data-pid="${esc(p.id)}" data-field="ntrp" value="${esc(ntrp.get(p.id) || '')}">` : '<span class="tbd">🔒</span>'}</td>
-      <td><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="from" value="${esc(p.from || '')}"></td>
-      <td><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="until" value="${esc(p.until || '')}"></td>
-      <td class="only-editor"><input class="cell" data-pid="${esc(p.id)}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px"></td>
+      <td class="tour-col"><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="from" value="${esc(p.from || '')}"></td>
+      <td class="tour-col"><input class="cell" type="time" data-pid="${esc(p.id)}" data-field="until" value="${esc(p.until || '')}"></td>
+      <td class="only-editor tour-col"><input class="cell" data-pid="${esc(p.id)}" data-field="tag" value="${esc(p.tag || '')}" placeholder="예: A" style="max-width:70px"></td>
       <td><input class="cell" data-pid="${esc(p.id)}" data-field="note" value="${esc(p.note)}"></td>
       <td><button class="small" data-del="${esc(p.id)}">삭제</button></td></tr>`).join('');
   }

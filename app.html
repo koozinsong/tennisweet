@@ -182,28 +182,28 @@
     <input name="name" placeholder="이름" required>
     <select name="gender" style="max-width:90px"><option value="">성별</option><option value="M">남</option><option value="F">여</option></select>
     <input name="ntrp" class="only-editor" type="number" step="0.5" min="1" max="7" placeholder="NTRP" style="max-width:100px">
-    <label class="inline">합류 <input name="from" type="time" style="max-width:120px"></label>
-    <label class="inline">퇴장 <input name="until" type="time" style="max-width:120px"></label>
+    <label class="inline tour-col">합류 <input name="from" type="time" style="max-width:120px"></label>
+    <label class="inline tour-col">퇴장 <input name="until" type="time" style="max-width:120px"></label>
     <input name="note" placeholder="메모">
     <button type="submit" class="primary">추가</button>
   </form>
   <details>
     <summary>여러 명 한 번에 추가</summary>
     <form id="form-bulk" class="row">
-      <textarea name="bulk" rows="4" placeholder="한 줄에 한 명:  이름, 성별(남/여), NTRP, 합류시각(예 20:00)   — 이름만 써도 됩니다"></textarea>
+      <textarea name="bulk" rows="4" placeholder="한 줄에 한 명:  이름, 성별(남/여), NTRP   — 이름만 써도 됩니다"></textarea>
       <button type="submit">일괄 추가</button>
     </form>
   </details>
   <div class="table-wrap"><table class="list" id="tbl-players">
-    <thead><tr><th>#</th><th class="only-editor">대회 참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th class="only-editor">합류</th><th class="only-editor">퇴장</th><th class="only-editor">같은팀 묶음</th><th class="only-editor">메모</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th class="only-editor tour-col">대회 참가</th><th>이름</th><th>성별</th><th class="only-editor">NTRP 🔒</th><th class="only-editor tour-col">합류</th><th class="only-editor tour-col">퇴장</th><th class="only-editor tour-col">같은팀 묶음</th><th class="only-editor">메모</th><th></th></tr></thead>
     <tbody></tbody>
   </table></div>
-  <div class="row only-editor">
+  <div class="row only-editor tour-col">
     <button id="btn-players-all">전원 참가</button>
     <button id="btn-players-none">전원 불참</button>
     <span class="hint">대회 참가 체크된 선수만 대회 편성에 포함됩니다. 명단은 클럽 전체 멤버를 유지하세요.</span>
   </div>
-  <div class="row only-editor">
+  <div class="row only-editor tour-col">
     <button class="btn-regen primary" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button>
     <button class="btn-regen primary" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button>
     <label class="inline">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label>

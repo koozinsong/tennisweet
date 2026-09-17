@@ -474,3 +474,6 @@ button.wk-del:hover { background: var(--danger-bg); }
 @media (prefers-reduced-motion: reduce) { .genie { animation: none; } }
 @media (max-width: 480px) { .genie { width: 88px; height: 76px; } .wk-title h3 { font-size: 18px; } }
 @media print { .genie { animation: none; } }
+
+/* 선수 탭: 대회 전용 열은 진행 중인 대회가 있을 때만 */
+#tab-players.no-tour .tour-col { display: none !important; }
