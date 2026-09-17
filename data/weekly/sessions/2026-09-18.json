@@ -3,7 +3,7 @@
  "id": "2026-09-18",
  "date": "2026-09-18",
  "status": "open",
- "rev": 14,
+ "rev": 15,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -46,11 +46,11 @@
   }
  },
  "schedule": {
-  "seed": 386273,
-  "gen": 3,
+  "seed": 780508,
+  "gen": 4,
   "fromSlot": 0,
   "inputHash": "8s7jtq",
-  "at": "2026-09-17T02:38:39.002Z",
+  "at": "2026-09-17T02:40:41.974Z",
   "by": "t4lcpvt",
   "matches": [
    {
@@ -63,7 +63,7 @@
     ],
     "bIds": [
      "p:ibws5ld",
-     "p:uzqomod"
+     "p:6kn0dof"
     ]
    },
    {
@@ -72,11 +72,11 @@
     "court": 1,
     "aIds": [
      "p:k45yesm",
-     "p:g:1jgbkuj"
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:6kn0dof",
-     "p:uzqomod"
+     "p:g:1jgbkuj",
+     "p:6kn0dof"
     ]
    },
    {
@@ -85,10 +85,10 @@
     "court": 1,
     "aIds": [
      "p:g:1jgbkuj",
-     "p:uzqomod"
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:ibws5ld",
+     "p:uzqomod",
      "p:6kn0dof"
     ]
    },
@@ -101,7 +101,7 @@
      "p:ibws5ld"
     ],
     "bIds": [
-     "p:6kn0dof",
+     "p:uzqomod",
      "p:g:1jgbkuj"
     ]
    }
@@ -109,5 +109,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:10:19.549Z",
- "updatedAt": "2026-09-17T02:38:41.628Z"
+ "updatedAt": "2026-09-17T02:40:42.995Z"
 }
