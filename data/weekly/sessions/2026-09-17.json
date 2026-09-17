@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 113,
+ "rev": 114,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -279,7 +279,7 @@
     ],
     "bIds": [
      "p:6kn0dof",
-     "p:ibws5ld"
+     "p:df9dtam"
     ]
    },
    {
@@ -292,12 +292,12 @@
     ],
     "bIds": [
      "p:lvcpucm",
-     "p:df9dtam"
+     "p:ibws5ld"
     ]
    }
   ]
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T06:41:25.628Z"
+ "updatedAt": "2026-09-17T06:45:49.225Z"
 }
