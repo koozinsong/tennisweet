@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 100,
+ "rev": 101,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -221,7 +221,7 @@
     ],
     "bIds": [
      "p:243v8q3",
-     "p:df9dtam"
+     "p:45sqltb"
     ]
    },
    {
@@ -246,7 +246,7 @@
      "p:ibws5ld"
     ],
     "bIds": [
-     "p:45sqltb",
+     "p:df9dtam",
      "p:uzqomod"
     ]
    },
@@ -293,5 +293,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T02:12:54.226Z"
+ "updatedAt": "2026-09-17T02:13:01.860Z"
 }
