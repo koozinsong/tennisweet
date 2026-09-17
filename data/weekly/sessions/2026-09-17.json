@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 99,
+ "rev": 100,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -217,7 +217,7 @@
     "court": 1,
     "aIds": [
      "p:t5tmwl5",
-     "p:ibws5ld"
+     "p:g:3igyma"
     ],
     "bIds": [
      "p:243v8q3",
@@ -243,7 +243,7 @@
     "court": 3,
     "aIds": [
      "p:328ljva",
-     "p:g:3igyma"
+     "p:ibws5ld"
     ],
     "bIds": [
      "p:45sqltb",
@@ -293,5 +293,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T02:12:50.364Z"
+ "updatedAt": "2026-09-17T02:12:54.226Z"
 }
