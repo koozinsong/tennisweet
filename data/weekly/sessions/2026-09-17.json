@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 143,
+ "rev": 144,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -307,8 +307,9 @@
   "s3c2": true,
   "s3c3": true,
   "s4c1": true,
-  "s4c2": true
+  "s4c2": true,
+  "s4c3": true
  },
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T12:30:03.060Z"
+ "updatedAt": "2026-09-17T12:35:36.646Z"
 }
