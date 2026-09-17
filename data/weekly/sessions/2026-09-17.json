@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 106,
+ "rev": 107,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -106,11 +106,11 @@
   }
  },
  "schedule": {
-  "seed": 15439,
-  "gen": 20,
+  "seed": 47940,
+  "gen": 21,
   "fromSlot": 0,
   "inputHash": "13wbqcx",
-  "at": "2026-09-17T05:36:12.576Z",
+  "at": "2026-09-17T06:30:24.396Z",
   "by": "t4lcpvt",
   "matches": [
    {
@@ -144,12 +144,12 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:lvcpucm",
-     "p:328ljva"
+     "p:t5tmwl5",
+     "p:6kn0dof"
     ],
     "bIds": [
-     "p:45sqltb",
-     "p:g:3igyma"
+     "p:k45yesm",
+     "p:df9dtam"
     ]
    },
    {
@@ -157,12 +157,12 @@
     "slot": 2,
     "court": 2,
     "aIds": [
-     "p:k45yesm",
-     "p:ev1tqiv"
+     "p:ev1tqiv",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:ibws5ld"
+     "p:lvcpucm",
+     "p:uzqomod"
     ]
    },
    {
@@ -170,12 +170,12 @@
     "slot": 2,
     "court": 3,
     "aIds": [
-     "p:nba8nn1",
-     "p:df9dtam"
+     "p:ibws5ld",
+     "p:328ljva"
     ],
     "bIds": [
-     "p:g261xhp",
-     "p:6kn0dof"
+     "p:nba8nn1",
+     "p:g:3igyma"
     ]
    },
    {
@@ -183,12 +183,12 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:t5tmwl5",
-     "p:k45yesm"
+     "p:45sqltb",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:243v8q3"
+     "p:328ljva",
+     "p:g:3igyma"
     ]
    },
    {
@@ -196,12 +196,12 @@
     "slot": 3,
     "court": 2,
     "aIds": [
-     "p:g:3igyma",
-     "p:ibws5ld"
+     "p:k45yesm",
+     "p:243v8q3"
     ],
     "bIds": [
-     "p:6kn0dof",
-     "p:nba8nn1"
+     "p:t4lcpvt",
+     "p:t5tmwl5"
     ]
    },
    {
@@ -209,12 +209,12 @@
     "slot": 3,
     "court": 3,
     "aIds": [
-     "p:g261xhp",
-     "p:df9dtam"
+     "p:uzqomod",
+     "p:ev1tqiv"
     ],
     "bIds": [
-     "p:328ljva",
-     "p:ev1tqiv"
+     "p:df9dtam",
+     "p:nba8nn1"
     ]
    },
    {
@@ -222,12 +222,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:k45yesm",
-     "p:uzqomod"
+     "p:t5tmwl5",
+     "p:g:3igyma"
     ],
     "bIds": [
-     "p:t5tmwl5",
-     "p:6kn0dof"
+     "p:t4lcpvt",
+     "p:nba8nn1"
     ]
    },
    {
@@ -235,12 +235,12 @@
     "slot": 4,
     "court": 2,
     "aIds": [
-     "p:g:3igyma",
-     "p:df9dtam"
+     "p:k45yesm",
+     "p:lvcpucm"
     ],
     "bIds": [
-     "p:ibws5ld",
-     "p:45sqltb"
+     "p:uzqomod",
+     "p:df9dtam"
     ]
    },
    {
@@ -248,12 +248,12 @@
     "slot": 4,
     "court": 3,
     "aIds": [
-     "p:ev1tqiv",
-     "p:lvcpucm"
+     "p:6kn0dof",
+     "p:328ljva"
     ],
     "bIds": [
-     "p:328ljva",
-     "p:nba8nn1"
+     "p:ev1tqiv",
+     "p:ibws5ld"
     ]
    },
    {
@@ -261,11 +261,11 @@
     "slot": 5,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
+     "p:243v8q3",
      "p:g:3igyma"
     ],
     "bIds": [
-     "p:t5tmwl5",
+     "p:k45yesm",
      "p:ev1tqiv"
     ]
    },
@@ -274,12 +274,12 @@
     "slot": 5,
     "court": 2,
     "aIds": [
-     "p:243v8q3",
-     "p:lvcpucm"
+     "p:t5tmwl5",
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:ibws5ld",
-     "p:6kn0dof"
+     "p:6kn0dof",
+     "p:ibws5ld"
     ]
    },
    {
@@ -287,17 +287,17 @@
     "slot": 5,
     "court": 3,
     "aIds": [
-     "p:df9dtam",
-     "p:328ljva"
+     "p:nba8nn1",
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:nba8nn1"
+     "p:lvcpucm",
+     "p:df9dtam"
     ]
    }
   ]
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T06:14:08.138Z"
+ "updatedAt": "2026-09-17T06:30:26.192Z"
 }
