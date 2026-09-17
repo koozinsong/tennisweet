@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 112,
+ "rev": 113,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -287,7 +287,7 @@
     "slot": 5,
     "court": 3,
     "aIds": [
-     "p:nba8nn1",
+     "p:328ljva",
      "p:45sqltb"
     ],
     "bIds": [
@@ -299,5 +299,5 @@
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T06:41:20.710Z"
+ "updatedAt": "2026-09-17T06:41:25.628Z"
 }
