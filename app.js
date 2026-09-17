@@ -405,8 +405,8 @@
     if (!pairs.length) return ''; for (const side of ['a', 'b']) { const ids = sidePl(m, side); if (ids.length !== 2) continue; for (const [x, y] of pairs) if (ids.includes(x) && ids.includes(y)) return `${playerById(x)?.name}·${playerById(y)?.name}`; }
     return '';
   }
-  /** 정기 모임 혼복 원칙: [w1,m1] vs [w2,m2] 에서 여자 급이 같으면 남자 급도 같아야 하고, 여자 급이 다르면 약한 여자의 파트너가 더 강하거나 같아야 한다 (보정: 약한 여자에게 강한 남자). 위반이면 true */
-  const fmMixBad = (w1, m1, w2, m2) => (w1 === w2 ? menDiffer(m1, m2) : w1 < w2 ? (!!m1 && !!m2 && m1 < m2) : (!!m1 && !!m2 && m2 < m1));
+  /** 정기 모임 혼복 원칙: 여자 급과 무관하게 양쪽 남자 급을 맞춘다 (위반이면 true). 미입력(0)은 와일드카드 */
+  const fmMixBad = (w1, m1, w2, m2) => menDiffer(m1, m2);
   /** 혼복인데 양쪽 남자 NTRP 가 다르면 true (규칙 fmMenEqual, NTRP 를 모르면 항상 false) */
   function fmMenBad(m) {
     if (state.settings.fmMenEqual === false) return false; const A = sidePl(m, 'a'), B = sidePl(m, 'b'); if (A.length !== 2 || B.length !== 2) return false;
@@ -1797,7 +1797,7 @@
       if ([...A, ...B].some((id) => !att[id])) { flag(m, '불참자 포함'); continue; }
       const wa = A.filter((id) => g(id) === 'F').length, wb = B.filter((id) => g(id) === 'F').length; const sa = A.reduce((a, id) => a + lv(id), 0), sb = B.reduce((a, id) => a + lv(id), 0);
       if (wa + wb === 1) { const wSide = wa ? sa : sb, mSide = wa ? sb : sa; if (wSide < mSide) flag(m, `잡복 원칙: 여자 쪽 ${wSide} < 남자 쪽 ${mSide}`); const side = wa ? A : B, other = wa ? B : A; const mate = side.find((id) => g(id) !== 'F'); if (mate && other.some((id) => lv(id) > lv(mate))) flag(m, `잡복 원칙: 여자 파트너(${nm(mate)} ${lv(mate)})가 최고 남자가 아님`); }
-      else if (wa === 1 && wb === 1) { const w1 = A.find((id) => g(id) === 'F'), m1 = A.find((id) => g(id) !== 'F'), w2 = B.find((id) => g(id) === 'F'), m2 = B.find((id) => g(id) !== 'F'); if (fmMixBad(lv(w1), lv(m1), lv(w2), lv(m2))) note(m, lv(w1) === lv(w2) ? `혼복 원칙: 여자 동급인데 남자 다름 (${lv(m1)} vs ${lv(m2)})` : `혼복 원칙: 약한 여자(${nm(lv(w1) < lv(w2) ? w1 : w2)})에게 더 강한 남자가 붙어야 함`); } // 남자가 둘뿐인 시간대 등 불가피한 경우가 있어 참고로만
+      else if (wa === 1 && wb === 1) { const w1 = A.find((id) => g(id) === 'F'), m1 = A.find((id) => g(id) !== 'F'), w2 = B.find((id) => g(id) === 'F'), m2 = B.find((id) => g(id) !== 'F'); if (fmMixBad(lv(w1), lv(m1), lv(w2), lv(m2))) note(m, `혼복 남자 NTRP 다름 (${lv(m1)} vs ${lv(m2)})`); } // 남자가 둘뿐인 시간대 등 불가피한 경우가 있어 참고로만
       else if (wa !== wb) flag(m, '양쪽 조 구성이 다름');
     }
     const seen = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) { const k = m.slot + '|' + x; if (seen[k]) { flag(m, `${nm(x.slice(2))} 같은 시간대 중복`); } seen[k] = true; }
