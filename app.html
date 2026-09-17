@@ -141,6 +141,15 @@
     <div class="err" id="token-err"></div>
   </form>
 </div>
+<div id="wkpw-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="wkpw-title" hidden>
+  <form class="modal-card" id="wkpw-form">
+    <h3 id="wkpw-title">🎾 대진표 비밀번호</h3>
+    <p class="hint">대진 생성·다시 섞기·조 조정은 비밀번호가 필요합니다. 참석 체크와 완료 표시는 누구나 할 수 있습니다. 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.</p>
+    <label>비밀번호 <input type="password" id="wkpw-input" autocomplete="current-password" required></label>
+    <div class="row"><button type="submit" class="primary">확인</button><button type="button" id="wkpw-cancel">취소</button></div>
+    <div class="err" id="wkpw-err"></div>
+  </form>
+</div>
 
 <main>
 <!-- ============ ⑦ 정기 모임 ============ -->

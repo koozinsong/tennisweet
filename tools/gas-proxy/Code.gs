@@ -16,6 +16,7 @@
  * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB', rev?, doc? }
  */
 const CLUB = 'tennisweet';
+const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회) — app.js 의 WK_PW_HASH 와 동일. 클라이언트가 검증값을 보내고 서버는 비교만 한다 (평문은 어디에도 없음)
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
@@ -38,6 +39,7 @@ function doPost(e) {
   if (!body || typeof body !== 'object' || body.club !== CLUB || !SESSION_RE.test(String(body.session || ''))) return out({ ok: false, code: 'INVALID' });
   if (String(e.postData.contents).length > 65536) return out({ ok: false, code: 'INVALID' });
   if (body.op === 'ping') return out({ ok: true, v: 1, t: new Date().toISOString() });
+  if ((body.op === 'generate' || body.op === 'edit') && String(body.auth || '') !== WK_PW_HASH) return out({ ok: false, code: 'AUTH' }); // 대진 생성·다시 섞기·조 조정은 대진표 비밀번호(검증값)가 있어야 한다. 참석·완료 표시는 누구나
   const c = cfg(); if (!c.token) return out({ ok: false, code: 'GITHUB', detail: 'GH_TOKEN 속성이 없습니다' });
   if (body.op === 'refresh') { // 관리자가 파일을 직접 만들거나 지우거나 직접 저장한 뒤: 캐시를 저장소 기준으로 다시 맞춘다 (쓰기와 같은 잠금 — 진행 중인 멤버 쓰기의 cache.put 을 옛 문서로 덮지 않도록)
     const rlock = LockService.getScriptLock(); if (!rlock.tryLock(20000)) return out({ ok: false, code: 'BUSY' });
