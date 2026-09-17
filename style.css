@@ -454,7 +454,14 @@ button.wk-del:hover { background: var(--danger-bg); }
 .wk-picker { margin-top: 10px; padding: 10px; border-top: 1px dashed var(--rule); }
 .wk-picker .sub { margin-bottom: 6px; }
 .wk-picker .chip small { margin-left: 4px; opacity: .75; font-weight: 500; }
-#wk-adjust.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.adj-btn { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--rule); background: #fff; color: var(--muted); cursor: pointer; }
+.adj-btn .ic { width: 13px; height: 13px; }
+.adj-btn.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.adj-hint { margin: 2px 0 6px; }
+#btn-refresh .ic { width: 15px; height: 15px; }
+#btn-refresh.spin .ic { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 600px) { #btn-refresh .lbl { display: none; } #btn-refresh { padding: 6px 8px; } }
 .mcard.wk.decided { opacity: .45; filter: saturate(.6); }
 .mcard.wk.decided.picking { opacity: 1; filter: none; } /* 조 조정 중 후보 목록이 열린 완료 카드는 흐리게 하지 않음 */
 
