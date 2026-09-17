@@ -1745,6 +1745,7 @@
   }
   function wkScheduleHtml(doc, s, closed) {
     let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date);
+    if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? '카드를 누르면 완료 표시, 조 조정으로 자리 바꾸기' : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
     if (!closed) {
       const stale = sch && sch.inputHash !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s);
       if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>`;
