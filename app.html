@@ -13,52 +13,59 @@
   <symbol id="i-ball" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.5 6.5a9 9 0 0 1 0 11M18.5 6.5a9 9 0 0 0 0 11"/></symbol>
   <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
   <symbol id="i-cup" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l-1.4 6.2a5 5 0 0 1-4.9 3.9h0a5 5 0 0 1-4.9-3.9z"/><path d="M12 13.1V19"/><path d="M8.5 21h7"/></symbol>
-  <symbol id="i-genie" viewBox="0 0 120 130">
+  <symbol id="i-genie" viewBox="0 0 150 130">
     <defs>
-      <linearGradient id="gsmoke" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#b7c6ff" stop-opacity=".0"/><stop offset=".55" stop-color="#7f9dff"/><stop offset="1" stop-color="#3d5fd6"/></linearGradient>
+      <linearGradient id="gtail" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7cf3"/><stop offset="1" stop-color="#a9b9ff" stop-opacity=".35"/></linearGradient>
       <linearGradient id="glamp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3d67a"/><stop offset="1" stop-color="#c8962a"/></linearGradient>
     </defs>
-    <!-- 램프 -->
-    <g stroke="#7a5a12" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M20 112 C14 100, 26 92, 44 92 L70 92 C84 92, 90 100, 84 112 Z" fill="url(#glamp)"/>
-      <path d="M70 96 L98 88 L94 98 L82 104" fill="url(#glamp)"/>
-      <path d="M20 100 C8 98, 6 110, 18 112" fill="none"/>
-      <ellipse cx="50" cy="92" rx="18" ry="4" fill="#f7e29a"/>
-      <circle cx="50" cy="87" r="3.5" fill="#f3d67a"/>
+    <!-- 램프 (왼쪽 아래, 작게) -->
+    <g stroke="#7a5a12" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M10 118 C6 110, 14 104, 26 104 L42 104 C52 104, 56 110, 52 118 Z" fill="url(#glamp)"/>
+      <path d="M42 107 L62 101 L59 108 L50 112" fill="url(#glamp)"/>
+      <path d="M10 109 C2 108, 1 116, 9 118" fill="none"/>
+      <ellipse cx="30" cy="104" rx="12" ry="2.6" fill="#f7e29a"/><circle cx="30" cy="100.5" r="2.4" fill="#f3d67a"/>
     </g>
-    <!-- 연기 -->
-    <path d="M94 90 C104 78, 84 74, 90 62 C96 50, 76 48, 70 40 C64 32, 74 24, 68 18" fill="none" stroke="url(#gsmoke)" stroke-width="10" stroke-linecap="round" opacity=".95"/>
-    <path d="M94 90 C104 78, 84 74, 90 62 C96 50, 76 48, 70 40" fill="none" stroke="#eef2ff" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
-    <!-- 몸통 -->
-    <path d="M40 66 C36 50, 50 44, 62 44 C76 44, 88 52, 84 66 L82 76 C78 84, 46 84, 42 76 Z" fill="#4f7cf3" stroke="#2b3f9e" stroke-width="2"/>
-    <path d="M43 74 C50 80, 76 80, 82 74 L84 79 C76 86, 48 86, 41 79 Z" fill="#c8202f" stroke="#7d1220" stroke-width="1.5"/>
-  <!-- 팔 (왼쪽: 팔짱) -->
-    <path d="M42 66 C34 70, 34 78, 46 78" fill="none" stroke="#4f7cf3" stroke-width="9" stroke-linecap="round"/>
-    <!-- 팔 (오른쪽: 공 든 손) -->
-    <path d="M82 62 C94 58, 98 46, 94 36" fill="none" stroke="#4f7cf3" stroke-width="9" stroke-linecap="round"/>
-    <circle cx="94" cy="33" r="6" fill="#6b93ff" stroke="#2b3f9e" stroke-width="2"/>
-    <!-- 금팔찌 -->
-    <path d="M86 54 C90 52, 92 50, 93 46" fill="none" stroke="#f3d67a" stroke-width="4" stroke-linecap="round"/>
-    <!-- 테니스공 -->
-    <circle cx="99" cy="24" r="8.5" fill="#d9f03c" stroke="#8aa61a" stroke-width="1.5"/>
-    <path d="M93 18 C98 22, 98 26, 93 30 M105 18 C100 22, 100 26, 105 30" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+    <!-- 연기 꼬리 몸: 램프 주둥이에서 오른쪽으로 크게 감아 올라와 허리띠로 -->
+    <path d="M60 103 C78 104, 100 120, 122 108 C142 97, 132 72, 112 74 C100 76, 96 84, 100 88 C104 92, 112 88, 108 82" fill="none" stroke="url(#gtail)" stroke-width="14" stroke-linecap="round"/>
+    <path d="M60 103 C78 104, 100 120, 122 108 C138 100, 134 80, 118 76" fill="none" stroke="#eef2ff" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+    <!-- 몸통 (넓은 가슴, 아래로 좁아짐) -->
+    <path d="M50 52 C46 36, 66 28, 84 30 C104 32, 116 44, 110 62 L104 80 C100 90, 66 92, 60 82 Z" fill="#4f7cf3" stroke="#2b3f9e" stroke-width="2"/>
+    <path d="M66 52 C74 62, 90 62, 98 54" fill="none" stroke="#2b3f9e" stroke-width="1.5" opacity=".6"/>
+    <!-- 빨간 허리띠 -->
+    <path d="M60 82 C68 90, 98 90, 104 80 L106 88 C98 98, 66 98, 58 90 Z" fill="#c8202f" stroke="#7d1220" stroke-width="1.5"/>
+    <!-- 왼팔: 몸 앞으로 내려 테니스공 -->
+    <path d="M52 56 C36 62, 30 78, 38 90" fill="none" stroke="#4f7cf3" stroke-width="11" stroke-linecap="round"/>
+    <path d="M36 76 C32 78, 30 82, 30 86" fill="none" stroke="#f3d67a" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="38" cy="93" r="7" fill="#6b93ff" stroke="#2b3f9e" stroke-width="1.8"/>
+    <circle cx="30" cy="92" r="8.5" fill="#d9f03c" stroke="#8aa61a" stroke-width="1.4"/>
+    <path d="M24 86 C29 90, 29 94, 24 98 M36 86 C31 90, 31 94, 36 98" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- 오른팔: 위로 엄지척 -->
+    <path d="M108 50 C120 44, 128 32, 124 20" fill="none" stroke="#4f7cf3" stroke-width="11" stroke-linecap="round"/>
+    <path d="M118 36 C121 33, 123 30, 124 27" fill="none" stroke="#f3d67a" stroke-width="5" stroke-linecap="round"/>
+    <g stroke="#2b3f9e" stroke-width="1.8" stroke-linejoin="round" fill="#6b93ff">
+      <path d="M117 22 C114 16, 120 12, 126 12 C132 12, 134 18, 132 22 L130 26 C128 30, 118 30, 117 26 Z"/>
+      <path d="M123 12 C122 6, 126 2, 129 4 C131 6, 130 10, 128 12"/>
+    </g>
     <!-- 머리 -->
-    <circle cx="62" cy="26" r="17" fill="#6b93ff" stroke="#2b3f9e" stroke-width="2"/>
-    <!-- 상투 -->
-    <path d="M62 9 C60 2, 70 0, 72 6 C74 12, 66 10, 66 6" fill="#2b3f9e"/>
-    <!-- 귀걸이 -->
-    <circle cx="46" cy="30" r="2.6" fill="none" stroke="#f3d67a" stroke-width="1.8"/>
-    <!-- 눈썹·눈 -->
-    <path d="M52 19 C55 16, 59 16, 61 18 M64 18 C66 16, 70 16, 73 19" fill="none" stroke="#1d2b6e" stroke-width="2.2" stroke-linecap="round"/>
-    <circle cx="56" cy="24" r="2.2" fill="#1d2b6e"/><circle cx="68" cy="24" r="2.2" fill="#1d2b6e"/>
-    <circle cx="56.8" cy="23.2" r=".8" fill="#fff"/><circle cx="68.8" cy="23.2" r=".8" fill="#fff"/>
-    <!-- 큰 미소 -->
-    <path d="M51 31 C56 40, 68 40, 73 31" fill="#fff" stroke="#1d2b6e" stroke-width="2" stroke-linejoin="round"/>
-    <path d="M55 33 C58 35, 66 35, 69 33" fill="none" stroke="#1d2b6e" stroke-width="1.2"/>
-    <!-- 턱수염 -->
-    <path d="M60 41 C62 46, 63 46, 64 41" fill="#1d2b6e"/>
+    <path d="M60 16 C62 4, 96 2, 100 16 C104 30, 96 44, 80 44 C64 44, 58 30, 60 16 Z" fill="#6b93ff" stroke="#2b3f9e" stroke-width="2"/>
+    <!-- 상투 꼬리 -->
+    <path d="M80 4 C78 -2, 90 -4, 96 0 C104 4, 100 12, 94 10 C90 9, 92 4, 96 4" fill="#1d2b6e"/>
+    <!-- 귀 + 귀걸이 -->
+    <path d="M60 22 C54 20, 52 28, 58 30" fill="#6b93ff" stroke="#2b3f9e" stroke-width="1.6"/>
+    <circle cx="57" cy="34" r="3" fill="none" stroke="#f3d67a" stroke-width="2"/>
+    <!-- 눈썹 · 눈 (한쪽 치켜올림) -->
+    <path d="M66 14 C70 10, 76 10, 79 13" fill="none" stroke="#1d2b6e" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M84 12 C88 8, 94 9, 96 13" fill="none" stroke="#1d2b6e" stroke-width="2.4" stroke-linecap="round"/>
+    <ellipse cx="72" cy="20" rx="4" ry="3.2" fill="#fff"/><ellipse cx="89" cy="19" rx="4" ry="3.2" fill="#fff"/>
+    <circle cx="73" cy="20.5" r="2" fill="#1d2b6e"/><circle cx="90" cy="19.5" r="2" fill="#1d2b6e"/>
+    <!-- 큰 이빨 미소 -->
+    <path d="M64 28 C70 40, 92 40, 98 28 Z" fill="#fff" stroke="#1d2b6e" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M68 30 C74 32, 88 32, 94 30" fill="none" stroke="#1d2b6e" stroke-width="1.1"/>
+    <path d="M72 29 L72 34 M78 30 L78 36 M84 30 L84 36 M90 29 L90 34" stroke="#c9d1e6" stroke-width="1"/>
+    <!-- 곱슬 턱수염 -->
+    <path d="M78 42 C80 48, 84 48, 84 44 C84 41, 80 42, 81 45" fill="none" stroke="#1d2b6e" stroke-width="2.4" stroke-linecap="round"/>
     <!-- 반짝임 -->
-    <g fill="#f3d67a"><path d="M18 40 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/><path d="M104 66 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5z"/><path d="M30 20 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>
+    <g fill="#f3d67a"><path d="M14 60 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/><path d="M138 60 l1.5 3.5 3.5 1.5 -3.5 1.5 -1.5 3.5 -1.5 -3.5 -3.5 -1.5 3.5 -1.5z"/><path d="M110 8 l1.2 3 3 1.2 -3 1.2 -1.2 3 -1.2 -3 -3 -1.2 3 -1.2z"/></g>
   </symbol>
   <symbol id="i-court" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 12h18M12 4v16M7 8h10M7 16h10"/></symbol>
 </svg>
