@@ -450,12 +450,13 @@ button.wk-del:hover { background: var(--danger-bg); }
 .nm-btn { font: inherit; font-weight: 800; color: inherit; background: color-mix(in srgb, var(--court) 8%, #fff); border: 1px dashed color-mix(in srgb, var(--court) 45%, #fff); border-radius: 8px; padding: 3px 8px; cursor: pointer; }
 .nm-btn:hover { background: color-mix(in srgb, var(--court) 16%, #fff); }
 .nm-btn.sel { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
-.nm-btn.sel .gname { color: #fff; }
+.nm-btn.sel .gname, .nm-btn.sel .pname { color: #fff; }
 .wk-picker { margin-top: 10px; padding: 10px; border-top: 1px dashed var(--rule); }
 .wk-picker .sub { margin-bottom: 6px; }
 .wk-picker .chip small { margin-left: 4px; opacity: .75; font-weight: 500; }
 #wk-adjust.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
 .mcard.wk.decided { opacity: .45; filter: saturate(.6); }
+.mcard.wk.decided.picking { opacity: 1; filter: none; } /* 조 조정 중 후보 목록이 열린 완료 카드는 흐리게 하지 않음 */
 
 /* 정기 모임 대진표 제목 + 지니 마스코트 */
 .wk-title { display: flex; align-items: center; gap: 14px; margin: 18px 0 4px; }

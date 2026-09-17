@@ -548,8 +548,9 @@
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
     const menBad = state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 특별 규칙 위반은 사실상 배제 (정기 모임은 '경기 없음'(1e4)보다는 가볍게 3000)
+    let mixBad = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa + wb !== 1) continue; const sumA = A.reduce((a, x) => a + ntrpOf(x), 0), sumB = B.reduce((a, x) => a + ntrpOf(x), 0); if ((wa ? sumA : sumB) < (wa ? sumB : sumA)) mixBad++; } // 잡복 원칙: 여자 쪽(여자 −0.5 반영) 합 ≥ 남자 둘 합
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return (GEN_HOOK ? menBad * 3000 : menBad * 1e5) + avoided * 1e5 + missing * 1e4 + ffShort * 2000 + loss * 400 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * spreadW + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return (GEN_HOOK ? menBad * 3000 : menBad * 1e5) + mixBad * 2e4 + avoided * 1e5 + missing * 1e4 + ffShort * 2000 + loss * 400 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * 100 + spread * spreadW + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   function generateRotationOnce(s, seed) {
@@ -575,7 +576,7 @@
     const DEFAULT_PREF = { '김지선': 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음)
     const CARE = {}; if (!GEN_HOOK) ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; }); // 정기 모임은 개인 선호 없이 레벨 균형만
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
-    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 40; } return cost + d * (mixed ? 120 : 60) + (d > 0.5 ? (mixed ? 200 : 100) : 0); }; // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
+    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = 150 * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; if (wSide < mSide) cost += 2e4; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 40; } return cost + d * (mixed ? 120 : 60) + (d > 0.5 ? (mixed ? 200 : 100) : 0); }; // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
     // 정기 모임 공정성: (a) 기대 경기 수(참석 시간대마다 자리/인원 비율 누적) 대비 부족한 사람 먼저, (b) 남은 시간대가 적은 사람(곧 가는 사람) 먼저
@@ -584,7 +585,7 @@
     const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
     // 최소 보장: 참석 시간대가 2개 이상이면 최소 2경기, 1개면 1경기. 남은 시간대를 다 뛰어야 채울 수 있으면 최우선(-300)
     const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
-    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -40 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest ? 35 : 0) : 0) + (slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id]);
+    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest ? 35 : 0) : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
     const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
@@ -1445,6 +1446,10 @@
       if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
       const ms = doc.schedule && Array.isArray(doc.schedule.matches) ? doc.schedule.matches : null; if (!ms) return { code: 'INVALID' };
       const list = Array.isArray(op.value) ? op.value : [op.value]; if (!list.length || list.length > 4) return { code: 'INVALID' };
+      if (op.prev != null) { // 조 조정은 '내가 본 팀'이 그대로일 때만 적용 (base 는 폴링·앞 응답으로 이미 최신일 수 있어 그것만으로는 타인의 변경을 못 잡는다)
+        if (typeof op.prev !== 'object' || Array.isArray(op.prev)) return { code: 'INVALID' };
+        for (const e of list) { const pv = e && op.prev[e.id]; const m = e && ms.find((x) => x.id === e.id); if (!m || !Array.isArray(pv) || pv.length !== 2 || !pv.every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' }; if (m.aIds.join() !== pv[0].join() || m.bIds.join() !== pv[1].join()) return { code: 'STALE' }; }
+      }
       const next = ms.map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds.slice(), bIds: m.bIds.slice() }));
       for (const e of list) { const m = e && next.find((x) => x.id === e.id); if (!m || ![e.aIds, e.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' }; if (new Set([...e.aIds, ...e.bIds]).size !== 4) return { code: 'INVALID' }; m.aIds = [e.aIds[0], e.aIds[1]]; m.bIds = [e.bIds[0], e.bIds[1]]; }
       for (const e of list) { const m = next.find((x) => x.id === e.id); const seen = new Set(); for (const x of next) { if (x.slot !== m.slot) continue; for (const id of [...x.aIds, ...x.bIds]) { if (seen.has(id)) return { code: 'INVALID' }; seen.add(id); } } }
@@ -1534,7 +1539,7 @@
   const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, adjust: false, pick: null, busy: false, pending: [], failed: [], srvRev: -1, lastMsg: '', cache: {}, hist: null, histFor: null };
   const wkUnsent = () => [...W.pending, ...W.failed].filter((op) => op.session === W.id); // 아직 서버가 확인하지 않은 이 모임의 변경 (순서대로)
   /** 서버 문서를 받아들이되, 아직 확인되지 않은 내 변경은 그 위에 다시 얹는다 (화면이 되돌아가지 않도록) */
-  function wkAdopt(raw, rev) { let d; try { d = assertWeekly(raw); } catch { return false; } if (d.id !== W.id) return false; const r = rev != null ? rev | 0 : d.rev | 0; W.srvRev = W.doc ? Math.max(W.srvRev, r) : r; for (const op of wkUnsent()) { const c = JSON.parse(JSON.stringify(d)); if (applyWeeklyOp(c, op.op === 'generate' || op.op === 'edit' ? { ...op, base: c.rev } : op).ok) d = c; } W.doc = d; return true; } // 지금 보고 있는 모임의 문서만 채택 (다른 모임 응답·전환 경합 방지)
+  function wkAdopt(raw, rev) { let d; try { d = assertWeekly(raw); } catch { return false; } if (d.id !== W.id) return false; const r = rev != null ? rev | 0 : d.rev | 0; W.srvRev = W.doc ? Math.max(W.srvRev, r) : r; for (const op of wkUnsent()) { const c = JSON.parse(JSON.stringify(d)); const r = applyWeeklyOp(c, op.op === 'generate' || op.op === 'edit' ? { ...op, base: c.rev } : op); if (r.ok) d = c; else if (op.op === 'edit') { W.failed = W.failed.filter((x) => x !== op); W.pending = W.pending.filter((x) => x !== op); } } W.doc = d; return true; } // 서버 문서와 어긋난 조 조정은 버린다 // 지금 보고 있는 모임의 문서만 채택 (다른 모임 응답·전환 경합 방지)
   const ymdOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtDate = (ymd) => { const d = new Date(ymd + 'T00:00:00'); return isNaN(d) ? ymd : `${d.getMonth() + 1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`; };
   const isToday = (ymd) => ymd === ymdOf();
@@ -1562,7 +1567,7 @@
       const lv = {}; if (idx.levels && typeof idx.levels === 'object') for (const [k, v] of Object.entries(idx.levels)) if (ID_RE.test(k) && Number.isFinite(Number(v))) lv[k] = Number(v);
       W.index = { v: 1, levels: lv, levelsAt: String(idx.levelsAt || '').slice(0, 30), proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0, courtsLabel: String(s.courtsLabel || '').slice(0, 60) })) }; W.indexErr = '';
     } else { W.index = { v: 1, proxy: '', sessions: [] }; W.indexErr = WK_MOCK ? '' : (document.body.classList.contains('editor') ? '아직 모임 목록 파일이 없습니다. 위에서 첫 모임을 만들면 생깁니다 (데이터 저장소 tennisweet-data 와 GitHub Pages 가 준비되어 있어야 합니다 — README 참고).' : '아직 만들어진 정기 모임이 없습니다.'); }
-    if (!W.id || !wkSessions().some((s) => s.id === W.id)) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; W.srvRev = -1; }
+    if (!W.id || !wkSessions().some((s) => s.id === W.id)) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; W.adjust = false; W.pick = null; W.srvRev = -1; }
     renderWeeklyView();
     if (W.id) await wkLoadDoc(W.id); else wkUpdateCover();
   }
@@ -1594,6 +1599,7 @@
   }
   async function wkSendNow(op) {
     W.busy = true; wkStatus('저장 중…');
+    if ((op.op === 'generate' || op.op === 'edit') && W.failed.some((x) => x !== op && x.session === op.session)) { W.busy = false; W.pending = W.pending.filter((x) => x !== op); W.failed.push(op); wkStatus(`저장하지 못한 변경 ${W.failed.length}건 · 다시 시도를 누르세요`, true); renderWeeklyView(); return false; } // 앞선 실패분이 있으면 순서를 지켜 함께 재시도
     if ((op.op === 'generate' || op.op === 'edit') && op.session === W.id && W.srvRev >= 0) op.base = W.srvRev; // 앞선 변경이 실패해 큐에서 빠졌어도 서버 기준 rev 로 보낸다
     let res = await proxySend(op);
     for (let k = 0; k < 2 && res.code === 'STALE' && op.op === 'edit' && op.prev && res.doc; k++) { // 그사이 다른 변경(완료 표시 등)이 있어도 내가 고친 경기가 그대로면 최신 rev 로 다시 보낸다
@@ -1606,7 +1612,7 @@
     if (res.ok) { if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
     const msg = { STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
-    if (retryable) W.failed.push(op); // 재시도 대기 (화면에는 그대로 반영된 채)
+    if (retryable && !W.pending.some((x) => wkSameTarget(x, op))) W.failed.push(op); // 재시도 대기 (같은 대상의 더 새로운 변경이 이미 큐에 있으면 옛 실패분은 버린다 — 새 변경이 그 내용을 포함)
     if (mine) { if (res.doc) wkAdopt(res.doc, res.rev); else if (!retryable) await wkLoadDoc(W.id, { quiet: true }); } // 거부된 변경은 서버 문서로 되돌린다 (현재 모임일 때만)
     const n = W.failed.length; wkStatus(n > 1 ? `${msg} (미저장 ${n}건)` : msg, true); toast(msg); renderWeeklyView(); return false;
   }
@@ -1727,7 +1733,7 @@
   }
   const wkSlotStatus = (t0, t1) => { const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); return cur >= t0 && cur < t1 ? 'live' : cur >= t1 ? 'past' : ''; };
   function wkCardHtml(m, doc, done, closed, s) {
-    const adj = W.adjust && !closed; const pk = W.pick && W.pick.mid === m.id ? W.pick : null;
+    const adj = W.adjust && !closed; const pk = adj && W.pick && W.pick.mid === m.id ? W.pick : null;
     const nm = (x, side, idx) => { const a = doc.attendance[x.slice(2)]; const inner = `<span class="${a ? (a.guest ? 'gname ' : 'pname ') + (a.g === 'F' ? 'f' : 'm') : ''}">${esc(wkName(doc, x.slice(2)))}</span>`; return adj ? `<button type="button" class="nm-btn ${pk && pk.side === side && pk.idx === idx ? 'sel' : ''}" data-wk-pick="${esc(m.id)}|${side}|${idx}">${inner}</button>` : inner; }; const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M');
     const ta = [g(m.aIds[0]), g(m.aIds[1])].sort().join(''), tb = [g(m.bIds[0]), g(m.bIds[1])].sort().join('');
     const code = ta === tb ? ta.toLowerCase() : 'mix'; const label = ta === tb ? TYPE_LABEL[ta] : '잡복';
@@ -1739,7 +1745,7 @@
       const cands = Object.keys(inSlot).map((id) => ({ id, a: doc.attendance[id.slice(2)], court: inSlot[id] })).sort((x, y) => (x.court === m.court ? 0 : 1) - (y.court === m.court ? 0 : 1) || x.court - y.court);
       picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court + '코트'}</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
-    return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : adj ? '이름을 누르면 바꿀 사람을 고릅니다' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
+    return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : adj ? '이름을 누르면 바꿀 사람을 고릅니다' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
       <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}</div>
       <div class="mbody"><div class="side"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${picker}</div>`;
   }
@@ -1796,6 +1802,7 @@
   /** 조 조정: 고른 자리(W.pick)의 사람을 pid 로 바꾼다. pid 가 같은 시간대 다른 코트에 있으면 맞교환, 쉬는 사람이면 교체 */
   async function wkSwap(pid) {
     const doc = W.doc, pk = W.pick; if (!doc?.schedule || !pk) return;
+    if (W.failed.some((op) => op.session === doc.id)) { W.pick = null; renderWeeklyView(); toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 조를 조정하세요'); return; }
     const ms = doc.schedule.matches; const m = ms.find((x) => x.id === pk.mid); if (!m) return;
     const cur = m[pk.side + 'Ids'][pk.idx]; const nid = 'p:' + pid; if (cur === nid) { W.pick = null; renderWeeklyView(); return; }
     const copy = (x) => ({ id: x.id, aIds: x.aIds.slice(), bIds: x.bIds.slice() });
@@ -1845,7 +1852,7 @@
         dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => cur || { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }, `정기 모임 ${date} 생성`),
         dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime, courtsLabel: wkCourtsLabel(st) }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`),
       ]);
-      if (ok1 && ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; W.srvRev = -1; if (adminKey || WK_MOCK) await wkSaveLevels({ quiet: true }); await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      if (ok1 && ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; W.srvRev = -1; W.adjust = false; W.pick = null; if (adminKey || WK_MOCK) await wkSaveLevels({ quiet: true }); await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     } finally { btn.disabled = false; btn.innerHTML = label; }
   });
   /** 레벨 산출: NTRP(관리자 키로 복호화된 값), 여성은 −0.5 보정. 누구나 대진을 만들 수 있으려면 이 값이 공개 파일(index.json)에 있어야 한다 — 화면에는 표시하지 않는다 */

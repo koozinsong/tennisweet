@@ -12,7 +12,7 @@
  * 읽기: GET ?session=YYYY-MM-DD → { ok, rev, doc } (캐시, Pages 지연 없음)
  * 요청: POST 본문 = JSON 문자열 (Content-Type 없이 → CORS preflight 없음)
  *   { v:1, club:'tennisweet', session:'2026-09-20', op:'set'|'generate'|'edit'|'ping', path?, value?, base?, by? }
- *   edit: value = [{ id, aIds:[2], bIds:[2] }, …] (최대 4경기, 같은 시간대 중복 금지, base=rev 필수, 완료 표시 유지)
+ *   edit: value = [{ id, aIds:[2], bIds:[2] }, …], prev? = { id: [aIds, bIds] } (최대 4경기, 같은 시간대 중복 금지, base=rev 필수, prev 와 현재 팀이 다르면 STALE, 완료 표시 유지)
  * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB', rev?, doc? }
  */
 const CLUB = 'tennisweet';
@@ -110,6 +110,10 @@ function applyWeeklyOp(doc, op) {
     if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
     const ms = doc.schedule && Array.isArray(doc.schedule.matches) ? doc.schedule.matches : null; if (!ms) return { code: 'INVALID' };
     const list = Array.isArray(op.value) ? op.value : [op.value]; if (!list.length || list.length > 4) return { code: 'INVALID' };
+    if (op.prev != null) { // 조 조정은 '내가 본 팀'이 그대로일 때만 적용 (base 는 폴링·앞 응답으로 이미 최신일 수 있어 그것만으로는 타인의 변경을 못 잡는다)
+      if (typeof op.prev !== 'object' || Array.isArray(op.prev)) return { code: 'INVALID' };
+      for (const e of list) { const pv = e && op.prev[e.id]; const m = e && ms.find((x) => x.id === e.id); if (!m || !Array.isArray(pv) || pv.length !== 2 || !pv.every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' }; if (m.aIds.join() !== pv[0].join() || m.bIds.join() !== pv[1].join()) return { code: 'STALE' }; }
+    }
     const next = ms.map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds.slice(), bIds: m.bIds.slice() }));
     for (const e of list) { const m = e && next.find((x) => x.id === e.id); if (!m || ![e.aIds, e.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' }; if (new Set([...e.aIds, ...e.bIds]).size !== 4) return { code: 'INVALID' }; m.aIds = [e.aIds[0], e.aIds[1]]; m.bIds = [e.bIds[0], e.bIds[1]]; }
     for (const e of list) { const m = next.find((x) => x.id === e.id); const seen = new Set(); for (const x of next) { if (x.slot !== m.slot) continue; for (const id of [...x.aIds, ...x.bIds]) { if (seen.has(id)) return { code: 'INVALID' }; seen.add(id); } } }
