@@ -3,7 +3,7 @@
  "id": "2026-09-17",
  "date": "2026-09-17",
  "status": "open",
- "rev": 91,
+ "rev": 92,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -100,24 +100,24 @@
   }
  },
  "schedule": {
-  "seed": 762469,
-  "gen": 18,
+  "seed": 23586,
+  "gen": 19,
   "fromSlot": 0,
   "inputHash": "whqz48",
-  "at": "2026-09-17T02:00:50.461Z",
-  "by": "t4lcpvt",
+  "at": "2026-09-17T02:03:41.197Z",
+  "by": "243v8q3",
   "matches": [
    {
     "id": "s0c1",
     "slot": 0,
     "court": 1,
     "aIds": [
-     "p:243v8q3",
-     "p:45sqltb"
-    ],
-    "bIds": [
      "p:t4lcpvt",
      "p:g261xhp"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:45sqltb"
     ]
    },
    {
@@ -125,12 +125,12 @@
     "slot": 1,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
-     "p:45sqltb"
-    ],
-    "bIds": [
      "p:243v8q3",
      "p:g261xhp"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:45sqltb"
     ]
    },
    {
@@ -138,12 +138,12 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
-     "p:df9dtam"
+     "p:t5tmwl5",
+     "p:328ljva"
     ],
     "bIds": [
-     "p:t5tmwl5",
-     "p:lvcpucm"
+     "p:g261xhp",
+     "p:nba8nn1"
     ]
    },
    {
@@ -151,12 +151,12 @@
     "slot": 2,
     "court": 2,
     "aIds": [
-     "p:nba8nn1",
-     "p:g261xhp"
+     "p:df9dtam",
+     "p:ev1tqiv"
     ],
     "bIds": [
-     "p:6kn0dof",
-     "p:328ljva"
+     "p:uzqomod",
+     "p:g:3igyma"
     ]
    },
    {
@@ -164,12 +164,12 @@
     "slot": 2,
     "court": 3,
     "aIds": [
-     "p:ev1tqiv",
-     "p:uzqomod"
+     "p:lvcpucm",
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:g:3igyma",
-     "p:ibws5ld"
+     "p:45sqltb",
+     "p:6kn0dof"
     ]
    },
    {
@@ -177,12 +177,12 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:243v8q3",
-     "p:lvcpucm"
+     "p:t4lcpvt",
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:nba8nn1",
-     "p:328ljva"
+     "p:t5tmwl5",
+     "p:uzqomod"
     ]
    },
    {
@@ -190,11 +190,11 @@
     "slot": 3,
     "court": 2,
     "aIds": [
-     "p:ibws5ld",
-     "p:6kn0dof"
+     "p:243v8q3",
+     "p:328ljva"
     ],
     "bIds": [
-     "p:45sqltb",
+     "p:lvcpucm",
      "p:ev1tqiv"
     ]
    },
@@ -203,17 +203,56 @@
     "slot": 3,
     "court": 3,
     "aIds": [
-     "p:g:3igyma",
-     "p:df9dtam"
+     "p:nba8nn1",
+     "p:6kn0dof"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:g261xhp"
+     "p:df9dtam",
+     "p:g:3igyma"
     ]
    },
    {
     "id": "s4c1",
     "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s4c2",
+    "slot": 4,
+    "court": 2,
+    "aIds": [
+     "p:lvcpucm",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s4c3",
+    "slot": 4,
+    "court": 3,
+    "aIds": [
+     "p:328ljva",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:45sqltb",
+     "p:uzqomod"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
     "court": 1,
     "aIds": [
      "p:lvcpucm",
@@ -225,55 +264,16 @@
     ]
    },
    {
-    "id": "s4c2",
-    "slot": 4,
-    "court": 2,
-    "aIds": [
-     "p:t5tmwl5",
-     "p:nba8nn1"
-    ],
-    "bIds": [
-     "p:t4lcpvt",
-     "p:ibws5ld"
-    ]
-   },
-   {
-    "id": "s4c3",
-    "slot": 4,
-    "court": 3,
-    "aIds": [
-     "p:uzqomod",
-     "p:df9dtam"
-    ],
-    "bIds": [
-     "p:ev1tqiv",
-     "p:6kn0dof"
-    ]
-   },
-   {
-    "id": "s5c1",
-    "slot": 5,
-    "court": 1,
-    "aIds": [
-     "p:t5tmwl5",
-     "p:6kn0dof"
-    ],
-    "bIds": [
-     "p:243v8q3",
-     "p:uzqomod"
-    ]
-   },
-   {
     "id": "s5c2",
     "slot": 5,
     "court": 2,
     "aIds": [
      "p:t4lcpvt",
-     "p:lvcpucm"
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:328ljva",
-     "p:ev1tqiv"
+     "p:t5tmwl5",
+     "p:6kn0dof"
     ]
    },
    {
@@ -281,17 +281,17 @@
     "slot": 5,
     "court": 3,
     "aIds": [
-     "p:ibws5ld",
+     "p:df9dtam",
      "p:nba8nn1"
     ],
     "bIds": [
-     "p:df9dtam",
-     "p:g:3igyma"
+     "p:ibws5ld",
+     "p:ev1tqiv"
     ]
    }
   ]
  },
  "done": {},
  "createdAt": "2026-09-13T14:05:47.838Z",
- "updatedAt": "2026-09-17T02:02:15.509Z"
+ "updatedAt": "2026-09-17T02:03:42.761Z"
 }
