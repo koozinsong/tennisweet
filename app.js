@@ -603,12 +603,13 @@
     // 3연속 출전 횟수
     const bySlot = {}; for (const m of sch.matches) for (const x of [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])]) (bySlot[x] ??= new Set()).add(m.slot);
     let dblRest = 0; if (GEN_HOOK && isFinite(nSl)) for (const p of activePlayers()) { const set = bySlot[p.id] || new Set(); for (let sl = 1; sl < nSl; sl++) if (playerAvailable(p, st, sl - 1) && playerAvailable(p, st, sl) && !set.has(sl - 1) && !set.has(sl)) dblRest++; } // 정기 모임 하드 규칙: 참석 중인데 2시간대 연속 휴식
+    let lateRest = 0; if (GEN_HOOK && isFinite(nSl)) { const firstOf = (p) => { for (let sl = 0; sl < nSl; sl++) if (playerAvailable(p, st, sl)) return sl; return -1; }; const playedBefore = (q, sl) => [...(bySlot[q.id] || [])].some((x) => x < sl); for (const p of activePlayers()) { const f = firstOf(p); if (f < 0 || (bySlot[p.id] || new Set()).has(f)) continue; if (activePlayers().some((q) => q !== p && (bySlot[q.id] || new Set()).has(f) && playedBefore(q, f))) lateRest++; } } // 정기 모임: 도착한 첫 시간대에 쉬는데 먼저 와서 이미 뛴 사람이 그 시간대에 뛰고 있으면 벌점
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
     let ntrpDiff = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); ntrpDiff += Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); }
     const menBad = GEN_HOOK ? sch.matches.filter((m) => { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wA = A.filter((x) => gOf(x) === 'F'), wB = B.filter((x) => gOf(x) === 'F'); if (wA.length !== 1 || wB.length !== 1 || A.length !== 2 || B.length !== 2) return false; const mA = A.find((x) => gOf(x) !== 'F'), mB = B.find((x) => gOf(x) !== 'F'); return fmMixBad(ntrpOf(wA[0]), ntrpOf(mA), ntrpOf(wB[0]), ntrpOf(mB)); }).length : state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 대회: 특별 규칙 위반은 사실상 배제. 정기 모임: 혼복 원칙 위반 ×3000 ('경기 없음' 1e4 보다 가볍게)
     let mixBad = 0, mixSoft = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa + wb !== 1) continue; const sumA = A.reduce((a, x) => a + ntrpOf(x), 0), sumB = B.reduce((a, x) => a + ntrpOf(x), 0); const short = (wa ? sumB : sumA) - (wa ? sumA : sumB); if (short >= 1.5) mixBad += 1; else if (short > 0) mixSoft += 60 + 40 * short; const side = wa ? A : B, other = wa ? B : A; const mate = side.find((x) => gOf(x) !== 'F'); if (mate && other.some((x) => ntrpOf(x) > ntrpOf(mate))) mixSoft += 150; } // 잡복 원칙: 여자 쪽(여자 −0.5 반영) 합 ≥ 남자 둘 합
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + avoided * 1e5 + missing * 1e4 + ffShort * 2000 + loss * 400 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + spread * spreadW + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 300 + avoided * 1e5 + missing * 1e4 + ffShort * 2000 + loss * 400 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + spread * spreadW + ntrpDiff * 60 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   function generateRotationOnce(s, seed) {
@@ -644,7 +645,8 @@
     const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
     // 최소 보장: 참석 시간대가 2개 이상이면 최소 2경기, 1개면 1경기. 남은 시간대를 다 뛰어야 채울 수 있으면 최우선(-300)
     const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
-    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest ? 35 : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
+    const firstSlot = (p) => { for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) return i; return -1; };
+    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest ? 35 : 0) - (slot === firstSlot(p) ? 150 : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
     const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
@@ -1801,14 +1803,15 @@
     const gone = [...m.aIds, ...m.bIds].some((x) => !doc.attendance[x.slice(2)]); // 불참으로 바뀐 사람이 포함된 경기
     let picker = '';
     if (pk && s) { // 후보: 이 시간대에 참석 중인 사람 (이 경기의 다른 3명 제외). 같은 시간대 다른 코트에 있으면 맞교환
-      const cur = m[pk.side + 'Ids'][pk.idx]; const inSlot = {}; // 같은 시간대에 편성된 사람만: 같은 코트의 나머지 3명(짝 바꾸기) + 다른 코트(맞교환). 쉬는 사람은 넣지 않는다
-      for (const x of (doc.schedule?.matches || [])) if (x.slot === m.slot) for (const id of [...x.aIds, ...x.bIds]) if (id !== cur && !(x.id === m.id && m[pk.side + 'Ids'].includes(id))) inSlot[id] = x.court; // 같은 편 파트너와의 교환은 조가 안 바뀌므로 제외
-      const cands = Object.keys(inSlot).map((id) => ({ id, a: doc.attendance[id.slice(2)], court: inSlot[id] })).sort((x, y) => (x.court === m.court ? 0 : 1) - (y.court === m.court ? 0 : 1) || x.court - y.court);
-      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court + '코트'}</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
+      const cur = m[pk.side + 'Ids'][pk.idx]; const inSlot = {}; // 같은 시간대 다른 사람 전부: 코트에 있으면 맞교환(같은 코트 상대편 = 조 변경), 쉬고 있으면 교체. 같은 편 파트너는 제외
+      for (const x of (doc.schedule?.matches || [])) if (x.slot === m.slot) for (const id of [...x.aIds, ...x.bIds]) if (id !== cur && !(x.id === m.id && m[pk.side + 'Ids'].includes(id))) inSlot[id] = x.court;
+      const t0 = slotStartMin(s, m.slot), t1 = t0 + s.matchMinutes;
+      const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || x.court - y.court || (x.a.n < y.a.n ? -1 : 1));
+      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? c.court + '코트' : '쉬는 중'}</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : adj ? '이름을 누르면 바꿀 사람을 고릅니다' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
       <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${!closed && wkCanWrite() ? `<button type="button" class="adj-btn ${adj ? 'on' : ''}" data-wk-adjust="${esc(m.id)}" title="${adj ? '조 조정 끝내기' : '이 경기 조 조정'}"><svg class="ic"><use href="#i-edit"/></svg>${adj ? '끝' : '조정'}</button>` : ''}</div>
-      ${adj ? '<div class="sub adj-hint">이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 코트 맞교환)</div>' : ''}
+      ${adj ? '<div class="sub adj-hint">이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체)</div>' : ''}
       <div class="mbody"><div class="side"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${picker}</div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
@@ -1898,10 +1901,9 @@
     const copy = (x) => ({ id: x.id, aIds: x.aIds.slice(), bIds: x.bIds.slice() });
     const e1 = copy(m); const value = [e1]; const prev = { [m.id]: [m.aIds.slice(), m.bIds.slice()] };
     const here = [...m.aIds, ...m.bIds].includes(nid); const other = here ? null : ms.find((x) => x.slot === m.slot && x.id !== m.id && [...x.aIds, ...x.bIds].includes(nid));
-    if (!here && !other) { toast('이 시간대에 편성된 사람끼리만 자리를 바꿀 수 있습니다'); return; }
-    e1[pk.side + 'Ids'][pk.idx] = nid;
+    e1[pk.side + 'Ids'][pk.idx] = nid; // 쉬는 사람이면 그대로 교체(빠진 사람은 이 시간대 휴식)
     if (here) { for (const side of ['a', 'b']) e1[side + 'Ids'] = e1[side + 'Ids'].map((x, i) => (x === nid && !(side === pk.side && i === pk.idx) ? cur : x)); } // 같은 코트: 두 자리를 맞바꿔 조 구성 변경
-    else { const e2 = copy(other); for (const side of ['a', 'b']) { const i = e2[side + 'Ids'].indexOf(nid); if (i >= 0) e2[side + 'Ids'][i] = cur; } value.push(e2); prev[other.id] = [other.aIds.slice(), other.bIds.slice()]; }
+    else if (other) { const e2 = copy(other); for (const side of ['a', 'b']) { const i = e2[side + 'Ids'].indexOf(nid); if (i >= 0) e2[side + 'Ids'][i] = cur; } value.push(e2); prev[other.id] = [other.aIds.slice(), other.bIds.slice()]; }
     W.pick = null; W.adjust = null; // 한 번 바꾸면 조정 모드 종료
     await wkSend({ op: 'edit', base: doc.rev, value, prev });
   }
