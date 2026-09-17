@@ -1772,7 +1772,7 @@
       const isLeft = (m) => !doc.done[m.id]; // 예정 시각과 무관하게 완료 표시한 경기만 '남은 대진'에서 뺀다
       const leftN = ms.filter(isLeft).length;
       const meId = W.me && doc.attendance[W.me] ? W.me : ''; const isMine = (m) => !!meId && [...m.aIds, ...m.bIds].includes('p:' + meId); const mineN = ms.filter(isMine).length;
-      const meSel = `<select id="wk-me" class="me" aria-label="내 이름"><option value="">이름 선택…</option>${att.map((p) => `<option value="${esc(p.id)}" ${p.id === meId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>`;
+      const meSel = `<select id="wk-me" class="me" aria-label="내 이름"><option value="">이름 선택…</option>${[...att].sort((a, b) => a.name.localeCompare(b.name, 'ko')).map((p) => `<option value="${esc(p.id)}" ${p.id === meId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select>`;
       html += `<div class="row wk-filter"><button class="chip ${filter === 'all' ? 'on' : ''}" data-wk-filter="all">전체 ${ms.length}</button><button class="chip ${filter === 'me' ? 'on' : ''}" data-wk-filter="me">내 경기${meId ? ' ' + mineN : ''}</button>${filter === 'me' ? meSel : ''}<button class="chip ${filter === 'left' ? 'on' : ''}" data-wk-filter="left">남은 대진 ${leftN}</button>${closed ? '' : '<span class="hint">경기가 끝나면 카드를 눌러 완료 표시(흐리게). 다시 누르면 되살아납니다.</span>'}</div>`;
       html += '<div class="legend"><span class="tag type fm">혼복</span><span class="tag type mm">남복</span><span class="tag type ff">여복</span></div>';
       const nSlots = ms.length ? Math.max(...ms.map((m) => m.slot)) + 1 : 0; let shown = 0;
