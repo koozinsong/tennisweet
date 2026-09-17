@@ -436,10 +436,23 @@ button.wk-del:hover { background: var(--danger-bg); }
 .chip.on.guest.m { background: var(--mm); } .chip.on.guest.f { background: var(--ff); }
 .gmark { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .02em; background: #d97706; color: #fff; border-radius: 6px; padding: 0 4px; margin-right: 5px; }
 .chip.guest:not(.on) .gmark { background: #fde3c4; }
-.gname.m { color: var(--mm); } .gname.f { color: var(--ff); }
+.gname.m, .pname.m { color: var(--mm); } .gname.f, .pname.f { color: var(--ff); } /* 표의 이름: 남 파랑 · 여 로즈 (글자 표시 대신 색으로) */
 .mcard .gname::after, table .gname::after { content: " G"; font-size: 11px; font-weight: 800; color: #d97706; }
 .tag.type.mix { background: #dff3f5; color: #0e7c86; } .mcard.t-mix { border-left-color: #0e7c86; }
 .tag.gtag { background: #fde3c4; color: #7a3f00; }
 .wk-ch-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex-basis: 100%; }
 .wk-ch-row #wk-court-hours { display: inline-flex; gap: 6px; flex-wrap: wrap; }
 .wk-ch { font-family: var(--display); font-size: 15px; }
+
+/* 정기 모임 조 조정 */
+.mcard.wk.adjusting { cursor: default; }
+.mcard.wk.adjusting:hover { box-shadow: var(--shadow); }
+.nm-btn { font: inherit; font-weight: 800; color: inherit; background: color-mix(in srgb, var(--court) 8%, #fff); border: 1px dashed color-mix(in srgb, var(--court) 45%, #fff); border-radius: 8px; padding: 3px 8px; cursor: pointer; }
+.nm-btn:hover { background: color-mix(in srgb, var(--court) 16%, #fff); }
+.nm-btn.sel { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.nm-btn.sel .gname { color: #fff; }
+.wk-picker { margin-top: 10px; padding: 10px; border-top: 1px dashed var(--rule); }
+.wk-picker .sub { margin-bottom: 6px; }
+.wk-picker .chip small { margin-left: 4px; opacity: .75; font-weight: 500; }
+#wk-adjust.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.mcard.wk.decided { opacity: .45; filter: saturate(.6); }
