@@ -1935,6 +1935,84 @@
     const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
     return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b></td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
   }
+  // ================= 관리자: 기록 모아보기 (정기 모임 세션 파일 + 지난 대회 아카이브 → 모임별·개인별 집계) =================
+  const R = { recs: null, sel: null, busy: false };
+  /** 한 경기의 양쪽 선수 id 배열 (대회 아카이브는 unit → playerIds, 팀전은 aPlayers/bPlayers) */
+  const recSide = (m, side, units) => (m[side + 'Players'] ? m[side + 'Players'].filter(Boolean) : (m[side + 'Ids'] || (m[side + 'Id'] ? [m[side + 'Id']] : [])).flatMap((u) => units?.[u]?.playerIds || [String(u).replace(/^p:/, '')]));
+  /** 세션·아카이브 문서 → 공통 기록 {src,id,date,name,people:{id:{n,g,guest}},matches:[{slot,court,A,B,done,type,score,win}]} */
+  function recFromDoc(src, id, doc) {
+    const people = {};
+    if (src === 'weekly') for (const [pid, a] of Object.entries(doc.attendance || {})) people[pid] = { n: a.n, g: a.g === 'F' ? 'F' : 'M', guest: !!a.guest };
+    else for (const p of doc.players || []) people[p.id] = { n: p.name, g: p.gender === 'F' ? 'F' : 'M', guest: false };
+    const units = {}; for (const u of doc.units || []) units[u.id] = u;
+    const nameOf = (pid) => people[pid]?.n || playerById(pid)?.name || pid; const gOf2 = (pid) => people[pid]?.g || (playerById(pid)?.gender === 'F' ? 'F' : 'M');
+    const ms = (doc.schedule?.matches || []).map((m) => {
+      const A = recSide(m, 'a', units), B = recSide(m, 'b', units); for (const pid of [...A, ...B]) if (!people[pid]) people[pid] = { n: nameOf(pid), g: gOf2(pid), guest: /^g:/.test(pid) };
+      let type = 'ETC'; if (A.length === 2 && B.length === 2) { const ta = [gOf2(A[0]), gOf2(A[1])].sort().join(''), tb = [gOf2(B[0]), gOf2(B[1])].sort().join(''); type = ta === tb ? ta : 'MIX'; }
+      let done = false, score = '', win = null; // win: 'a'|'b'|null (점수 있는 대회 경기만)
+      if (src === 'weekly') done = !!doc.done?.[m.id];
+      else { const sets = Array.isArray(doc.results?.[m.id]) ? doc.results[m.id].filter((x) => x && x.a !== '' && x.b !== '' && x.a != null && x.b != null) : []; if (sets.length) { done = true; score = sets.map((x) => `${x.a}:${x.b}`).join(' '); let wa = 0, wb = 0; for (const x of sets) { if (+x.a > +x.b) wa++; else if (+x.b > +x.a) wb++; } win = wa > wb ? 'a' : wb > wa ? 'b' : null; } }
+      return { id: m.id, slot: m.slot | 0, court: m.court | 0, A, B, done, type, score, win };
+    });
+    return { src, id, date: doc.date || id, name: src === 'weekly' ? `${fmtDate(doc.date || id)} 정기 모임` : (doc.name || id), people, matches: ms, settings: doc.settings || {} };
+  }
+  async function recLoadAll() {
+    const out = []; const ids = wkSessions().map((x) => x.id).filter((id) => id <= ymdOf()); // 오늘까지의 모임 (다가오는 모임 제외)
+    for (const id of ids) { let d = W.id === id && W.doc ? W.doc : W.cache[id]; if (!d) { d = await dataRead(`weekly/sessions/${id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[id] = d; } if (d?.schedule?.matches?.length) out.push(recFromDoc('weekly', id, d)); }
+    const aidx = T.index || (await archRead('archive/index.json')); for (const e of (aidx?.events || [])) { if (!e?.id || !/^[A-Za-z0-9_-]{1,40}$/.test(e.id)) continue; const d = await archRead(`archive/${e.id}.json`); if (d?.schedule?.matches?.length) out.push(recFromDoc('tour', e.id, d)); }
+    return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // 최근 순
+  }
+  /** 집계 옵션에 맞는 기록만: 기간·출처·완료/점수 있는 경기만 */
+  function recFilter(recs, o) {
+    const from = o.range === 'year' ? `${new Date().getFullYear()}-01-01` : o.range === '90' ? ymdOf(new Date(Date.now() - 90 * 86400000)) : '';
+    return recs.filter((r) => (r.src === 'weekly' ? o.weekly : o.tour) && r.date >= from).map((r) => ({ ...r, matches: o.doneOnly ? r.matches.filter((m) => m.done) : r.matches }));
+  }
+  /** 개인별 집계 (게스트는 이름으로 합침) */
+  function recAggregate(recs) {
+    const P = {}; const key = (r, pid) => (r.people[pid]?.guest ? 'guest|' + r.people[pid].n : pid);
+    const get = (r, pid) => { const k = key(r, pid); return (P[k] ??= { key: k, id: pid, name: playerById(pid)?.name || r.people[pid]?.n || pid, g: r.people[pid]?.g || 'M', guest: !!r.people[pid]?.guest, att: 0, tours: 0, games: 0, done: 0, t: { FF: 0, FM: 0, MM: 0, MIX: 0, ETC: 0 }, w: 0, l: 0, partners: {}, opps: {}, last: '', list: [] }); };
+    for (const r of recs) {
+      const present = new Set(Object.keys(r.people)); for (const pid of present) { const p = get(r, pid); if (r.src === 'weekly') p.att++; else p.tours++; if (r.date > p.last) p.last = r.date; }
+      for (const m of r.matches) for (const side of ['A', 'B']) { const mine = m[side], other = m[side === 'A' ? 'B' : 'A']; for (const pid of mine) { const p = get(r, pid); p.games++; if (m.done) p.done++; p.t[m.type]++; if (m.win) { if (m.win === (side === 'A' ? 'a' : 'b')) p.w++; else p.l++; } for (const q of mine) if (q !== pid) { const k = key(r, q); p.partners[k] = (p.partners[k] || 0) + 1; } for (const q of other) { const k = key(r, q); p.opps[k] = (p.opps[k] || 0) + 1; } p.list.push({ r, m, side }); } }
+    }
+    return P;
+  }
+  const recTypeLabel = { FF: '여복', FM: '혼복', MM: '남복', MIX: '잡복', ETC: '기타' };
+  function recTopHtml(map, P, n = 3) { return Object.entries(map).sort((a, b) => b[1] - a[1] || (P[a[0]]?.name || '').localeCompare(P[b[0]]?.name || '', 'ko')).slice(0, n).map(([k, c]) => `<span class="pname ${P[k]?.g === 'F' ? 'f' : 'm'}">${esc(P[k]?.name || k)}</span><small>${c}</small>`).join(' · ') || '<span class="sub">—</span>'; }
+  function recOptions() { return { range: $('#wkr-range')?.value || 'all', weekly: $('#wkr-weekly')?.checked !== false, tour: $('#wkr-tour')?.checked !== false, doneOnly: !!$('#wkr-done')?.checked }; }
+  function renderRecords() {
+    const box = $('#wkr-view'); if (!box) return; if (!R.recs) { box.innerHTML = ''; return; }
+    const recs = recFilter(R.recs, recOptions()); const P = recAggregate(recs);
+    const people = Object.values(P).sort((a, b) => b.games - a.games || b.att - a.att || a.name.localeCompare(b.name, 'ko'));
+    const totG = recs.reduce((a, r) => a + r.matches.length, 0), totD = recs.reduce((a, r) => a + r.matches.filter((m) => m.done).length, 0);
+    const nm = (p) => `<b class="${p.guest ? 'gname' : 'pname'} ${p.g === 'F' ? 'f' : 'm'}">${p.guest ? '<span class="gmark">G</span>' : ''}${esc(p.name)}</b>`;
+    let html = `<p class="sub">정기 모임 ${recs.filter((r) => r.src === 'weekly').length}회 · 대회 ${recs.filter((r) => r.src === 'tour').length}회 · 경기 ${totG} (완료·점수 ${totD}) · 인원 ${people.length}명</p>`;
+    if (!recs.length) { box.innerHTML = html + '<p class="hint">조건에 맞는 기록이 없습니다.</p>'; return; }
+    html += `<h4>모임별</h4><div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>모임</th><th class="num">참석</th><th class="num">경기</th><th class="num">완료</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th><th class="num">잡복</th></tr></thead><tbody>${recs.map((r) => { const t = { FF: 0, FM: 0, MM: 0, MIX: 0, ETC: 0 }; r.matches.forEach((m) => t[m.type]++); return `<tr><td>${esc(fmtDate(r.date))}</td><td>${r.src === 'tour' ? '🏆 ' : ''}${esc(r.name)}</td><td class="num">${Object.keys(r.people).length}</td><td class="num">${r.matches.length}</td><td class="num">${r.matches.filter((m) => m.done).length}</td><td class="num">${t.FM}</td><td class="num">${t.MM}</td><td class="num">${t.FF}</td><td class="num">${t.MIX}</td></tr>`; }).join('')}</tbody></table></div>`;
+    const hasTour = recs.some((r) => r.src === 'tour');
+    html += `<h4>개인별 <span class="sub">이름을 누르면 상세</span></h4><div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>이름</th><th class="num">참석</th>${hasTour ? '<th class="num">대회</th>' : ''}<th class="num">경기</th><th class="num">완료</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th><th class="num">잡복</th>${hasTour ? '<th class="num">승-패</th>' : ''}<th>자주 짝</th><th>자주 상대</th></tr></thead><tbody>${people.map((p) => `<tr class="rec-row ${R.sel === p.key ? 'sel' : ''}" data-rec="${esc(p.key)}"><td>${nm(p)}</td><td class="num">${p.att}</td>${hasTour ? `<td class="num">${p.tours}</td>` : ''}<td class="num"><b>${p.games}</b></td><td class="num">${p.done}</td><td class="num">${p.t.FM}</td><td class="num">${p.t.MM}</td><td class="num">${p.t.FF}</td><td class="num">${p.t.MIX}</td>${hasTour ? `<td class="num">${p.w || p.l ? `${p.w}-${p.l}` : '—'}</td>` : ''}<td class="wkr-pairs">${recTopHtml(p.partners, P)}</td><td class="wkr-pairs">${recTopHtml(p.opps, P)}</td></tr>`).join('')}</tbody></table></div>`;
+    const sel = R.sel && P[R.sel];
+    if (sel) {
+      const rows = [...sel.list].sort((x, y) => (x.r.date < y.r.date ? 1 : x.r.date > y.r.date ? -1 : x.m.slot - y.m.slot || x.m.court - y.m.court));
+      const who = (r, ids) => ids.map((pid) => { const k = r.people[pid]?.guest ? 'guest|' + r.people[pid].n : pid; const q = P[k]; return `<span class="${q?.guest ? 'gname' : 'pname'} ${q?.g === 'F' ? 'f' : 'm'}">${esc(q?.name || pid)}</span>`; }).join(' · ');
+      html += `<div class="wkr-detail"><h4>${nm(sel)} <span class="sub">경기 ${sel.games} · 완료 ${sel.done}${sel.w || sel.l ? ` · 대회 ${sel.w}승 ${sel.l}패` : ''} · 마지막 ${esc(fmtDate(sel.last))}</span> <button type="button" class="small" id="wkr-close">닫기</button></h4>
+        <div class="row wkr-lists"><div><b>짝</b> ${recTopHtml(sel.partners, P, 99)}</div><div><b>상대</b> ${recTopHtml(sel.opps, P, 99)}</div></div>
+        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => { const k = r.people[x]?.guest ? 'guest|' + r.people[x].n : x; return k !== sel.key; }), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court || ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+    }
+    box.innerHTML = html; const csv = $('#wkr-csv'); if (csv) csv.hidden = !people.length;
+  }
+  function recCsv() {
+    const recs = recFilter(R.recs || [], recOptions()); const P = recAggregate(recs); const people = Object.values(P).sort((a, b) => b.games - a.games || a.name.localeCompare(b.name, 'ko'));
+    const top = (map) => Object.entries(map).sort((a, b) => b[1] - a[1]).map(([k, c]) => `${P[k]?.name || k} ${c}`).join(' / ');
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = [['이름', '구분', '참석', '대회', '경기', '완료', '혼복', '남복', '여복', '잡복', '승', '패', '마지막', '짝', '상대'].map(q).join(',')];
+    for (const p of people) lines.push([p.name, p.guest ? '게스트' : '회원', p.att, p.tours, p.games, p.done, p.t.FM, p.t.MM, p.t.FF, p.t.MIX, p.w, p.l, p.last, top(p.partners), top(p.opps)].map(q).join(','));
+    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tennisweet-records-${ymdOf()}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('#wkr-load')?.addEventListener('click', async () => { if (R.busy) return; R.busy = true; const st = $('#wkr-status'); const b = $('#wkr-load'); b.disabled = true; if (st) st.textContent = '불러오는 중…'; try { R.recs = await recLoadAll(); if (st) st.textContent = `${R.recs.length}건 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`; renderRecords(); } catch (e) { if (st) st.textContent = '불러오지 못했습니다: ' + e.message; } finally { R.busy = false; b.disabled = false; } });
+  $$('#wkr-range, #wkr-weekly, #wkr-tour, #wkr-done').forEach((el) => el.addEventListener('change', renderRecords));
+  $('#wkr-csv')?.addEventListener('click', recCsv);
+  $('#wkr-view')?.addEventListener('click', (e) => { const t = e.target; if (t.closest('#wkr-close')) { R.sel = null; renderRecords(); return; } const row = t.closest('[data-rec]'); if (row) { R.sel = R.sel === row.dataset.rec ? null : row.dataset.rec; renderRecords(); if (R.sel) $('.wkr-detail')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } });
   async function wkScheduleClick(t) {
     if (t.closest('#wk-gen')) { await wkGenerate('full'); return; }
     if (t.closest('#wk-regen-left')) { await wkGenerate('left'); return; }

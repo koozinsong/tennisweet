@@ -475,3 +475,14 @@ button.wk-del:hover { background: var(--danger-bg); }
 
 /* 선수 탭: 대회 전용 열은 진행 중인 대회가 있을 때만 */
 #tab-players.no-tour .tour-col { display: none !important; }
+
+/* 관리자: 기록 모아보기 */
+#wk-records > summary { font-weight: 700; color: var(--court-deep); font-size: 14px; }
+#wk-records h4 { margin: 14px 0 6px; font-size: 14px; color: var(--ink); }
+table.stand.wkr td.num, table.stand.wkr th.num { width: 44px; font-size: 15px; }
+table.stand.wkr td.wkr-pairs { font-size: 12px; white-space: nowrap; }
+table.stand.wkr td.wkr-pairs small { margin: 0 2px 0 1px; color: var(--muted); }
+tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in srgb, var(--court) 6%, #fff); } tr.rec-row.sel td { background: color-mix(in srgb, var(--accent) 12%, #fff); }
+.wkr-detail { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--rule); }
+.wkr-detail h4 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wkr-lists { align-items: flex-start; gap: 18px; font-size: 13px; } .wkr-lists small { margin: 0 2px 0 1px; color: var(--muted); }
