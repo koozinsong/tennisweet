@@ -17,6 +17,7 @@
  */
 const CLUB = 'tennisweet';
 const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회) — app.js 의 WK_PW_HASH 와 동일. 클라이언트가 검증값을 보내고 서버는 비교만 한다 (평문은 어디에도 없음)
+const DONE_GRACE_DAYS = 7; // 완료 표시 유예 (모임 후 7일)
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
@@ -54,7 +55,7 @@ function doPost(e) {
     for (let attempt = 0; attempt < 3 && !saved; attempt++) {
       const cur = ghGet(c, path, main); if (!cur) return out({ ok: false, code: 'NOSESSION' });
       const doc = cur.json; if (!doc || typeof doc !== 'object') return out({ ok: false, code: 'GITHUB', detail: '세션 파일 형식 오류' });
-      if (closed(doc)) return out({ ok: false, code: 'CLOSED', rev: doc.rev | 0, doc: doc });
+      if (closed(doc, body)) return out({ ok: false, code: 'CLOSED', rev: doc.rev | 0, doc: doc });
       const r = applyWeeklyOp(doc, body); if (!r.ok) return out({ ok: false, code: r.code, rev: doc.rev | 0, doc: doc });
       const content = JSON.stringify(doc, null, 1) + '\n'; const code = ghPut(c, path, content, cur.sha, commitMsg(body, doc), main);
       if (code === 200 || code === 201) { saved = { doc: doc, content: content }; try { CacheService.getScriptCache().put('s:' + body.session, JSON.stringify(doc), 21600); } catch (err) {} }
@@ -69,7 +70,7 @@ function doPost(e) {
   finally { lock.releaseLock(); }
 }
 /** 모임 다음날 0시(KST)부터는 수정 불가 */
-function closed(doc) { if (doc.status === 'closed') return true; const t = Date.parse(String(doc.date) + 'T00:00:00+09:00'); return isFinite(t) && t + 86400000 <= Date.now(); }
+function closed(doc, body) { if (doc.status === 'closed') return true; const t = Date.parse(String(doc.date) + 'T00:00:00+09:00'); if (!isFinite(t)) return false; const days = body && body.op === 'set' && /^done\./.test(String(body.path || '')) ? 1 + DONE_GRACE_DAYS : 1; return t + 86400000 * days <= Date.now(); } // 참석·대진·조 조정은 다음날 0시(KST)부터, 완료 표시는 모임 후 7일까지 (app.js wkOpAllowed 와 동일)
 function commitMsg(body, doc) { const who = body.by ? ' by ' + String(body.by).slice(0, 20) : ''; if (body.op === 'edit') return '정기 모임 ' + doc.id + ' 조 조정 ' + (Array.isArray(body.value) ? body.value : [body.value]).map(function (e) { return e && e.id; }).join(',') + who; if (body.op === 'set') return '정기 모임 ' + doc.id + ' ' + String(body.path).slice(0, 60) + (body.value == null ? ' 삭제' : '') + who; return '정기 모임 ' + doc.id + ' 대진 ' + (body.value ? '#' + (body.value.seed | 0) : '삭제') + who; }
 function hdr(c) { return { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; }
 function ghGet(c, path, branch) {

@@ -39,6 +39,13 @@ conflictOnce = true; const before = putCalls; r = call({ ...base, op: 'set', pat
 results.push(['gh-pages copy in sync', JSON.stringify(store['gh:data/weekly/sessions/2026-09-20.json']) === JSON.stringify(store['data/weekly/sessions/2026-09-20.json'])]);
 store['data/weekly/sessions/2026-09-20.json'].date = '2020-01-01'; r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['closed', r.code === 'CLOSED']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['closed blocks attend', r.code === 'CLOSED']);
+{ const d2 = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10); store['data/weekly/sessions/2026-09-20.json'].date = d2; // 이틀 전 모임: 완료 표시만 열려 있다 (7일 유예)
+  r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['grace: done ok 2 days later', r.ok && r.doc.done.s0c1 === true]);
+  r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['grace: undone ok', r.ok && !r.doc.done.s0c1]);
+  r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['grace: attend still closed', r.code === 'CLOSED']);
+  r = call({ ...base, op: 'generate', auth: AUTH, base: r.rev, value: null }); results.push(['grace: generate still closed', r.code === 'CLOSED']);
+  const d9 = new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10); store['data/weekly/sessions/2026-09-20.json'].date = d9; r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['grace over: done closed 9 days later', r.code === 'CLOSED']);
+  store['data/weekly/sessions/2026-09-20.json'].date = '2020-01-01'; }
 { const g = JSON.parse(ctx.__doGet({ parameter: { session: '2026-09-20' } }).text); results.push(['doGet cached doc', g.ok && g.doc && g.rev === store['data/weekly/sessions/2026-09-20.json'].rev]); const g2 = JSON.parse(ctx.__doGet({ parameter: {} }).text); results.push(['doGet ping', g2.ok && !g2.doc]); const g3 = JSON.parse(ctx.__doGet({ parameter: { session: '2030-01-01' } }).text); results.push(['doGet missing', g3.code === 'NOSESSION']); const rf = call({ ...base, op: 'refresh' }); results.push(['refresh', rf.ok && rf.doc]); const rf2 = call({ ...base, session: '2030-01-01', op: 'refresh' }); results.push(['refresh missing', rf2.code === 'NOSESSION']); }
 // ---- 완료 표시 정리: 전체 재편성(다시 섞기)은 모두 비우고, 부분 재편성은 그대로 둔 시간대만 유지 ----
 { const d = store['data/weekly/sessions/2026-09-20.json']; d.date = '2099-01-01'; // 다시 열기

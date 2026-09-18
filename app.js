@@ -1601,19 +1601,23 @@
     });
   }
   const wkCanWrite = () => WK_MOCK || !!adminKey || !!W.index?.proxy; // 저장 수단: 로컬 모의 / 관리자 토큰 / 프록시
-  const wkClosed = (doc) => doc?.status === 'closed' || (/^\d{4}-\d{2}-\d{2}$/.test(doc?.date || '') && Date.parse(doc.date + 'T00:00:00+09:00') + 86400000 <= Date.now()); // 모임 다음날 0시(KST)부터 읽기 전용
+  const WK_DONE_GRACE_DAYS = 7; // 완료 표시는 모임 후 7일까지 (기록이 그날 밤에 끝나지 않으므로)
+  const wkDayStart = (doc) => (/^\d{4}-\d{2}-\d{2}$/.test(doc?.date || '') ? Date.parse(doc.date + 'T00:00:00+09:00') : NaN);
+  const wkClosed = (doc) => doc?.status === 'closed' || (isFinite(wkDayStart(doc)) && wkDayStart(doc) + 86400000 <= Date.now());
+  const wkDoneOpen = (doc) => doc?.status !== 'closed' && !(isFinite(wkDayStart(doc)) && wkDayStart(doc) + 86400000 * (1 + WK_DONE_GRACE_DAYS) <= Date.now()); // 완료 표시 가능 (Code.gs closed() 와 동일 규칙)
+  const wkOpAllowed = (doc, op) => (op?.op === 'set' && /^done\./.test(String(op.path || '')) ? wkDoneOpen(doc) : !wkClosed(doc)); // 모임 다음날 0시(KST)부터 읽기 전용
   /** 멤버 쓰기: 프록시에 작업 1건 전송 (로컬은 모의 저장소에 직접 적용) */
   async function proxySend(op) {
     if (WK_MOCK) {
       const path = `weekly/sessions/${op.session}.json`; const doc = wkMock.get(path);
-      if (!doc) return { ok: false, code: 'NOSESSION' }; if (wkClosed(doc)) return { ok: false, code: 'CLOSED', rev: doc.rev, doc };
+      if (!doc) return { ok: false, code: 'NOSESSION' }; if (!wkOpAllowed(doc, op)) return { ok: false, code: 'CLOSED', rev: doc.rev, doc };
       if ((op.op === 'generate' || op.op === 'edit') && op.auth !== WK_PW_HASH) return { ok: false, code: 'AUTH', rev: doc.rev, doc }; // 프록시와 같은 검사
       const r = applyWeeklyOp(doc, op); if (!r.ok) return { ok: false, code: r.code, rev: doc.rev, doc };
       wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200)); return { ok: true, rev: doc.rev, doc };
     }
     const url = W.index?.proxy;
     if (url) { // 프록시가 있으면 관리자도 프록시로 (프록시 캐시가 최신을 유지하도록). 프록시 장애 시 관리자는 자기 토큰으로
-      try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); const j = await r.json(); if (!(adminKey && ['NETWORK', 'GITHUB', 'BUSY'].includes(j?.code))) return j; } // Content-Type 미지정(text/plain) → preflight 없음
+      try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); const j = await r.json(); const oldProxy = j?.code === 'CLOSED' && j.doc && wkOpAllowed(j.doc, op); if (!(adminKey && (['NETWORK', 'GITHUB', 'BUSY'].includes(j?.code) || oldProxy))) { if (oldProxy) j.detail = 'OLD_PROXY'; return j; } } // Content-Type 미지정(text/plain) → preflight 없음. 옛 프록시가 완료 표시 유예를 모르면(CLOSED) 관리자는 직접 저장
       catch (e) { if (!adminKey) return { ok: false, code: 'NETWORK', detail: e.message }; }
     }
     if (adminKey) return adminApplyOp(op); // 관리자: 자기 토큰으로 직접 저장
@@ -1627,7 +1631,7 @@
     const ok = await repoAdminUpdate(WK_PATH(`weekly/sessions/${op.session}.json`), (cur) => {
       if (!cur) { fail = { ok: false, code: 'NOSESSION' }; return null; }
       let doc; try { doc = assertWeekly(cur); } catch { fail = { ok: false, code: 'INVALID' }; return null; }
-      if (wkClosed(doc)) { fail = { ok: false, code: 'CLOSED', rev: doc.rev, doc }; return null; }
+      if (!wkOpAllowed(doc, op)) { fail = { ok: false, code: 'CLOSED', rev: doc.rev, doc }; return null; }
       const r = applyWeeklyOp(doc, op); if (!r.ok) { fail = { ok: false, code: r.code, rev: doc.rev, doc }; return null; }
       result = doc; return doc;
     }, wkCommitMsg(op), { quiet: true });
@@ -1714,7 +1718,7 @@
     const mine = op.session === W.id; // 다른 모임의 응답 문서는 화면에 채택하지 않는다
     if (res.ok) { if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
     if (res.code === 'AUTH') { try { localStorage.removeItem(WK_AUTH_KEY); } catch {} W.adjust = false; W.pick = null; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
-    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
+    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
     if (retryable && !W.pending.some((x) => wkSameTarget(x, op))) W.failed.push(op); // 재시도 대기 (같은 대상의 더 새로운 변경이 이미 큐에 있으면 옛 실패분은 버린다 — 새 변경이 그 내용을 포함)
     if (mine) { if (res.doc) wkAdopt(res.doc, res.rev); else if (!retryable) await wkLoadDoc(W.id, { quiet: true }); } // 거부된 변경은 서버 문서로 되돌린다 (현재 모임일 때만)
@@ -1854,13 +1858,13 @@
       const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0, g: gc['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || (x.court ? x.court - y.court : x.g - y.g) || (x.a.n < y.a.n ? -1 : 1));
       picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? c.court + '코트' : '쉬는 중'} · ${c.g}경기</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
-    return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${closed ? '' : adj ? '이름을 누르면 바꿀 사람을 고릅니다' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
+    return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${adj ? '이름을 누르면 바꿀 사람을 고릅니다' : !(wkDoneOpen(doc) && wkCanWrite()) ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
       <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${done ? '<span class="tag wk-done">✓ 완료</span>' : ''}</div>
       <div class="mbody"><div class="side"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${picker}</div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
     let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date);
-    if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? (W.adjust && !closed ? '이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료' : '카드를 누르면 완료 표시 · 조 조정과 다시 섞기는 대진표 비밀번호') : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
+    if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? (W.adjust && !closed ? '이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료' : !closed ? '카드를 누르면 완료 표시 · 조 조정과 다시 섞기는 대진표 비밀번호' : wkDoneOpen(doc) && wkCanWrite() ? `지난 모임 · 카드를 누르면 완료 표시 (모임 후 ${WK_DONE_GRACE_DAYS}일까지)` : '지난 모임의 대진입니다') : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
     if (!closed) {
       const stale = sch && sch.inputHash !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s);
       if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>`;
@@ -1941,7 +1945,7 @@
     const pb = t.closest('[data-wk-pick]'); if (pb) { const [mid, side, idx] = pb.dataset.wkPick.split('|'); W.pick = W.pick && W.pick.mid === mid && W.pick.side === side && +W.pick.idx === +idx ? null : { mid, side, idx: +idx }; renderWeeklyView(); if (W.pick) $('.wk-picker')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
     const sw = t.closest('[data-wk-swap]'); if (sw && W.pick && W.doc && !wkClosed(W.doc) && wkCanWrite()) { await wkSwap(sw.dataset.wkSwap); return; }
     const card = t.closest('[data-wk-done]'); if (card && W.adjust) return; // 조정 중에는 카드를 탭해도 완료 표시로 바뀌지 않게
-    if (card && W.doc && !wkClosed(W.doc) && wkCanWrite()) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
+    if (card && W.doc && wkDoneOpen(W.doc) && wkCanWrite()) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
   }
   /** 조 조정: 고른 자리(W.pick)의 사람을 pid 로 바꾼다. pid 가 같은 시간대 다른 코트에 있으면 맞교환, 쉬는 사람이면 교체 */
   async function wkSwap(pid) {
@@ -1969,11 +1973,11 @@
   async function wkDeleteSession(id) {
     if (!SESSION_RE.test(id)) return;
     const d = W.id === id ? W.doc : (W.cache[id] || null); const n = d ? Object.keys(d.attendance || {}).length : null;
-    if (!confirm(`${fmtDate(id)} 모임을 삭제할까요?${n ? `\n참석 ${n}명의 체크와 대진이 함께 지워집니다.` : ''}`)) return;
-    const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 삭제`);
-    if (!ok) return;
-    await dataAdminDelete(`weekly/sessions/${id}.json`, `정기 모임 ${id} 파일 삭제`); delete wkFresh[`weekly/sessions/${id}.json`]; await wkProxyRefresh(id);
-    delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; W.srvRev = -1; } toast(`${fmtDate(id)} 모임을 삭제했습니다`); await weeklyRefresh();
+    if (!confirm(`${fmtDate(id)} 모임을 목록에서 뺄까요?${n ? `\n참석 ${n}명의 체크·대진·완료 기록은 저장소 파일에 그대로 남고, 같은 날짜를 다시 만들면 되살아납니다.` : ''}`)) return;
+    const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 목록에서 제외`);
+    if (!ok) return; // 세션 파일(기록)은 지우지 않는다 — 목록에서만 빠지고, 이력 반영에서도 제외. 같은 날짜를 다시 만들면 기존 파일을 그대로 쓴다
+    delete wkFresh[`weekly/sessions/${id}.json`]; await wkProxyRefresh(id);
+    delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; W.srvRev = -1; } toast(`${fmtDate(id)} 모임을 목록에서 뺐습니다 (기록은 남음)`); await weeklyRefresh();
   }
   /** 관리자 토큰으로 정기 모임 파일 삭제 (main·gh-pages, 없으면 무시) */
   async function dataAdminDelete(path, msg) {
