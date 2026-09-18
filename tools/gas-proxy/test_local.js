@@ -20,7 +20,7 @@ const call = (body) => JSON.parse(ctx.__doPost({ postData: { contents: JSON.stri
 const base = { v: 1, club: 'tennisweet', session: '2026-09-20' };
 const AUTH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 (Code.gs WK_PW_HASH)
 const results = [];
-results.push(['ping', call({ ...base, op: 'ping' }).ok === true]);
+{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 2]); }
 results.push(['bad club', call({ ...base, club: 'x', op: 'set' }).code === 'INVALID']);
 results.push(['no session', call({ ...base, session: '2026-01-01', op: 'set', path: 'attendance.a', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }).code === 'NOSESSION']);
 let r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '19:00', until: '22:00' }, by: 'h0teikh' }); results.push(['attend ok', r.ok && r.rev === 1 && r.doc.attendance.h0teikh.n === '송국진']);

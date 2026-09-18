@@ -1582,6 +1582,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
+  const PROXY_VERSION_NEED = 2; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예
   const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). Code.gs 의 WK_PW_HASH 와 동일 — 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // 이 기기에서 한 번 맞춘 검증값 (다시 묻지 않음)
   async function wkVerifierHex(pw) { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode('tennisweet-wk-verify'), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
@@ -2113,7 +2114,7 @@
   $('#wk-ping')?.addEventListener('click', async () => {
     const url = String($('#wk-form-proxy [name=proxy]')?.value || '').trim(); if (WK_MOCK) { toast('로컬 모의 저장소에서는 확인할 수 없습니다'); return; } if (!PROXY_RE.test(url)) { toast('주소를 먼저 입력하세요'); return; }
     const st = $('#wk-proxy-status'); if (st) st.textContent = '확인 중…';
-    try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: '2000-01-01', op: 'ping' }), redirect: 'follow' }); const j = await r.json(); const msg = j.ok ? `✓ 연결됨 · 서버 시각 ${new Date(j.t).toLocaleTimeString('ko-KR')}` : '응답은 왔지만 형식이 다릅니다'; toast(msg); if (st) st.textContent = msg; } catch (e) { toast('연결 실패: ' + e.message); if (st) st.textContent = '✗ 연결 실패: ' + e.message; }
+    try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: '2000-01-01', op: 'ping' }), redirect: 'follow' }); const j = await r.json(); const old = j.ok && (j.v | 0) < PROXY_VERSION_NEED; const msg = j.ok ? (old ? `⚠ 연결은 되지만 서버 코드가 옛 버전(v${j.v | 0}, 필요 v${PROXY_VERSION_NEED}) — Apps Script 편집기에 tools/gas-proxy/Code.gs 를 붙여 넣고 배포 관리 → 새 버전` : `✓ 연결됨 · 서버 v${j.v | 0} · 서버 시각 ${new Date(j.t).toLocaleTimeString('ko-KR')}`) : '응답은 왔지만 형식이 다릅니다'; toast(msg, old ? 8000 : undefined); if (st) st.textContent = msg; } catch (e) { toast('연결 실패: ' + e.message); if (st) st.textContent = '✗ 연결 실패: ' + e.message; }
   });
   /** 정기 모임 생성 폼: 시작~종료 사이 매 시각의 코트 수 입력칸 (기본은 이전 값 또는 2) */
   function wkRenderCourtInputs() {
