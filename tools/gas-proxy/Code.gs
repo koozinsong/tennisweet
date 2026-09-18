@@ -18,7 +18,8 @@
 const CLUB = 'tennisweet';
 const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회) — app.js 의 WK_PW_HASH 와 동일. 클라이언트가 검증값을 보내고 서버는 비교만 한다 (평문은 어디에도 없음)
 const DONE_GRACE_DAYS = 7; // 완료 표시 유예 (모임 후 7일)
-const PROXY_VERSION = 3; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b}, 완료 자동)
+const SCORE_MAX = 6; // 점수(게임 수) 상한 — app.js WK_SCORE_MAX 와 동일
+const PROXY_VERSION = 3; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동)
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
@@ -99,7 +100,7 @@ function applyWeeklyOp(doc, op) {
       if (!doc.attendance[key] && Object.keys(doc.attendance).length >= 80) return { code: 'FULL' }; // 파일 무한 팽창 방지
       doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}) };
     } else if (coll === 'done') { if (op.value !== true || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.done[key] = true; }
-    else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > 99 || v.b < 0 || v.b > 99 || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~99)를 넣으면 완료로도 표시
+    else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > SCORE_MAX || v.b < 0 || v.b > SCORE_MAX || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~6)를 넣으면 완료로도 표시
   } else if (op.op === 'generate') {
     if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
     const v = op.value;

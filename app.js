@@ -1503,6 +1503,7 @@
   const fnv1a = (str) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; };
   const guestId = (name) => 'g:' + fnv1a(String(name).normalize('NFC').replace(/\s+/g, '')).toString(36); // 같은 이름 게스트는 다음 주에도 같은 id (이력이 이어짐)
   /** 세션 문서에 작업 1건 적용 — 프록시(tools/gas-proxy/Code.gs)의 applyWeeklyOp 와 같은 로직. 둘을 함께 고칠 것 */
+  const WK_SCORE_MAX = 6; // 점수(게임 수) 상한 — Code.gs SCORE_MAX 와 동일
   function applyWeeklyOp(doc, op) {
     const okId = (v) => typeof v === 'string' && ID_RE.test(v);
     if (op.op === 'set') {
@@ -1514,7 +1515,7 @@
         if (!doc.attendance[key] && Object.keys(doc.attendance).length >= 80) return { code: 'FULL' }; // 파일 무한 팽창 방지
         doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}) };
       } else if (coll === 'done') { if (op.value !== true || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.done[key] = true; }
-      else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > 99 || v.b < 0 || v.b > 99 || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~99)를 넣으면 완료로도 표시
+      else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > WK_SCORE_MAX || v.b < 0 || v.b > WK_SCORE_MAX || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~6)를 넣으면 완료로도 표시
     } else if (op.op === 'generate') {
       if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
       const v = op.value;
@@ -1553,7 +1554,7 @@
       doc.schedule = { seed: doc.schedule.seed | 0, gen: doc.schedule.gen | 0, fromSlot: doc.schedule.fromSlot | 0, inputHash: String(doc.schedule.inputHash || '').slice(0, 16), at: String(doc.schedule.at || '').slice(0, 30), by: String(doc.schedule.by || '').slice(0, 20), matches: ms };
     } else doc.schedule = null;
     const dn = {}; for (const k of Object.keys(doc.done || {})) if (MID_RE.test(k) && doc.done[k] === true) dn[k] = true; doc.done = dn;
-    const rs = {}; for (const [k, v] of Object.entries(doc.results || {})) if (MID_RE.test(k) && v && Number.isInteger(v.a) && Number.isInteger(v.b) && v.a >= 0 && v.a <= 99 && v.b >= 0 && v.b <= 99) rs[k] = { a: v.a, b: v.b }; doc.results = rs; // 경기 기록(점수): 정기 모임도 입력
+    const rs = {}; for (const [k, v] of Object.entries(doc.results || {})) if (MID_RE.test(k) && v && Number.isInteger(v.a) && Number.isInteger(v.b) && v.a >= 0 && v.a <= WK_SCORE_MAX && v.b >= 0 && v.b <= WK_SCORE_MAX) rs[k] = { a: v.a, b: v.b }; doc.results = rs; // 경기 기록(점수): 정기 모임도 입력, 게임 수 0~6
     doc.rev = doc.rev | 0; doc.status = doc.status === 'closed' ? 'closed' : 'open';
     const st = { ...(doc.settings || {}) }; for (const k of ['courts', 'matchMinutes', 'breakMinutes', 'minWomenDoubles']) st[k] = Math.max(0, parseInt(st[k], 10) || 0); st.courts = Math.max(1, st.courts); st.matchMinutes = Math.max(5, st.matchMinutes || 30);
     if (!TIME_RE.test(st.startTime || '')) st.startTime = '18:00'; if (!TIME_RE.test(st.endTime || '')) st.endTime = '22:00';
@@ -1864,7 +1865,7 @@
     }
     const rs = doc.results?.[m.id] || null; const canScore = !adj && wkDoneOpen(doc) && wkCanWrite(); const editing = canScore && W.score === m.id; // 경기 기록(점수): 누구나 입력, 완료와 같은 7일 유예
     const winA = rs && rs.a > rs.b, winB = rs && rs.b > rs.a;
-    const scoreEd = editing ? `<div class="wk-score-ed" data-wk-score-ed="${esc(m.id)}"><span class="sub">${esc(wkName(doc, m.aIds[0].slice(2)))}·${esc(wkName(doc, m.aIds[1].slice(2)))}</span><input type="number" inputmode="numeric" min="0" max="99" class="sc-a" value="${rs ? rs.a : ''}" aria-label="A 점수"><b>:</b><input type="number" inputmode="numeric" min="0" max="99" class="sc-b" value="${rs ? rs.b : ''}" aria-label="B 점수"><span class="sub">${esc(wkName(doc, m.bIds[0].slice(2)))}·${esc(wkName(doc, m.bIds[1].slice(2)))}</span><button type="button" class="small primary" data-wk-score-save="${esc(m.id)}">저장</button>${rs ? `<button type="button" class="small" data-wk-score-clear="${esc(m.id)}">지우기</button>` : ''}<button type="button" class="small" data-wk-score-close="1">닫기</button></div>` : '';
+    const scoreEd = editing ? `<div class="wk-score-ed" data-wk-score-ed="${esc(m.id)}"><span class="sub">${esc(wkName(doc, m.aIds[0].slice(2)))}·${esc(wkName(doc, m.aIds[1].slice(2)))}</span><input type="number" inputmode="numeric" min="0" max="6" class="sc-a" value="${rs ? rs.a : ''}" aria-label="A 점수"><b>:</b><input type="number" inputmode="numeric" min="0" max="6" class="sc-b" value="${rs ? rs.b : ''}" aria-label="B 점수"><span class="sub">${esc(wkName(doc, m.bIds[0].slice(2)))}·${esc(wkName(doc, m.bIds[1].slice(2)))}</span><button type="button" class="small primary" data-wk-score-save="${esc(m.id)}">저장</button>${rs ? `<button type="button" class="small" data-wk-score-clear="${esc(m.id)}">지우기</button>` : ''}<button type="button" class="small" data-wk-score-close="1">닫기</button></div>` : '';
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''} ${editing ? 'scoring' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${adj ? '이름을 누르면 바꿀 사람을 고릅니다' : !(wkDoneOpen(doc) && wkCanWrite()) ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
       <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
       <div class="mbody"><div class="side ${winA ? 'w' : ''}"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side ${winB ? 'w' : ''}"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${scoreEd}${picker}</div>`;
@@ -2037,12 +2038,12 @@
     const card = t.closest('[data-wk-done]'); if (card && W.adjust) return; // 조정 중에는 카드를 탭해도 완료 표시로 바뀌지 않게
     if (card && W.doc && wkDoneOpen(W.doc) && wkCanWrite()) { const mid = card.dataset.wkDone; const done = !!W.doc.done[mid]; await wkSend({ op: 'set', path: 'done.' + mid, value: done ? null : true }); } // 다시 누르면 완료 취소
   }
-  /** 점수 저장: 카드의 입력칸(A:B 게임 수) → results.<mid>. 둘 다 비었으면 점수 삭제. 저장하면 완료로도 표시된다 */
+  /** 점수 저장: 카드의 입력칸(A:B 게임 수, 0~6) → results.<mid>. 둘 다 비었으면 점수 삭제. 저장하면 완료로도 표시된다 */
   async function wkSaveScore(mid) {
     const ed = $(`[data-wk-score-ed="${CSS.escape(mid)}"]`); if (!ed || !W.doc) return;
     const a = ed.querySelector('.sc-a').value.trim(), b = ed.querySelector('.sc-b').value.trim();
     if (!a && !b) { W.score = null; if (W.doc.results?.[mid]) await wkSend({ op: 'set', path: 'results.' + mid, value: null }); else renderWeeklyView(); return; }
-    const na = parseInt(a, 10), nb = parseInt(b, 10); if (!Number.isInteger(na) || !Number.isInteger(nb) || na < 0 || nb < 0 || na > 99 || nb > 99) { toast('점수는 0~99 사이의 숫자 두 개를 넣으세요'); return; }
+    const na = parseInt(a, 10), nb = parseInt(b, 10); if (!Number.isInteger(na) || !Number.isInteger(nb) || na < 0 || nb < 0 || na > WK_SCORE_MAX || nb > WK_SCORE_MAX) { toast(`점수는 0~${WK_SCORE_MAX} 사이의 게임 수 두 개를 넣으세요`); return; }
     W.score = null; await wkSend({ op: 'set', path: 'results.' + mid, value: { a: na, b: nb } });
   }
   /** 조 조정: 고른 자리(W.pick)의 사람을 pid 로 바꾼다. pid 가 같은 시간대 다른 코트에 있으면 맞교환, 쉬는 사람이면 교체 */

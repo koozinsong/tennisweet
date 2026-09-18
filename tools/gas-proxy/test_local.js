@@ -35,7 +35,8 @@ r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push([
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['undone ok', r.ok && !r.doc.done.s0c1]);
 r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 6, b: 4 } }); results.push(['score ok + auto done', r.ok && r.doc.results.s0c1.a === 6 && r.doc.results.s0c1.b === 4 && r.doc.done.s0c1 === true]);
 r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: '6', b: 4 } }); results.push(['score string invalid', r.code === 'INVALID']);
-r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 100, b: 4 } }); results.push(['score >99 invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 7, b: 4 } }); results.push(['score >6 invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 6, b: 6 } }); results.push(['score 6:6 ok', r.ok && r.doc.results.s0c1.a === 6]);
 r = call({ ...base, op: 'set', path: 'results.s9c9', value: { a: 6, b: 4 } }); results.push(['score unknown match invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'results.s0c1', value: null }); results.push(['score cleared (done stays)', r.ok && !r.doc.results.s0c1 && r.doc.done.s0c1 === true]);
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['undone again', r.ok && !r.doc.done.s0c1]);
@@ -87,7 +88,7 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
 // ---- 사본 일치: app.js 의 applyWeeklyOp 와 Code.gs 의 applyWeeklyOp 가 같은 입력에 같은 결과 ----
 { const app = fs.readFileSync(__dirname + '/../../app.js', 'utf8');
   const fn = app.slice(app.indexOf('  function applyWeeklyOp(doc, op) {'), app.indexOf('  /** 외부에서 온 세션 문서 검증'));
-  const consts = [app.match(/const ID_RE = [^\n]+;/)[0], app.match(/const TIME_RE = [^\n]+;/)[0]].join('\n');
+  const consts = [app.match(/const ID_RE = [^\n]+;/)[0], app.match(/const TIME_RE = [^\n]+;/)[0], app.match(/const WK_SCORE_MAX = [^\n]+;/)[0]].join('\n');
   const appCtx = vm.createContext({ Date }); vm.runInContext(consts + '\n' + fn + '\nglobalThis.__apply = applyWeeklyOp;', appCtx);
   const gsCtx = vm.createContext({ ...gas }); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__apply = applyWeeklyOp;', gsCtx);
   const seq = [
@@ -100,7 +101,7 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
     { op: 'edit', auth: AUTH, base: 7, prev: { s0c1: [['p:a', 'p:b'], ['p:c', 'p:d']] }, value: [{ id: 's0c1', aIds: ['p:a', 'p:x'], bIds: ['p:c', 'p:d'] }] }, { op: 'edit', auth: AUTH, base: 8, prev: { s0c1: [['p:a', 'p:b'], ['p:c', 'p:d']] }, value: [{ id: 's0c1', aIds: ['p:a', 'p:y'], bIds: ['p:c', 'p:d'] }] }, { op: 'edit', auth: AUTH, base: 8, value: [{ id: 's0c1', aIds: ['p:a', 'p:x'], bIds: ['p:c', 'p:x'] }] }, { op: 'edit', auth: AUTH, base: 99, value: [{ id: 's0c1', aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] },
     { op: 'generate', auth: AUTH, base: 8, value: null },
     { op: 'generate', auth: AUTH, base: (d) => d.rev, value: { seed: 4, gen: 4, fromSlot: 0, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:c'], bIds: ['p:b', 'p:d'] }] } },
-    { op: 'set', path: 'results.s0c1', value: { a: 6, b: 4 } }, { op: 'set', path: 'results.s0c1', value: { a: 6 } }, { op: 'set', path: 'results.s1c1', value: { a: 100, b: 0 } }, { op: 'set', path: 'results.s9c9', value: { a: 1, b: 2 } }, { op: 'set', path: 'results.s1c1', value: { a: 3, b: 5 } },
+    { op: 'set', path: 'results.s0c1', value: { a: 6, b: 4 } }, { op: 'set', path: 'results.s0c1', value: { a: 6 } }, { op: 'set', path: 'results.s1c1', value: { a: 7, b: 0 } }, { op: 'set', path: 'results.s9c9', value: { a: 1, b: 2 } }, { op: 'set', path: 'results.s1c1', value: { a: 3, b: 5 } },
     { op: 'edit', auth: AUTH, base: (d) => d.rev, prev: { s1c1: [['p:a', 'p:c'], ['p:b', 'p:d']] }, value: [{ id: 's1c1', aIds: ['p:a', 'p:d'], bIds: ['p:b', 'p:c'] }] }, // s1c1 점수 삭제, s0c1 유지
     { op: 'generate', auth: AUTH, base: (d) => d.rev, value: { seed: 5, gen: 4, fromSlot: 1, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] } }, // 남은 시간대만: s0c1 점수 유지
     { op: 'generate', auth: AUTH, base: (d) => d.rev, value: null }, // 전부 삭제 → results {}
