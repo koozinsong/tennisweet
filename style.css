@@ -486,3 +486,13 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 .wkr-detail { margin-top: 12px; padding-top: 8px; border-top: 1px dashed var(--rule); }
 .wkr-detail h4 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .wkr-lists { align-items: flex-start; gap: 18px; font-size: 13px; } .wkr-lists small { margin: 0 2px 0 1px; color: var(--muted); }
+
+/* 정기 모임: 경기 기록(점수) */
+.sc-btn { margin-left: auto; display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--rule); background: #fff; color: var(--muted); cursor: pointer; }
+.sc-btn.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.tag.wk-score { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--court-deep); background: color-mix(in srgb, var(--court) 10%, #fff); letter-spacing: .02em; }
+.wk-score-ed { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--rule); font-size: 13px; }
+.wk-score-ed input { width: 56px; text-align: center; font-family: var(--display); font-size: 18px; padding: 4px; }
+.wk-score-ed b { font-size: 18px; color: var(--muted); }
+.mcard.wk.scoring { opacity: 1; }
+.mcard.wk .side.w::after { content: "승"; }

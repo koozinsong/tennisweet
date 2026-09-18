@@ -20,7 +20,7 @@ const call = (body) => JSON.parse(ctx.__doPost({ postData: { contents: JSON.stri
 const base = { v: 1, club: 'tennisweet', session: '2026-09-20' };
 const AUTH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 (Code.gs WK_PW_HASH)
 const results = [];
-{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 2]); }
+{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 3]); }
 results.push(['bad club', call({ ...base, club: 'x', op: 'set' }).code === 'INVALID']);
 results.push(['no session', call({ ...base, session: '2026-01-01', op: 'set', path: 'attendance.a', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }).code === 'NOSESSION']);
 let r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '19:00', until: '22:00' }, by: 'h0teikh' }); results.push(['attend ok', r.ok && r.rev === 1 && r.doc.attendance.h0teikh.n === '송국진']);
@@ -33,6 +33,12 @@ r = call({ ...base, op: 'generate', base: 2, value: { seed: 1, gen: 1, fromSlot:
 r = call({ ...base, op: 'edit', auth: 'wrong', base: 2, value: [{ id: 's0c1', aIds: ['p:h0teikh', 'p:a'], bIds: ['p:g:abc', 'p:b'] }] }); results.push(['edit wrong auth → AUTH', r.code === 'AUTH']);
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['done ok', r.ok && r.doc.done.s0c1 === true]);
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['undone ok', r.ok && !r.doc.done.s0c1]);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 6, b: 4 } }); results.push(['score ok + auto done', r.ok && r.doc.results.s0c1.a === 6 && r.doc.results.s0c1.b === 4 && r.doc.done.s0c1 === true]);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: '6', b: 4 } }); results.push(['score string invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 100, b: 4 } }); results.push(['score >99 invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'results.s9c9', value: { a: 6, b: 4 } }); results.push(['score unknown match invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'results.s0c1', value: null }); results.push(['score cleared (done stays)', r.ok && !r.doc.results.s0c1 && r.doc.done.s0c1 === true]);
+r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['undone again', r.ok && !r.doc.done.s0c1]);
 r = call({ ...base, op: 'set', path: 'evil.x', value: 1 }); results.push(['bad path invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '<b>x</b>'.repeat(10), g: 'M', from: '18:00', until: '22:00' } }); results.push(['name clipped 20', r.ok && r.doc.attendance.h0teikh.n.length === 20]);
 conflictOnce = true; const before = putCalls; r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['409 retry', r.ok && putCalls - before === 2]);
@@ -42,6 +48,7 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
 { const d2 = new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10); store['data/weekly/sessions/2026-09-20.json'].date = d2; // 이틀 전 모임: 완료 표시만 열려 있다 (7일 유예)
   r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['grace: done ok 2 days later', r.ok && r.doc.done.s0c1 === true]);
   r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['grace: undone ok', r.ok && !r.doc.done.s0c1]);
+  r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 2, b: 6 } }); results.push(['grace: score ok 2 days later', r.ok && r.doc.results.s0c1.b === 6 && r.doc.done.s0c1 === true]); r = call({ ...base, op: 'set', path: 'results.s0c1', value: null }); r = call({ ...base, op: 'set', path: 'done.s0c1', value: null });
   r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }); results.push(['grace: attend still closed', r.code === 'CLOSED']);
   r = call({ ...base, op: 'generate', auth: AUTH, base: r.rev, value: null }); results.push(['grace: generate still closed', r.code === 'CLOSED']);
   const d9 = new Date(Date.now() - 9 * 86400000).toISOString().slice(0, 10); store['data/weekly/sessions/2026-09-20.json'].date = d9; r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['grace over: done closed 9 days later', r.code === 'CLOSED']);
@@ -92,10 +99,16 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
     { op: 'generate', auth: AUTH, base: 6, value: { seed: 3, gen: 3, fromSlot: 0, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] } },
     { op: 'edit', auth: AUTH, base: 7, prev: { s0c1: [['p:a', 'p:b'], ['p:c', 'p:d']] }, value: [{ id: 's0c1', aIds: ['p:a', 'p:x'], bIds: ['p:c', 'p:d'] }] }, { op: 'edit', auth: AUTH, base: 8, prev: { s0c1: [['p:a', 'p:b'], ['p:c', 'p:d']] }, value: [{ id: 's0c1', aIds: ['p:a', 'p:y'], bIds: ['p:c', 'p:d'] }] }, { op: 'edit', auth: AUTH, base: 8, value: [{ id: 's0c1', aIds: ['p:a', 'p:x'], bIds: ['p:c', 'p:x'] }] }, { op: 'edit', auth: AUTH, base: 99, value: [{ id: 's0c1', aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] },
     { op: 'generate', auth: AUTH, base: 8, value: null },
+    { op: 'generate', auth: AUTH, base: (d) => d.rev, value: { seed: 4, gen: 4, fromSlot: 0, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:c'], bIds: ['p:b', 'p:d'] }] } },
+    { op: 'set', path: 'results.s0c1', value: { a: 6, b: 4 } }, { op: 'set', path: 'results.s0c1', value: { a: 6 } }, { op: 'set', path: 'results.s1c1', value: { a: 100, b: 0 } }, { op: 'set', path: 'results.s9c9', value: { a: 1, b: 2 } }, { op: 'set', path: 'results.s1c1', value: { a: 3, b: 5 } },
+    { op: 'edit', auth: AUTH, base: (d) => d.rev, prev: { s1c1: [['p:a', 'p:c'], ['p:b', 'p:d']] }, value: [{ id: 's1c1', aIds: ['p:a', 'p:d'], bIds: ['p:b', 'p:c'] }] }, // s1c1 점수 삭제, s0c1 유지
+    { op: 'generate', auth: AUTH, base: (d) => d.rev, value: { seed: 5, gen: 4, fromSlot: 1, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] } }, // 남은 시간대만: s0c1 점수 유지
+    { op: 'generate', auth: AUTH, base: (d) => d.rev, value: null }, // 전부 삭제 → results {}
   ];
-  const run = (ctx) => { const doc = { v: 1, id: '2026-09-20', date: '2099-01-01', status: 'open', rev: 0, attendance: {}, schedule: null, done: {} }; const codes = []; for (const op of seq) { const r = ctx.__apply(doc, { v: 1, club: 'tennisweet', session: '2026-09-20', ...op }); codes.push(r.ok ? 'ok' : r.code); } delete doc.updatedAt; return JSON.stringify({ doc, codes }); };
+  const run = (ctx) => { const doc = { v: 1, id: '2026-09-20', date: '2099-01-01', status: 'open', rev: 0, attendance: {}, schedule: null, done: {} }; const codes = []; const snaps = []; for (const op of seq) { const o = typeof op.base === 'function' ? { ...op, base: op.base(doc) } : op; const r = ctx.__apply(doc, { v: 1, club: 'tennisweet', session: '2026-09-20', ...o }); codes.push(r.ok ? 'ok' : r.code); if (o.op === 'set' && /^results/.test(o.path) || o.op === 'edit' || o.op === 'generate') snaps.push(JSON.stringify(doc.results || null)); } delete doc.updatedAt; return JSON.stringify({ doc, codes, snaps }); };
   const a = run(appCtx), b = run(gsCtx); results.push(['app.js ↔ Code.gs applyWeeklyOp parity', a === b]); if (a !== b) console.log('APP', a, '\nGS ', b);
   results.push(['parity sequence exercised codes', /INVALID/.test(a) && /STALE/.test(a) && /"ok","ok"/.test(a)]);
+  { const j = JSON.parse(a); const tail = j.codes.slice(-9); results.push(['parity: score seq codes', JSON.stringify(tail) === JSON.stringify(['ok', 'ok', 'INVALID', 'INVALID', 'INVALID', 'ok', 'ok', 'ok', 'ok'])]); const sn = j.snaps.slice(-4); results.push(['parity: edit clears only edited score', sn[0] === '{"s0c1":{"a":6,"b":4},"s1c1":{"a":3,"b":5}}' && sn[1] === '{"s0c1":{"a":6,"b":4}}']); results.push(['parity: partial regen keeps slot0 score, null clears', sn[2] === '{"s0c1":{"a":6,"b":4}}' && sn[3] === '{}']); }
 }
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);
