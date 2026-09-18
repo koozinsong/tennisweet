@@ -1,0 +1,47 @@
+{
+ "v": 1,
+ "sessions": [
+  {
+   "id": "2026-09-18",
+   "date": "2026-09-18",
+   "courts": 2,
+   "matchMinutes": 30,
+   "startTime": "19:00",
+   "endTime": "22:00"
+  },
+  {
+   "id": "2026-09-17",
+   "date": "2026-09-17",
+   "courts": 3,
+   "matchMinutes": 30,
+   "startTime": "19:00",
+   "endTime": "22:00"
+  }
+ ],
+ "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
+ "updatedAt": "2026-09-17T01:34:45.347Z",
+ "levels": {
+  "h0teikh": 4,
+  "t4lcpvt": 3.5,
+  "lvcpucm": 4,
+  "ibws5ld": 3,
+  "nba8nn1": 3.5,
+  "k45yesm": 2.5,
+  "243v8q3": 3.5,
+  "rw9ebrx": 3,
+  "smnajd5": 3,
+  "uzqomod": 3,
+  "t5tmwl5": 3,
+  "45sqltb": 4,
+  "6kn0dof": 3,
+  "fm3bdg7": 4,
+  "18qv5bz": 3,
+  "t136ug1": 3.5,
+  "g261xhp": 3.5,
+  "uqb3sp3": 4,
+  "ev1tqiv": 3.5,
+  "328ljva": 4,
+  "df9dtam": 3
+ },
+ "levelsAt": "2026-09-17T01:34:45.347Z"
+}
