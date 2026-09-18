@@ -181,14 +181,14 @@
       <div class="tour-card">
         <div class="row">
           <button type="button" id="wkr-load" class="primary">📊 기록 불러오기</button>
-          <label class="inline">기간 <select id="wkr-range" style="width:auto"><option value="all">전체</option><option value="90">최근 3개월</option><option value="year">올해</option></select></label>
+          <label class="inline">기간 <select id="wkr-range" style="width:auto"><option value="all">최근 12회</option><option value="90">최근 3개월</option><option value="year">올해</option></select></label>
           <label class="inline"><input type="checkbox" id="wkr-weekly" checked> 정기 모임</label>
           <label class="inline"><input type="checkbox" id="wkr-tour" checked> 지난 대회</label>
           <label class="inline"><input type="checkbox" id="wkr-done"> 완료·점수 있는 경기만</label>
           <button type="button" id="wkr-csv" class="small" hidden>CSV 저장</button>
           <span id="wkr-status" class="sub"></span>
         </div>
-        <p class="hint">정기 모임 세션 파일(오늘까지)과 지난 대회 아카이브를 읽어 집계합니다. '완료·점수 있는 경기만'을 켜면 완료 표시(정기 모임)·점수(대회)가 있는 경기만 셉니다. 게스트는 이름이 같으면 한 사람으로 봅니다.</p>
+        <p class="hint">오늘 이전에 끝난 정기 모임 최근 12회와 지난 대회 아카이브를 읽어 회원만 집계합니다(오늘 모임은 진행 중이라 제외, 게스트는 제외 — 회원이 게스트와 뛴 경기는 경기 수에 포함). '완료·점수 있는 경기만'을 켜면 완료 표시(정기 모임)·점수(대회)가 있는 경기만 셉니다.</p>
         <div id="wkr-view"></div>
       </div>
     </details>
