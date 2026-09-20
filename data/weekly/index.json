@@ -1,8 +1,18 @@
 {
  "v": 1,
- "sessions": [],
+ "sessions": [
+  {
+   "id": "2026-09-23",
+   "date": "2026-09-23",
+   "courts": 2,
+   "matchMinutes": 30,
+   "startTime": "20:00",
+   "endTime": "22:00",
+   "courtsLabel": "코트 2면"
+  }
+ ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-09-20T13:09:20.186Z",
+ "updatedAt": "2026-09-20T13:09:54.175Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
