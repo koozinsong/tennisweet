@@ -1,17 +1,8 @@
 {
  "v": 1,
- "sessions": [
-  {
-   "id": "2026-09-18",
-   "date": "2026-09-18",
-   "courts": 2,
-   "matchMinutes": 30,
-   "startTime": "19:00",
-   "endTime": "22:00"
-  }
- ],
+ "sessions": [],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-09-20T13:08:58.453Z",
+ "updatedAt": "2026-09-20T13:09:06.195Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
