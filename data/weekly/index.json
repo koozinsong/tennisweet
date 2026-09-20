@@ -8,18 +8,10 @@
    "matchMinutes": 30,
    "startTime": "19:00",
    "endTime": "22:00"
-  },
-  {
-   "id": "2026-09-17",
-   "date": "2026-09-17",
-   "courts": 3,
-   "matchMinutes": 30,
-   "startTime": "19:00",
-   "endTime": "22:00"
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-09-17T01:34:45.347Z",
+ "updatedAt": "2026-09-20T13:08:58.453Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
