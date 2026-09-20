@@ -496,3 +496,8 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 .wk-score-ed b { font-size: 18px; color: var(--muted); }
 .mcard.wk.scoring { opacity: 1; }
 .mcard.wk .side.w::after { content: "승"; }
+
+/* 정기 모임: 실제 코트 번호 */
+.wk-cn-btn { font-size: 12px; } .wk-cn-btn.on { background: var(--accent); border-color: var(--accent-deep); color: #fff; }
+.wk-cn-form { padding: 8px 10px; border: 1px dashed var(--rule); border-radius: 10px; background: #fff; }
+.wk-cn-form input { text-align: center; }

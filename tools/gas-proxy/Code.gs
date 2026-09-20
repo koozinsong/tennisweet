@@ -19,7 +19,7 @@ const CLUB = 'tennisweet';
 const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회) — app.js 의 WK_PW_HASH 와 동일. 클라이언트가 검증값을 보내고 서버는 비교만 한다 (평문은 어디에도 없음)
 const DONE_GRACE_DAYS = 7; // 완료 표시 유예 (모임 후 7일)
 const SCORE_MAX = 6; // 점수(게임 수) 상한 — app.js WK_SCORE_MAX 와 동일
-const PROXY_VERSION = 3; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동)
+const PROXY_VERSION = 4; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동), 4 = 코트 번호(set courtNames)
 const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
@@ -73,7 +73,7 @@ function doPost(e) {
 }
 /** 모임 다음날 0시(KST)부터는 수정 불가 */
 function closed(doc, body) { if (doc.status === 'closed') return true; const t = Date.parse(String(doc.date) + 'T00:00:00+09:00'); if (!isFinite(t)) return false; const days = body && body.op === 'set' && /^(done|results)\./.test(String(body.path || '')) ? 1 + DONE_GRACE_DAYS : 1; return t + 86400000 * days <= Date.now(); } // 참석·대진·조 조정은 다음날 0시(KST)부터, 완료 표시는 모임 후 7일까지 (app.js wkOpAllowed 와 동일)
-function commitMsg(body, doc) { const who = body.by ? ' by ' + String(body.by).slice(0, 20) : ''; if (body.op === 'edit') return '정기 모임 ' + doc.id + ' 조 조정 ' + (Array.isArray(body.value) ? body.value : [body.value]).map(function (e) { return e && e.id; }).join(',') + who; if (body.op === 'set') return '정기 모임 ' + doc.id + ' ' + String(body.path).slice(0, 60) + (body.value == null ? ' 삭제' : '') + who; return '정기 모임 ' + doc.id + ' 대진 ' + (body.value ? '#' + (body.value.seed | 0) : '삭제') + who; }
+function commitMsg(body, doc) { if (body.op === 'set' && body.path === 'courtNames') return '정기 모임 ' + doc.id + ' 코트 번호' + (body.by ? ' by ' + String(body.by).slice(0, 20) : ''); const who = body.by ? ' by ' + String(body.by).slice(0, 20) : ''; if (body.op === 'edit') return '정기 모임 ' + doc.id + ' 조 조정 ' + (Array.isArray(body.value) ? body.value : [body.value]).map(function (e) { return e && e.id; }).join(',') + who; if (body.op === 'set') return '정기 모임 ' + doc.id + ' ' + String(body.path).slice(0, 60) + (body.value == null ? ' 삭제' : '') + who; return '정기 모임 ' + doc.id + ' 대진 ' + (body.value ? '#' + (body.value.seed | 0) : '삭제') + who; }
 function hdr(c) { return { Authorization: 'Bearer ' + c.token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' }; }
 function ghGet(c, path, branch) {
   const r = UrlFetchApp.fetch('https://api.github.com/repos/' + c.owner + '/' + c.repo + '/contents/' + path + '?ref=' + branch, { headers: hdr(c), muteHttpExceptions: true });
@@ -89,9 +89,13 @@ function ghPut(c, path, content, sha, message, branch) {
 function out(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 
 // ---- 아래 함수는 app.js 의 applyWeeklyOp 와 같은 로직. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
+/** 코트 번호 목록 정리: 문자열 배열(각 8자 이내, 최대 8개), 전부 비었으면 null — app.js wkCleanCourtNames 와 동일 */
+function cleanCourtNames(v) { if (!Array.isArray(v)) return null; const out = v.slice(0, 8).map((x) => String(x == null ? '' : x).trim().slice(0, 8)); while (out.length && !out[out.length - 1]) out.pop(); return out.length ? out : null; }
 function applyWeeklyOp(doc, op) {
   const okId = (v) => typeof v === 'string' && ID_RE.test(v);
-  if (op.op === 'set') {
+  if (op.op === 'set' && op.path === 'courtNames') { // 실제 코트 번호 (누구나, 모임 당일 배정되는 코트를 적는다)
+    if (op.value != null && !Array.isArray(op.value)) return { code: 'INVALID' }; const names = cleanCourtNames(op.value); doc.settings = doc.settings || {}; if (names) doc.settings.courtNames = names; else delete doc.settings.courtNames;
+  } else if (op.op === 'set') {
     const m = /^(attendance|done|results)\.([A-Za-z0-9_:.-]{1,40})$/.exec(String(op.path || '')); if (!m) return { code: 'INVALID' };
     const coll = m[1], key = m[2]; doc[coll] = doc[coll] || {};
     if (op.value == null) delete doc[coll][key];

@@ -20,7 +20,7 @@ const call = (body) => JSON.parse(ctx.__doPost({ postData: { contents: JSON.stri
 const base = { v: 1, club: 'tennisweet', session: '2026-09-20' };
 const AUTH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 (Code.gs WK_PW_HASH)
 const results = [];
-{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 3]); }
+{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 4]); }
 results.push(['bad club', call({ ...base, club: 'x', op: 'set' }).code === 'INVALID']);
 results.push(['no session', call({ ...base, session: '2026-01-01', op: 'set', path: 'attendance.a', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }).code === 'NOSESSION']);
 let r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '19:00', until: '22:00' }, by: 'h0teikh' }); results.push(['attend ok', r.ok && r.rev === 1 && r.doc.attendance.h0teikh.n === '송국진']);
@@ -40,6 +40,10 @@ r = call({ ...base, op: 'set', path: 'results.s0c1', value: { a: 6, b: 6 } }); r
 r = call({ ...base, op: 'set', path: 'results.s9c9', value: { a: 6, b: 4 } }); results.push(['score unknown match invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'results.s0c1', value: null }); results.push(['score cleared (done stays)', r.ok && !r.doc.results.s0c1 && r.doc.done.s0c1 === true]);
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: null }); results.push(['undone again', r.ok && !r.doc.done.s0c1]);
+r = call({ ...base, op: 'set', path: 'courtNames', value: ['5', '7'] }); results.push(['court names ok', r.ok && JSON.stringify(r.doc.settings.courtNames) === '["5","7"]']);
+r = call({ ...base, op: 'set', path: 'courtNames', value: 'x' }); results.push(['court names non-array invalid', r.code === 'INVALID']);
+r = call({ ...base, op: 'set', path: 'courtNames', value: ['', ''] }); results.push(['court names all blank → removed', r.ok && !r.doc.settings.courtNames]);
+r = call({ ...base, op: 'set', path: 'courtNames', value: [' 12345678901 ', '', 'B'] }); results.push(['court names clipped/kept middle blank', r.ok && JSON.stringify(r.doc.settings.courtNames) === '["12345678","","B"]']); r = call({ ...base, op: 'set', path: 'courtNames', value: null }); results.push(['court names null removes', r.ok && !r.doc.settings.courtNames]);
 r = call({ ...base, op: 'set', path: 'evil.x', value: 1 }); results.push(['bad path invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '<b>x</b>'.repeat(10), g: 'M', from: '18:00', until: '22:00' } }); results.push(['name clipped 20', r.ok && r.doc.attendance.h0teikh.n.length === 20]);
 conflictOnce = true; const before = putCalls; r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['409 retry', r.ok && putCalls - before === 2]);
@@ -88,7 +92,7 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
 // ---- 사본 일치: app.js 의 applyWeeklyOp 와 Code.gs 의 applyWeeklyOp 가 같은 입력에 같은 결과 ----
 { const app = fs.readFileSync(__dirname + '/../../app.js', 'utf8');
   const fn = app.slice(app.indexOf('  function applyWeeklyOp(doc, op) {'), app.indexOf('  /** 외부에서 온 세션 문서 검증'));
-  const consts = [app.match(/const ID_RE = [^\n]+;/)[0], app.match(/const TIME_RE = [^\n]+;/)[0], app.match(/const WK_SCORE_MAX = [^\n]+;/)[0]].join('\n');
+  const consts = [app.match(/const ID_RE = [^\n]+;/)[0], app.match(/const TIME_RE = [^\n]+;/)[0], app.match(/const WK_SCORE_MAX = [^\n]+;/)[0], app.match(/const wkCleanCourtNames = [^\n]+;/)[0]].join('\n');
   const appCtx = vm.createContext({ Date }); vm.runInContext(consts + '\n' + fn + '\nglobalThis.__apply = applyWeeklyOp;', appCtx);
   const gsCtx = vm.createContext({ ...gas }); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__apply = applyWeeklyOp;', gsCtx);
   const seq = [
@@ -105,11 +109,12 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
     { op: 'edit', auth: AUTH, base: (d) => d.rev, prev: { s1c1: [['p:a', 'p:c'], ['p:b', 'p:d']] }, value: [{ id: 's1c1', aIds: ['p:a', 'p:d'], bIds: ['p:b', 'p:c'] }] }, // s1c1 점수 삭제, s0c1 유지
     { op: 'generate', auth: AUTH, base: (d) => d.rev, value: { seed: 5, gen: 4, fromSlot: 1, inputHash: 'h', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }, { id: 's1c1', slot: 1, court: 1, aIds: ['p:a', 'p:b'], bIds: ['p:c', 'p:d'] }] } }, // 남은 시간대만: s0c1 점수 유지
     { op: 'generate', auth: AUTH, base: (d) => d.rev, value: null }, // 전부 삭제 → results {}
+    { op: 'set', path: 'courtNames', value: ['5', ' 7 ', ''] }, { op: 'set', path: 'courtNames', value: 3 }, { op: 'set', path: 'courtNames', value: null },
   ];
   const run = (ctx) => { const doc = { v: 1, id: '2026-09-20', date: '2099-01-01', status: 'open', rev: 0, attendance: {}, schedule: null, done: {} }; const codes = []; const snaps = []; for (const op of seq) { const o = typeof op.base === 'function' ? { ...op, base: op.base(doc) } : op; const r = ctx.__apply(doc, { v: 1, club: 'tennisweet', session: '2026-09-20', ...o }); codes.push(r.ok ? 'ok' : r.code); if (o.op === 'set' && /^results/.test(o.path) || o.op === 'edit' || o.op === 'generate') snaps.push(JSON.stringify(doc.results || null)); } delete doc.updatedAt; return JSON.stringify({ doc, codes, snaps }); };
   const a = run(appCtx), b = run(gsCtx); results.push(['app.js ↔ Code.gs applyWeeklyOp parity', a === b]); if (a !== b) console.log('APP', a, '\nGS ', b);
   results.push(['parity sequence exercised codes', /INVALID/.test(a) && /STALE/.test(a) && /"ok","ok"/.test(a)]);
-  { const j = JSON.parse(a); const tail = j.codes.slice(-9); results.push(['parity: score seq codes', JSON.stringify(tail) === JSON.stringify(['ok', 'ok', 'INVALID', 'INVALID', 'INVALID', 'ok', 'ok', 'ok', 'ok'])]); const sn = j.snaps.slice(-4); results.push(['parity: edit clears only edited score', sn[0] === '{"s0c1":{"a":6,"b":4},"s1c1":{"a":3,"b":5}}' && sn[1] === '{"s0c1":{"a":6,"b":4}}']); results.push(['parity: partial regen keeps slot0 score, null clears', sn[2] === '{"s0c1":{"a":6,"b":4}}' && sn[3] === '{}']); }
+  { const j = JSON.parse(a); const tail = j.codes.slice(-12); results.push(['parity: score seq codes', JSON.stringify(tail) === JSON.stringify(['ok', 'ok', 'INVALID', 'INVALID', 'INVALID', 'ok', 'ok', 'ok', 'ok', 'ok', 'INVALID', 'ok'])]); const sn = j.snaps.slice(-4); results.push(['parity: edit clears only edited score', sn[0] === '{"s0c1":{"a":6,"b":4},"s1c1":{"a":3,"b":5}}' && sn[1] === '{"s0c1":{"a":6,"b":4}}']); results.push(['parity: partial regen keeps slot0 score, null clears', sn[2] === '{"s0c1":{"a":6,"b":4}}' && sn[3] === '{}']); }
 }
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);

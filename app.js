@@ -1504,9 +1504,15 @@
   const guestId = (name) => 'g:' + fnv1a(String(name).normalize('NFC').replace(/\s+/g, '')).toString(36); // 같은 이름 게스트는 다음 주에도 같은 id (이력이 이어짐)
   /** 세션 문서에 작업 1건 적용 — 프록시(tools/gas-proxy/Code.gs)의 applyWeeklyOp 와 같은 로직. 둘을 함께 고칠 것 */
   const WK_SCORE_MAX = 6; // 점수(게임 수) 상한 — Code.gs SCORE_MAX 와 동일
+  /** 코트 번호 목록 정리: 문자열 배열(각 8자 이내, 최대 8개), 전부 비었으면 null — Code.gs cleanCourtNames 와 동일 */
+  const wkCleanCourtNames = (v) => { if (!Array.isArray(v)) return null; const out = v.slice(0, 8).map((x) => String(x ?? '').trim().slice(0, 8)); while (out.length && !out[out.length - 1]) out.pop(); return out.length ? out : null; };
+  /** 화면용 코트 라벨: settings.courtNames[court-1] 이 있으면 그것, 없으면 번호 */
+  const wkCourtLabel = (s, court) => { const nm = s?.courtNames?.[court - 1]; return nm ? nm : String(court); };
   function applyWeeklyOp(doc, op) {
     const okId = (v) => typeof v === 'string' && ID_RE.test(v);
-    if (op.op === 'set') {
+    if (op.op === 'set' && op.path === 'courtNames') { // 실제 코트 번호 (누구나, 모임 당일 배정되는 코트를 적는다)
+      if (op.value != null && !Array.isArray(op.value)) return { code: 'INVALID' }; const names = wkCleanCourtNames(op.value); doc.settings = doc.settings || {}; if (names) doc.settings.courtNames = names; else delete doc.settings.courtNames;
+    } else if (op.op === 'set') {
       const m = /^(attendance|done|results)\.([A-Za-z0-9_:.-]{1,40})$/.exec(String(op.path || '')); if (!m) return { code: 'INVALID' };
       const coll = m[1], key = m[2]; doc[coll] = doc[coll] || {};
       if (op.value == null) delete doc[coll][key];
@@ -1558,6 +1564,7 @@
     doc.rev = doc.rev | 0; doc.status = doc.status === 'closed' ? 'closed' : 'open';
     const st = { ...(doc.settings || {}) }; for (const k of ['courts', 'matchMinutes', 'breakMinutes', 'minWomenDoubles']) st[k] = Math.max(0, parseInt(st[k], 10) || 0); st.courts = Math.max(1, st.courts); st.matchMinutes = Math.max(5, st.matchMinutes || 30);
     if (!TIME_RE.test(st.startTime || '')) st.startTime = '18:00'; if (!TIME_RE.test(st.endTime || '')) st.endTime = '22:00';
+    st.courtNames = wkCleanCourtNames(st.courtNames); if (!st.courtNames) delete st.courtNames; // 실제 코트 번호(예: 5·7코트) — 없으면 1, 2, …
     if (st.courtsByHour && typeof st.courtsByHour === 'object') { const cb = {}; for (const [h, v] of Object.entries(st.courtsByHour)) if (/^\d{1,2}$/.test(h) && Number.isInteger(v) && v >= 0 && v <= 8) cb[h] = v; st.courtsByHour = Object.keys(cb).length ? cb : undefined; } else delete st.courtsByHour;
     doc.settings = st;
     return doc;
@@ -1586,7 +1593,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
-  const PROXY_VERSION_NEED = 3; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results)
+  const PROXY_VERSION_NEED = 4; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames)
   const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). Code.gs 의 WK_PW_HASH 와 동일 — 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // 이 기기에서 한 번 맞춘 검증값 (다시 묻지 않음)
   async function wkVerifierHex(pw) { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode('tennisweet-wk-verify'), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
@@ -1694,7 +1701,7 @@
     let d; try { d = assertWeekly(raw); } catch { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일 형식이 올바르지 않습니다.'; renderWeeklyView(); } return; }
     if (!W.doc || (d.rev | 0) > W.srvRev) { const had = !!W.doc; wkAdopt(d, d.rev); W.docErr = ''; renderWeeklyView(); wkUpdateCover(); if (quiet && had) toast('정기 모임 내용이 갱신되었습니다'); }
   }
-  function wkSelect(id) { if (W.id === id) return; W.id = id; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.srvRev = -1; renderWeeklyView(); wkLoadDoc(id); }
+  function wkSelect(id) { if (W.id === id) return; W.id = id; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; W.srvRev = -1; renderWeeklyView(); wkLoadDoc(id); }
   setInterval(() => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit && !W.busy && !W.pending.length) wkLoadDoc(W.id, { quiet: true }); }, 20000); // 탭이 보일 때만 20초마다 (전송 중에는 건너뜀)
   document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit) wkLoadDoc(W.id, { quiet: true }); });
   // ---- 쓰기 (낙관적 반영 → 순서대로 전송) ----
@@ -1742,7 +1749,9 @@
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
     const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
     const cnt = (h) => att.filter((p) => toMin(p.from) <= h * 60 && toMin(p.until) >= (h + 1) * 60).length;
-    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기</span>${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
+    const cn = s.courtNames || []; const cnText = cn.length ? `코트 번호 ${Array.from({ length: s.courts }, (_, i) => wkCourtLabel(s, i + 1)).join('·')}` : '';
+    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${cn.length ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
+    if (!closed && W.cnEdit) html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호 (대진표의 1·2·… 코트가 각각 몇 번 코트인지)</span>${Array.from({ length: s.courts }, (_, i) => `<label class="inline">${i + 1}코트 → <input name="cn${i}" maxlength="8" value="${esc(cn[i] || '')}" placeholder="${i + 1}" style="width:64px"></label>`).join('')}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`;
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${esc(name)}${a ? `<small>${esc(a.from.slice(0, 2))}~${esc(a.until.slice(0, 2))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
@@ -1787,6 +1796,8 @@
   $('#tab-weekly')?.addEventListener('click', async (e) => {
     const t = e.target;
     const ses = t.closest('[data-wk-session]'); if (ses) { wkSelect(ses.dataset.wkSession); return; }
+    if (t.closest('#wk-cn-edit')) { W.cnEdit = !W.cnEdit; renderWeeklyView(); if (W.cnEdit) $('#wk-cn-form input')?.focus(); return; }
+    if (t.closest('#wk-cn-cancel')) { W.cnEdit = false; renderWeeklyView(); return; }
     const chip = t.closest('[data-wk-chip]'); if (chip && !chip.disabled) { wkOpen(chip.dataset.wkChip); return; }
     if (t.closest('#wk-guest-add')) { const s = wkSettings(W.doc); W.edit = { id: null, guest: true, name: '', gender: '', from: s.startTime, until: s.endTime, attending: false }; renderWeeklyView(); return; }
     const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + 60); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - 60); renderWeeklyView(); return; }
@@ -1800,6 +1811,7 @@
   });
   $('#tab-weekly')?.addEventListener('input', (e) => { if (e.target.id === 'wk-guest-name' && W.edit) W.edit.name = e.target.value; });
   $('#tab-weekly')?.addEventListener('change', (e) => { if (e.target.id === 'wk-me') { W.me = e.target.value || ''; if (W.me) localStorage.setItem('tennisweet.me', W.me); else localStorage.removeItem('tennisweet.me'); renderWeeklyView(); } });
+  $('#tab-weekly')?.addEventListener('submit', async (e) => { const f = e.target; if (f.id !== 'wk-cn-form') return; e.preventDefault(); if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; const s = wkSettings(W.doc); const names = Array.from({ length: s.courts }, (_, i) => String(new FormData(f).get('cn' + i) || '').trim().slice(0, 8)); W.cnEdit = false; await wkSend({ op: 'set', path: 'courtNames', value: wkCleanCourtNames(names) }); }); // 코트 번호 저장 (누구나)
   $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
@@ -1861,13 +1873,13 @@
       const t0 = slotStartMin(s, m.slot), t1 = t0 + s.matchMinutes;
       const gc = {}; for (const x of (doc.schedule?.matches || [])) for (const id of [...x.aIds, ...x.bIds]) gc[id] = (gc[id] || 0) + 1; // 경기 수: 쉬는 사람은 적은 순으로 (교체하면 경기 수가 옮겨가므로)
       const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0, g: gc['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || (x.court ? x.court - y.court : x.g - y.g) || (x.a.n < y.a.n ? -1 : 1));
-      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? c.court + '코트' : '쉬는 중'} · ${c.g}경기</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
+      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? wkCourtLabel(s, c.court) + '코트' : '쉬는 중'} · ${c.g}경기</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
     const rs = doc.results?.[m.id] || null; const canScore = !adj && wkDoneOpen(doc) && wkCanWrite(); const editing = canScore && W.score === m.id; // 경기 기록(점수): 누구나 입력, 완료와 같은 7일 유예
     const winA = rs && rs.a > rs.b, winB = rs && rs.b > rs.a;
     const scoreEd = editing ? `<div class="wk-score-ed" data-wk-score-ed="${esc(m.id)}"><span class="sub">${esc(wkName(doc, m.aIds[0].slice(2)))}·${esc(wkName(doc, m.aIds[1].slice(2)))}</span><input type="number" inputmode="numeric" min="0" max="6" class="sc-a" value="${rs ? rs.a : ''}" aria-label="A 점수"><b>:</b><input type="number" inputmode="numeric" min="0" max="6" class="sc-b" value="${rs ? rs.b : ''}" aria-label="B 점수"><span class="sub">${esc(wkName(doc, m.bIds[0].slice(2)))}·${esc(wkName(doc, m.bIds[1].slice(2)))}</span><button type="button" class="small primary" data-wk-score-save="${esc(m.id)}">저장</button>${rs ? `<button type="button" class="small" data-wk-score-clear="${esc(m.id)}">지우기</button>` : ''}<button type="button" class="small" data-wk-score-close="1">닫기</button></div>` : '';
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''} ${editing ? 'scoring' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${adj ? '이름을 누르면 바꿀 사람을 고릅니다' : !(wkDoneOpen(doc) && wkCanWrite()) ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
-      <div class="mhead"><b class="court">${m.court}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
+      <div class="mhead"><b class="court">${esc(wkCourtLabel(s, m.court))}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
       <div class="mbody"><div class="side ${winA ? 'w' : ''}"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side ${winB ? 'w' : ''}"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${scoreEd}${picker}</div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
@@ -1925,11 +1937,11 @@
     if (short.length) issues.push(`경기 수 2 이상 부족: ${short.join(', ')} (최다 ${maxG})`);
     { const gl = ids.filter((id) => att[id].guest && (games[id] || 0) < maxG && (games[id] || 0) < avail(id)).map((id) => `${nm(id)} ${games[id] || 0}`); if (gl.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${gl.join(', ')}`); }
     { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
-    for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${m.court}코트 — ${bad[m.id].join(' · ')}`);
-    for (const m of ms) if (soft[m.id]) notes.push(`${hhmm(slotStartMin(s, m.slot))} ${m.court}코트 — ${soft[m.id].join(' · ')}`);
+    for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court)}코트 — ${bad[m.id].join(' · ')}`);
+    for (const m of ms) if (soft[m.id]) notes.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court)}코트 — ${soft[m.id].join(' · ')}`);
     { const men = ids.filter((id) => g(id) !== 'F').sort((a, b) => lv(b) - lv(a)); if (men.length >= 4) { const th = lv(men[3]); let feasible = false; if (isFinite(n)) for (let i = 0; i < n && !feasible; i++) if (courtsAtSlot(s, i) >= 1 && men.filter((id) => lv(id) >= th && avOk(id, i)).length >= 4) feasible = true; // 어떤 시간대에 th 이상 남자 4명이 함께 있어야 성립
       const top = ms.find((m) => { const all = [...m.aIds, ...m.bIds].map((x) => x.slice(2)); if (!all.every((id) => att[id] && g(id) !== 'F' && lv(id) >= th)) return false; const lo = Math.min(...all.map(lv)); return men.every((id) => lv(id) <= lo || all.includes(id) || !avOk(id, m.slot)); }); // 그 시간대에 있는 더 높은 남자는 전원 포함 = 그 시간대의 최상위 4명
-      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${top.court}코트` : feasible ? '상위 남복 없음 (다시 섞기로 만들 수 있음)' : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
+      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${wkCourtLabel(s, top.court)}코트` : feasible ? '상위 남복 없음 (다시 섞기로 만들 수 있음)' : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
     return { bad, issues, notes };
   }
   /** 인당 경기 수 요약 (접기) */
@@ -2005,7 +2017,7 @@
       const who = (r, ids) => ids.map((pid) => { const q = P[pid], a = r.people[pid]; const guest = !q; return `<span class="${guest ? 'gname' : 'pname'} ${(q?.g || a?.g) === 'F' ? 'f' : 'm'}">${guest ? '<span class="gmark">G</span>' : ''}${esc(q?.name || a?.n || pid)}</span>`; }).join(' · ');
       html += `<div class="wkr-detail"><h4>${nm(sel)} <span class="sub">경기 ${sel.games} · 완료 ${sel.done}${sel.w || sel.l ? ` · ${sel.w}승 ${sel.l}패` : ''} · 마지막 ${esc(fmtDate(sel.last))}</span> <button type="button" class="small" id="wkr-close">닫기</button></h4>
         <div class="row wkr-lists"><div><b>짝</b> ${recTopHtml(sel.partners, P, 99)}</div><div><b>상대</b> ${recTopHtml(sel.opps, P, 99)}</div></div>
-        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court || ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court ? esc(wkCourtLabel(st, m.court)) : ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     }
     box.innerHTML = html; const csv = $('#wkr-csv'); if (csv) csv.hidden = !people.length;
   }
@@ -2098,6 +2110,7 @@
     const st = { startTime: String(fd.get('startTime') || '18:00'), endTime: String(fd.get('endTime') || '22:00'), matchMinutes: Math.max(5, parseInt(fd.get('matchMinutes'), 10) || 30), breakMinutes: 0, courts: 2, minWomenDoubles: Math.max(0, parseInt(fd.get('minWomenDoubles'), 10) || 0) };
     if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime) || toMin(st.startTime) >= toMin(st.endTime)) { alert('시작·종료 시각을 확인하세요.'); return; }
     { const cb = {}; let mx = 0; for (const h of wkHours(st)) { const v = Math.max(0, Math.min(8, parseInt(fd.get('c_' + h), 10) || 0)); cb[String(h)] = v; mx = Math.max(mx, v); } if (!mx) { alert('코트 수를 입력하세요.'); return; } st.courts = mx; if (new Set(Object.values(cb)).size > 1) st.courtsByHour = cb; } // 시간대마다 코트 수가 다르면 저장
+    { const names = wkCleanCourtNames(String(fd.get('courtNames') || '').split(/[,\s·/]+/).filter(Boolean)); if (names) st.courtNames = names; } // 실제 코트 번호 (예: 5, 7)
     const id = date; const btn = f.querySelector('button[type=submit]'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
       if (wkSessions().some((x) => x.id === id)) { alert('이미 있는 날짜입니다.'); return; }
