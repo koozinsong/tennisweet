@@ -3,7 +3,7 @@
  "id": "2026-09-23",
  "date": "2026-09-23",
  "status": "open",
- "rev": 7,
+ "rev": 8,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -49,11 +49,11 @@
   }
  },
  "schedule": {
-  "seed": 402746,
-  "gen": 1,
+  "seed": 273271,
+  "gen": 2,
   "fromSlot": 0,
   "inputHash": "1xfw2e1",
-  "at": "2026-09-21T09:04:06.810Z",
+  "at": "2026-09-21T09:04:45.613Z",
   "by": "t4lcpvt",
   "matches": [
    {
@@ -61,12 +61,12 @@
     "slot": 0,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
-     "p:6kn0dof"
-    ],
-    "bIds": [
      "p:t5tmwl5",
      "p:45sqltb"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:6kn0dof"
     ]
    },
    {
@@ -100,18 +100,18 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
-     "p:6kn0dof"
-    ],
-    "bIds": [
      "p:t5tmwl5",
      "p:45sqltb"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:6kn0dof"
     ]
    }
   ]
  },
  "done": {},
  "createdAt": "2026-09-20T13:09:54.153Z",
- "updatedAt": "2026-09-21T09:04:24.020Z",
+ "updatedAt": "2026-09-21T09:04:46.850Z",
  "results": {}
 }
