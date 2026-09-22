@@ -1665,6 +1665,10 @@
   const wkSessions = () => [...(W.index?.sessions || [])].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)); // 날짜순 (지난 모임 → 다가오는 모임)
   function wkDefaultId() { const today = ymdOf(); const list = wkSessions(); const up = list.filter((s) => s.date >= today); return up.length ? up[0].id : list[list.length - 1]?.id || null; } // 오늘 이후 중 가장 가까운 날, 없으면 가장 최근
   const wkSettings = (doc) => ({ ...DEFAULT_SETTINGS, ...(doc?.settings || {}), fmMenEqual: true, mustFace: '', sameNtrpGame: '', avoidPairs: '', date: doc?.date || '' });
+  const wkShort = (t) => (String(t).endsWith(':00') ? String(t).slice(0, 2) : String(t)); // '20:00' → '20', '20:30' 은 그대로
+  /** 참석 시각 후보: 도착 = 각 시간대 시작, 퇴장 = 각 시간대 끝 (경기 길이 단위 — 코트 가능 시간에 맞춤) */
+  const wkArriveTimes = (s) => { const n = maxSlots(s); const out = []; if (isFinite(n)) for (let i = 0; i < n; i++) out.push(hhmm(slotStartMin(s, i))); return out.length ? out : [s.startTime]; };
+  const wkLeaveTimes = (s) => { const n = maxSlots(s); const out = []; if (isFinite(n)) for (let i = 0; i < n; i++) out.push(hhmm(slotStartMin(s, i) + s.matchMinutes)); return out.length ? out : [s.endTime]; };
   function wkHours(s) { const a = Math.ceil(toMin(s.startTime) / 60), b = Math.floor(toMin(s.endTime) / 60); const out = []; for (let h = a; h < b; h++) out.push(h); return out; }
   /** 코트 수 표시: 시간대별로 다르면 "18~20시 2면 · 20~22시 3면" */
   function wkCourtsLabel(s) {
@@ -1748,12 +1752,12 @@
     let html = `<div class="chips wk-sessions">${list.slice(-10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
     const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
-    const cnt = (h) => att.filter((p) => toMin(p.from) <= h * 60 && toMin(p.until) >= (h + 1) * 60).length;
+    const cnt = (h) => att.filter((p) => toMin(p.from) < (h + 1) * 60 && toMin(p.until) > h * 60).length; // 그 시각대에 한 경기라도 뛸 수 있는 사람 (20:30 도착도 20시에 포함)
     const cn = s.courtNames || []; const cnText = cn.length ? `코트 번호 ${Array.from({ length: s.courts }, (_, i) => wkCourtLabel(s, i + 1)).join('·')}` : '';
     html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${cn.length ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
     if (!closed && W.cnEdit) html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호 (대진표의 1·2·… 코트가 각각 몇 번 코트인지)</span>${Array.from({ length: s.courts }, (_, i) => `<label class="inline">${i + 1}코트 → <input name="cn${i}" maxlength="8" value="${esc(cn[i] || '')}" placeholder="${i + 1}" style="width:64px"></label>`).join('')}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`;
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${esc(name)}${a ? `<small>${esc(a.from.slice(0, 2))}~${esc(a.until.slice(0, 2))}</small>` : ''}</button>`;
+    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${esc(name)}${a ? `<small>${esc(wkShort(a.from))}~${esc(wkShort(a.until))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
     html += `<h3>참석 ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
       <p class="hint">${wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
@@ -1766,14 +1770,14 @@
     const ni = $('#wk-guest-name'); if (ni && W.edit?.guest && !W.edit.id && !W.edit.name) ni.focus();
   }
   function wkPanelHtml(s) {
-    const e = W.edit; const hours = wkHours(s); const H = (h) => String(h).padStart(2, '0') + ':00';
-    const hb = (kind, list) => list.map((h) => `<button class="hbtn ${e[kind] === H(h) ? 'sel' : ''}" data-wk-hour="${H(h)}" data-wk-kind="${kind}">${h}</button>`).join('');
+    const e = W.edit;
+    const hb = (kind, list) => list.map((t) => `<button class="hbtn ${t.endsWith(':00') ? '' : 'half'} ${e[kind] === t ? 'sel' : ''}" data-wk-hour="${t}" data-wk-kind="${kind}">${wkShort(t)}</button>`).join('');
     const isNew = e.guest && !e.id;
     return `<div class="wk-panel">
       <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" ${isNew ? '' : 'disabled'}><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
-      <div class="wk-hours"><span class="lbl">도착</span>${hb('from', hours)}</div>
-      <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', hours.map((h) => h + 1))}</div>
-      <div class="row"><button id="wk-save" class="primary">${esc(e.from.slice(0, 2))}~${esc(e.until.slice(0, 2))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
+      <div class="wk-hours"><span class="lbl">도착</span>${hb('from', wkArriveTimes(s))}</div>
+      <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', wkLeaveTimes(s))}</div>
+      <div class="row"><button id="wk-save" class="primary">${esc(wkShort(e.from))}~${esc(wkShort(e.until))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
     </div>`;
   }
   function wkOpen(id) {
@@ -1800,7 +1804,7 @@
     if (t.closest('#wk-cn-cancel')) { W.cnEdit = false; renderWeeklyView(); return; }
     const chip = t.closest('[data-wk-chip]'); if (chip && !chip.disabled) { wkOpen(chip.dataset.wkChip); return; }
     if (t.closest('#wk-guest-add')) { const s = wkSettings(W.doc); W.edit = { id: null, guest: true, name: '', gender: '', from: s.startTime, until: s.endTime, attending: false }; renderWeeklyView(); return; }
-    const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + 60); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - 60); renderWeeklyView(); return; }
+    const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; const st = wkSettings(W.doc); const step = (st.matchMinutes || 30) + (st.breakMinutes || 0); if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + step); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - step); renderWeeklyView(); return; }
     const gb = t.closest('[data-wk-gender]'); if (gb && W.edit) { W.edit.gender = gb.dataset.wkGender; renderWeeklyView(); return; }
     if (t.closest('#wk-close')) { W.edit = null; renderWeeklyView(); return; }
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
