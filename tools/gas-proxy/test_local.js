@@ -1,6 +1,6 @@
 // 로컬 검증: GAS 전역을 흉내 내어 Code.gs 의 doPost 를 실행 (node tools/gas-proxy/test_local.js)
 const fs = require('fs'); const vm = require('vm');
-const store = { 'data/weekly/sessions/2026-09-20.json': { v: 1, id: '2026-09-20', date: '2026-09-20', status: 'open', rev: 0, settings: { startTime: '18:00', endTime: '22:00', matchMinutes: 30, breakMinutes: 0, courts: 2, minWomenDoubles: 1 }, attendance: {}, schedule: null, done: {} } };
+const store = { 'data/weekly/sessions/2026-09-20.json': { v: 1, id: '2026-09-20', date: '2099-01-01', status: 'open', rev: 0, settings: { startTime: '18:00', endTime: '22:00', matchMinutes: 30, breakMinutes: 0, courts: 2, minWomenDoubles: 1 }, attendance: {}, schedule: null, done: {} } };
 const shas = {}; let putCalls = 0, conflictOnce = false;
 const gas = {
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => ({ GH_TOKEN: 'tok' }[k] || null) }) },
