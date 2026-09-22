@@ -3,7 +3,7 @@
  "id": "2026-09-23",
  "date": "2026-09-23",
  "status": "open",
- "rev": 12,
+ "rev": 13,
  "settings": {
   "startTime": "19:00",
   "endTime": "22:00",
@@ -36,11 +36,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-09-22T00:18:39.631135Z",
- "updatedAt": "2026-09-22T00:18:39.631135Z"
+ "updatedAt": "2026-09-22T00:19:03.897Z"
 }
