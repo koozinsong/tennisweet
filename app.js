@@ -2117,12 +2117,15 @@
     { const names = wkCleanCourtNames(String(fd.get('courtNames') || '').split(/[,\s·/]+/).filter(Boolean)); if (names) st.courtNames = names; } // 실제 코트 번호 (예: 5, 7)
     const id = date; const btn = f.querySelector('button[type=submit]'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
-      if (wkSessions().some((x) => x.id === id)) { alert('이미 있는 날짜입니다.'); return; }
+      // 같은 날짜 파일이 이미 있으면(목록에 있든, 목록에서 뺐든) 새 설정으로 다시 만들지 묻는다 — 확인하면 참석·대진·완료·점수를 비우고 rev 만 이어 간다 (멤버 폰의 rev 가 뒤로 가지 않도록)
+      let existing = null; try { existing = W.id === id && W.doc ? W.doc : (W.cache[id] || await dataRead(`weekly/sessions/${id}.json`)); } catch {}
+      const inList = wkSessions().some((x) => x.id === id);
+      if (existing || inList) { const n = existing ? Object.keys(existing.attendance || {}).length : 0; const has = !!existing?.schedule?.matches?.length; if (!confirm(`${fmtDate(date)} 모임이 이미 있습니다${existing ? ` (참석 ${n}명${has ? ' · 대진 있음' : ''}${existing.settings ? ` · ${existing.settings.startTime}~${existing.settings.endTime} ${wkCourtsLabel(wkSettings(existing))}` : ''})` : ''}.\n새 설정으로 다시 만들까요? 기존 참석·대진·완료·점수는 지워집니다 (저장소 이력에만 남음).`)) return; }
       const [ok1, ok2] = await Promise.all([ // 세션 파일과 목록을 동시에 (각각 원본·사본 동시 커밋)
-        dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => cur || { v: 1, id, date, status: 'open', rev: 0, settings: st, attendance: {}, schedule: null, done: {}, createdAt: new Date().toISOString() }, `정기 모임 ${date} 생성`),
+        dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => ({ v: 1, id, date, status: 'open', rev: ((cur && cur.rev) | 0) + 1, settings: st, attendance: {}, schedule: null, done: {}, results: {}, createdAt: new Date().toISOString() }), `정기 모임 ${date} ${existing || inList ? '다시 ' : ''}생성`),
         dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.v = 1; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.sessions.push({ id, date, courts: st.courts, matchMinutes: st.matchMinutes, startTime: st.startTime, endTime: st.endTime, courtsLabel: wkCourtsLabel(st) }); idx.sessions.sort((a, b) => (a.date < b.date ? 1 : -1)); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${date} 목록 추가`),
       ]);
-      if (ok1 && ok2) { toast(`${fmtDate(date)} 모임을 만들었습니다 · 아래 목록에 추가됨`, 5000); W.id = id; W.doc = null; W.srvRev = -1; W.adjust = null; W.pick = null; if (adminKey || WK_MOCK) await wkSaveLevels({ quiet: true }); await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+      if (ok1 && ok2) { toast(`${fmtDate(date)} 모임을 ${existing || inList ? '새 설정으로 다시 ' : ''}만들었습니다 · 아래 목록에 추가됨`, 5000); delete W.cache[id]; W.id = id; W.doc = null; W.srvRev = -1; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; if (adminKey || WK_MOCK) await wkSaveLevels({ quiet: true }); await weeklyRefresh(); await wkProxyRefresh(id); $('#wk-admin-list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
     } finally { btn.disabled = false; btn.innerHTML = label; }
   });
   /** 레벨 산출: NTRP(관리자 키로 복호화된 값), 여성은 −0.5 보정. 누구나 대진을 만들 수 있으려면 이 값이 공개 파일(index.json)에 있어야 한다 — 화면에는 표시하지 않는다 */
