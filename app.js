@@ -1506,12 +1506,24 @@
   const WK_SCORE_MAX = 6; // 점수(게임 수) 상한 — Code.gs SCORE_MAX 와 동일
   /** 코트 번호 목록 정리: 문자열 배열(각 8자 이내, 최대 8개), 전부 비었으면 null — Code.gs cleanCourtNames 와 동일 */
   const wkCleanCourtNames = (v) => { if (!Array.isArray(v)) return null; const out = v.slice(0, 8).map((x) => String(x ?? '').trim().slice(0, 8)); while (out.length && !out[out.length - 1]) out.pop(); return out.length ? out : null; };
-  /** 화면용 코트 라벨: settings.courtNames[court-1] 이 있으면 그것, 없으면 번호 */
-  const wkCourtLabel = (s, court) => { const nm = s?.courtNames?.[court - 1]; return nm ? nm : String(court); };
+  /** 시간대별 코트 번호 정리: { '19': ['5'], '20': ['5','7','9'] } (키 = 시(0~23), 값 = wkCleanCourtNames), 전부 비었으면 null — Code.gs cleanCourtNamesByHour 와 동일 */
+  const wkCleanCourtNamesByHour = (v) => { if (!v || typeof v !== 'object' || Array.isArray(v)) return null; const out = {}; for (const h of Object.keys(v).slice(0, 24)) { if (!/^\d{1,2}$/.test(h) || +h > 23) continue; const names = wkCleanCourtNames(v[h]); if (names) out[String(+h)] = names; } return Object.keys(out).length ? out : null; };
+  const WK_COURT_BLOCK = 2; // 코트 예약 단위(시간): 18~20, 20~22 …
+  /** 모임 시간의 시각들을 코트 예약 구간(짝수 시 기준 2시간)으로 묶는다. cntAt 을 주면 코트 수가 다른 시각은 따로 나눈다 → [{ key, b:구간 시작, from, to, hours }] */
+  function wkCourtBlocks(st, cntAt) { const out = []; for (const h of wkHours(st)) { const b = h - (h % WK_COURT_BLOCK); const last = out[out.length - 1]; if (last && last.b === b && (!cntAt || cntAt(h) === cntAt(last.hours[0]))) last.hours.push(h); else out.push({ b, hours: [h] }); } return out.map((x) => ({ ...x, key: String(cntAt ? x.hours[0] : x.b), from: x.hours[0], to: x.hours[x.hours.length - 1] + 1 })); } // key: 생성 폼은 구간 시작(시작 시각을 바꿔도 입력값 유지), 나뉜 경우는 첫 시각
+  const wkParseCourtList = (v) => wkCleanCourtNames(String(v || '').split(/[,，·/\s]+/).map((x) => x.trim()).filter(Boolean)) || [];
+  /** 코트 번호 입력값 → op 값: 공통 입력(all)이 있으면 배열, 시간대별 입력이면 전부 같을 때 배열·다르면 { 시: [번호] }, 다 비었으면 null */
+  function wkCourtNamesFromForm(hours, getHour, all) { if (all != null) { const a = wkParseCourtList(all); return a.length ? a : null; } const by = {}; for (const h of hours) { const v = getHour(h); if (v == null) continue; const a = wkParseCourtList(v); if (a.length) by[String(h)] = a; } const keys = Object.keys(by); if (!keys.length) return null; const asked = hours.filter((h) => getHour(h) != null); const same = keys.length === asked.length && keys.every((k) => by[k].join('|') === by[keys[0]].join('|')); return same ? by[keys[0]] : by; }
+  /** 화면용 코트 라벨: 그 시간대(slot)의 courtNamesByHour → 공통 courtNames → 번호 순 */
+  const wkCourtLabel = (s, court, slot) => { let nm = ''; if (slot != null && s?.courtNamesByHour && s.startTime) nm = s.courtNamesByHour[String(Math.floor(slotStartMin(s, slot) / 60))]?.[court - 1] || ''; return nm || s?.courtNames?.[court - 1] || String(court); };
   function applyWeeklyOp(doc, op) {
     const okId = (v) => typeof v === 'string' && ID_RE.test(v);
-    if (op.op === 'set' && op.path === 'courtNames') { // 실제 코트 번호 (누구나, 모임 당일 배정되는 코트를 적는다)
-      if (op.value != null && !Array.isArray(op.value)) return { code: 'INVALID' }; const names = wkCleanCourtNames(op.value); doc.settings = doc.settings || {}; if (names) doc.settings.courtNames = names; else delete doc.settings.courtNames;
+    if (op.op === 'set' && op.path === 'courtNames') { // 실제 코트 번호 (누구나): 배열 = 모든 시간대 공통, { '19': […], '20': […] } = 시간대별, null = 지움
+      const v = op.value; doc.settings = doc.settings || {};
+      if (v == null) { delete doc.settings.courtNames; delete doc.settings.courtNamesByHour; }
+      else if (Array.isArray(v)) { const names = wkCleanCourtNames(v); if (names) doc.settings.courtNames = names; else delete doc.settings.courtNames; delete doc.settings.courtNamesByHour; }
+      else if (typeof v === 'object') { const by = wkCleanCourtNamesByHour(v); if (by) doc.settings.courtNamesByHour = by; else delete doc.settings.courtNamesByHour; delete doc.settings.courtNames; }
+      else return { code: 'INVALID' };
     } else if (op.op === 'set') {
       const m = /^(attendance|done|results)\.([A-Za-z0-9_:.-]{1,40})$/.exec(String(op.path || '')); if (!m) return { code: 'INVALID' };
       const coll = m[1], key = m[2]; doc[coll] = doc[coll] || {};
@@ -1565,6 +1577,7 @@
     const st = { ...(doc.settings || {}) }; for (const k of ['courts', 'matchMinutes', 'breakMinutes', 'minWomenDoubles']) st[k] = Math.max(0, parseInt(st[k], 10) || 0); st.courts = Math.max(1, st.courts); st.matchMinutes = Math.max(5, st.matchMinutes || 30);
     if (!TIME_RE.test(st.startTime || '')) st.startTime = '18:00'; if (!TIME_RE.test(st.endTime || '')) st.endTime = '22:00';
     st.courtNames = wkCleanCourtNames(st.courtNames); if (!st.courtNames) delete st.courtNames; // 실제 코트 번호(예: 5·7코트) — 없으면 1, 2, …
+    st.courtNamesByHour = wkCleanCourtNamesByHour(st.courtNamesByHour); if (!st.courtNamesByHour) delete st.courtNamesByHour; // 시간대마다 코트가 다를 때
     if (st.courtsByHour && typeof st.courtsByHour === 'object') { const cb = {}; for (const [h, v] of Object.entries(st.courtsByHour)) if (/^\d{1,2}$/.test(h) && Number.isInteger(v) && v >= 0 && v <= 8) cb[h] = v; st.courtsByHour = Object.keys(cb).length ? cb : undefined; } else delete st.courtsByHour;
     doc.settings = st;
     return doc;
@@ -1594,21 +1607,25 @@
     return ok;
   }
   const PROXY_VERSION_NEED = 5; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json)
-  const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). Code.gs 의 WK_PW_HASH 와 동일 — 비밀번호 평문은 코드 어디에도 없다
-  const WK_AUTH_KEY = 'tennisweet.wk.auth'; // 이 기기에서 한 번 맞춘 검증값 (다시 묻지 않음)
+  const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
+  const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
+  const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
+  async function wkDeriveHex(pw, salt) { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
+  function wkAuthKey() { try { const v = localStorage.getItem(WK_KEY_STORE); return /^[0-9a-f]{64}$/.test(v || '') ? v : null; } catch { return null; } }
+  function wkForgetKey() { try { localStorage.removeItem(WK_KEY_STORE); localStorage.removeItem(WK_AUTH_KEY); } catch {} }
   async function wkVerifierHex(pw) { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode('tennisweet-wk-verify'), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
   /** 대진 생성·다시 섞기·조 조정에 동봉할 검증값: 관리자는 항상, 멤버는 이 기기에서 비밀번호를 맞춘 적이 있을 때 */
-  function wkAuthHash() { if (adminKey) return WK_PW_HASH; try { const v = localStorage.getItem(WK_AUTH_KEY); return v === WK_PW_HASH ? v : null; } catch { return null; } }
+  function wkAuthHash() { return adminKey || wkAuthKey() ? WK_PW_HASH : null; } // 이 기기가 비밀번호를 통과했는가 (관리자는 항상)
   /** 대진표 비밀번호 확인: 없으면 모달로 묻고, 맞으면 기기에 저장. 취소 = false */
   async function wkRequireAuth() {
-    if (wkAuthHash()) return true;
+    if (adminKey || wkAuthKey()) return true;
     const modal = $('#wkpw-modal'), form = $('#wkpw-form'), inp = $('#wkpw-input'), errEl = $('#wkpw-err'); if (!modal) return false;
     return new Promise((resolve) => {
       const opener = document.activeElement; errEl.textContent = ''; inp.value = ''; modal.hidden = false; inp.focus();
       const onKey = (e) => { if (e.key === 'Escape') done(false); };
       document.addEventListener('keydown', onKey);
       const done = (v) => { modal.hidden = true; form.onsubmit = null; $('#wkpw-cancel').onclick = null; document.removeEventListener('keydown', onKey); opener?.focus?.(); resolve(v); };
-      form.onsubmit = async (e) => { e.preventDefault(); const pw = inp.value; if (!pw) return; errEl.textContent = '확인 중…'; const h = await wkVerifierHex(pw); if (h !== WK_PW_HASH) { errEl.textContent = '비밀번호가 맞지 않습니다.'; inp.select(); return; } try { localStorage.setItem(WK_AUTH_KEY, h); } catch {} done(true); };
+      form.onsubmit = async (e) => { e.preventDefault(); const pw = inp.value; if (!pw) return; errEl.textContent = '확인 중…'; const h = await wkVerifierHex(pw); if (h !== WK_PW_HASH) { errEl.textContent = '비밀번호가 맞지 않습니다.'; inp.select(); return; } const key = await wkDeriveHex(pw, 'tennisweet-wk-key'); try { localStorage.setItem(WK_KEY_STORE, key); localStorage.removeItem(WK_AUTH_KEY); } catch {} done(true); };
       $('#wkpw-cancel').onclick = () => done(false);
     });
   }
@@ -1623,13 +1640,13 @@
     if (WK_MOCK) {
       const path = `weekly/sessions/${op.session}.json`; const doc = wkMock.get(path);
       if (!doc) return { ok: false, code: 'NOSESSION' }; if (!wkOpAllowed(doc, op)) return { ok: false, code: 'CLOSED', rev: doc.rev, doc };
-      if ((op.op === 'generate' || op.op === 'edit') && op.auth !== WK_PW_HASH) return { ok: false, code: 'AUTH', rev: doc.rev, doc }; // 프록시와 같은 검사
+      if ((op.op === 'generate' || op.op === 'edit') && !(adminKey || op.key)) return { ok: false, code: 'AUTH', rev: doc.rev, doc }; // 프록시와 같은 검사 (열쇠가 있어야 함)
       const r = applyWeeklyOp(doc, op); if (!r.ok) return { ok: false, code: r.code, rev: doc.rev, doc };
       wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200)); return { ok: true, rev: doc.rev, doc };
     }
     const url = W.index?.proxy;
     if (url) { // 프록시가 있으면 관리자도 프록시로 (프록시 캐시가 최신을 유지하도록). 프록시 장애 시 관리자는 자기 토큰으로
-      try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); const j = await r.json(); const oldProxy = j?.code === 'CLOSED' && j.doc && wkOpAllowed(j.doc, op); if (!(adminKey && (['NETWORK', 'GITHUB', 'BUSY'].includes(j?.code) || oldProxy))) { if (oldProxy) j.detail = 'OLD_PROXY'; return j; } } // Content-Type 미지정(text/plain) → preflight 없음. 옛 프록시가 완료 표시 유예를 모르면(CLOSED) 관리자는 직접 저장
+      try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(op), redirect: 'follow' }); const j = await r.json(); const oldProxy = j?.code === 'CLOSED' && j.doc && wkOpAllowed(j.doc, op); if (!(adminKey && (['NETWORK', 'GITHUB', 'BUSY', 'AUTH', 'INVALID'].includes(j?.code) || oldProxy))) { if (oldProxy) j.detail = 'OLD_PROXY'; return j; } } // Content-Type 미지정(text/plain) → preflight 없음. 옛 프록시가 완료 표시 유예를 모르면(CLOSED) 관리자는 직접 저장
       catch (e) { if (!adminKey) return { ok: false, code: 'NETWORK', detail: e.message }; }
     }
     if (adminKey) return adminApplyOp(op); // 관리자: 자기 토큰으로 직접 저장
@@ -1705,7 +1722,7 @@
     let d; try { d = assertWeekly(raw); } catch { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일 형식이 올바르지 않습니다.'; renderWeeklyView(); } return; }
     if (!W.doc || (d.rev | 0) > W.srvRev) { const had = !!W.doc; wkAdopt(d, d.rev); W.docErr = ''; renderWeeklyView(); wkUpdateCover(); if (quiet && had) toast('정기 모임 내용이 갱신되었습니다'); }
   }
-  function wkSelect(id) { if (W.id === id) return; W.id = id; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; W.srvRev = -1; renderWeeklyView(); wkLoadDoc(id); }
+  function wkSelect(id) { if (W.id === id) return; W.id = id; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; W.cnByHour = false; W.srvRev = -1; renderWeeklyView(); wkLoadDoc(id); }
   setInterval(() => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit && !W.busy && !W.pending.length) wkLoadDoc(W.id, { quiet: true }); }, 20000); // 탭이 보일 때만 20초마다 (전송 중에는 건너뜀)
   document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit) wkLoadDoc(W.id, { quiet: true }); });
   // ---- 쓰기 (낙관적 반영 → 순서대로 전송) ----
@@ -1723,7 +1740,7 @@
     W.busy = true; wkStatus('저장 중…');
     if ((op.op === 'generate' || op.op === 'edit') && W.failed.some((x) => x !== op && x.session === op.session)) { W.busy = false; W.pending = W.pending.filter((x) => x !== op); W.failed.push(op); wkStatus(`저장하지 못한 변경 ${W.failed.length}건 · 다시 시도를 누르세요`, true); renderWeeklyView(); return false; } // 앞선 실패분이 있으면 순서를 지켜 함께 재시도
     if ((op.op === 'generate' || op.op === 'edit') && op.session === W.id && W.srvRev >= 0) op.base = W.srvRev; // 앞선 변경이 실패해 큐에서 빠졌어도 서버 기준 rev 로 보낸다
-    if (op.op === 'generate' || op.op === 'edit') { const a = wkAuthHash(); if (a) op.auth = a; else delete op.auth; } // 대진표 비밀번호 검증값 동봉 (서버가 비교)
+    if (op.op === 'generate' || op.op === 'edit') { op.auth = WK_PW_HASH; const k = wkAuthKey(); if (k) op.key = k; else delete op.key; } // key = 대진표 비밀번호에서 만든 열쇠 (서버 v5 가 해시로 확인). auth 는 옛 서버(v4 이하)용
     let res = await proxySend(op);
     for (let k = 0; k < 2 && res.code === 'STALE' && op.op === 'edit' && op.prev && res.doc; k++) { // 그사이 다른 변경(완료 표시 등)이 있어도 내가 고친 경기가 그대로면 최신 rev 로 다시 보낸다
       const cur = res.doc.schedule && res.doc.schedule.matches || []; const same = Object.entries(op.prev).every(([id, [a, b]]) => { const m = cur.find((x) => x.id === id); return m && m.aIds.join() === a.join() && m.bIds.join() === b.join(); });
@@ -1733,7 +1750,7 @@
     W.pending = W.pending.filter((x) => x !== op);
     const mine = op.session === W.id; // 다른 모임의 응답 문서는 화면에 채택하지 않는다
     if (res.ok) { if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
-    if (res.code === 'AUTH') { try { localStorage.removeItem(WK_AUTH_KEY); } catch {} W.adjust = false; W.pick = null; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
+    if (res.code === 'AUTH') { wkForgetKey(); W.adjust = false; W.pick = null; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
     const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
     if (retryable && !W.pending.some((x) => wkSameTarget(x, op))) W.failed.push(op); // 재시도 대기 (같은 대상의 더 새로운 변경이 이미 큐에 있으면 옛 실패분은 버린다 — 새 변경이 그 내용을 포함)
@@ -1753,9 +1770,12 @@
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
     const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
     const cnt = (h) => att.filter((p) => toMin(p.from) < (h + 1) * 60 && toMin(p.until) > h * 60).length; // 그 시각대에 한 경기라도 뛸 수 있는 사람 (20:30 도착도 20시에 포함)
-    const cn = s.courtNames || []; const cnText = cn.length ? `코트 번호 ${Array.from({ length: s.courts }, (_, i) => wkCourtLabel(s, i + 1)).join('·')}` : '';
-    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${cn.length ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
-    if (!closed && W.cnEdit) html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호 (대진표의 1·2·… 코트가 각각 몇 번 코트인지)</span>${Array.from({ length: s.courts }, (_, i) => `<label class="inline">${i + 1}코트 → <input name="cn${i}" maxlength="8" value="${esc(cn[i] || '')}" placeholder="${i + 1}" style="width:64px"></label>`).join('')}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`;
+    const hoursAll = wkHours(s); const perHour = !!(s.courtsByHour || s.courtNamesByHour); const hasCn = !!(s.courtNames?.length || s.courtNamesByHour); const cntAt = (h) => (s.courtsByHour && Number.isInteger(s.courtsByHour[String(h)]) ? s.courtsByHour[String(h)] : s.courts);
+    const namesAt = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || String(i + 1)); // 그 시각의 코트 라벨 (없으면 1, 2, …)
+    let cnText = ''; if (hasCn) { if (!perHour) cnText = `코트 번호 ${namesAt(hoursAll[0] ?? 0).join('·')}`; else { const parts = []; let i = 0; while (i < hoursAll.length) { const lab = namesAt(hoursAll[i]).join('·'); let j = i; while (j + 1 < hoursAll.length && namesAt(hoursAll[j + 1]).join('·') === lab) j++; if (lab) parts.push(`${hoursAll[i]}~${hoursAll[j] + 1}시 ${lab}`); i = j + 1; } cnText = `코트 번호 ${parts.join(' · ')}`; } }
+    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${hasCn ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
+    if (!closed && W.cnEdit) { const cur = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || '').join(', ').replace(/(, )+$/, '');
+      html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호를 쉼표로 (대진표의 1·2·… 코트 순서대로, 예: 5, 7). ${perHour ? '시간대마다 코트가 다르면 줄마다 따로 적으세요.' : '시간대마다 다르면 [시간대별로]를 누르세요.'}</span>${perHour || W.cnByHour ? wkCourtBlocks(s, (h) => cntAt(h) + '|' + cur(h)).filter((b) => cntAt(b.from) > 0).map((b) => `<label class="inline">${b.from}~${b.to}시 <small>(${cntAt(b.from)}면)</small> <input name="cnh_${b.key}" maxlength="80" value="${esc(cur(b.from))}" placeholder="${Array.from({ length: cntAt(b.from) }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(84, cntAt(b.from) * 44)}px"></label>`).join('') : `<label class="inline">코트 <input name="cn_all" maxlength="80" value="${esc((s.courtNames || []).join(', '))}" placeholder="${Array.from({ length: s.courts }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(96, s.courts * 44)}px"></label><button type="button" class="small" id="wk-cn-byhour">시간대별로</button>`}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`; }
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${esc(name)}${a ? `<small>${esc(wkShort(a.from))}~${esc(wkShort(a.until))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
@@ -1801,7 +1821,8 @@
     const t = e.target;
     const ses = t.closest('[data-wk-session]'); if (ses) { wkSelect(ses.dataset.wkSession); return; }
     if (t.closest('#wk-cn-edit')) { W.cnEdit = !W.cnEdit; renderWeeklyView(); if (W.cnEdit) $('#wk-cn-form input')?.focus(); return; }
-    if (t.closest('#wk-cn-cancel')) { W.cnEdit = false; renderWeeklyView(); return; }
+    if (t.closest('#wk-cn-cancel')) { W.cnEdit = false; W.cnByHour = false; renderWeeklyView(); return; }
+    if (t.closest('#wk-cn-byhour')) { W.cnByHour = true; renderWeeklyView(); return; }
     const chip = t.closest('[data-wk-chip]'); if (chip && !chip.disabled) { wkOpen(chip.dataset.wkChip); return; }
     if (t.closest('#wk-guest-add')) { const s = wkSettings(W.doc); W.edit = { id: null, guest: true, name: '', gender: '', from: s.startTime, until: s.endTime, attending: false }; renderWeeklyView(); return; }
     const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; const st = wkSettings(W.doc); const step = (st.matchMinutes || 30) + (st.breakMinutes || 0); if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + step); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - step); renderWeeklyView(); return; }
@@ -1815,7 +1836,8 @@
   });
   $('#tab-weekly')?.addEventListener('input', (e) => { if (e.target.id === 'wk-guest-name' && W.edit) W.edit.name = e.target.value; });
   $('#tab-weekly')?.addEventListener('change', (e) => { if (e.target.id === 'wk-me') { W.me = e.target.value || ''; if (W.me) localStorage.setItem('tennisweet.me', W.me); else localStorage.removeItem('tennisweet.me'); renderWeeklyView(); } });
-  $('#tab-weekly')?.addEventListener('submit', async (e) => { const f = e.target; if (f.id !== 'wk-cn-form') return; e.preventDefault(); if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; const s = wkSettings(W.doc); const names = Array.from({ length: s.courts }, (_, i) => String(new FormData(f).get('cn' + i) || '').trim().slice(0, 8)); W.cnEdit = false; await wkSend({ op: 'set', path: 'courtNames', value: wkCleanCourtNames(names) }); }); // 코트 번호 저장 (누구나)
+  $('#tab-weekly')?.addEventListener('submit', async (e) => { const f = e.target; if (f.id !== 'wk-cn-form') return; e.preventDefault(); if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; const fd = new FormData(f); const keyOf = {}; f.querySelectorAll('input[name^="cnh_"]').forEach((i) => { const k = +i.name.slice(4); keyOf[k] = i.name; }); const starts = Object.keys(keyOf).map(Number).sort((a, b) => a - b); const inputOf = (h) => { let pick = null; for (const k of starts) if (k <= h) pick = k; return pick == null ? null : keyOf[pick]; }; // 그 시각이 속한 구간의 입력칸 (구간 시작이 h 이하인 것 중 마지막)
+    const value = wkCourtNamesFromForm(wkHours(wkSettings(W.doc)), (h) => { const n = inputOf(h); return n ? fd.get(n) : null; }, fd.get('cn_all')); W.cnEdit = false; W.cnByHour = false; await wkSend({ op: 'set', path: 'courtNames', value }); }); // 코트 번호 저장 (누구나): 공통이면 배열, 시간대별이면 { 시: [번호] }
   $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
@@ -1877,13 +1899,13 @@
       const t0 = slotStartMin(s, m.slot), t1 = t0 + s.matchMinutes;
       const gc = {}; for (const x of (doc.schedule?.matches || [])) for (const id of [...x.aIds, ...x.bIds]) gc[id] = (gc[id] || 0) + 1; // 경기 수: 쉬는 사람은 적은 순으로 (교체하면 경기 수가 옮겨가므로)
       const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0, g: gc['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || (x.court ? x.court - y.court : x.g - y.g) || (x.a.n < y.a.n ? -1 : 1));
-      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? wkCourtLabel(s, c.court) + '코트' : '쉬는 중'} · ${c.g}경기</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
+      picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? wkCourtLabel(s, c.court, m.slot) + '코트' : '쉬는 중'} · ${c.g}경기</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
     const rs = doc.results?.[m.id] || null; const canScore = !adj && wkDoneOpen(doc) && wkCanWrite(); const editing = canScore && W.score === m.id; // 경기 기록(점수): 누구나 입력, 완료와 같은 7일 유예
     const winA = rs && rs.a > rs.b, winB = rs && rs.b > rs.a;
     const scoreEd = editing ? `<div class="wk-score-ed" data-wk-score-ed="${esc(m.id)}"><span class="sub">${esc(wkName(doc, m.aIds[0].slice(2)))}·${esc(wkName(doc, m.aIds[1].slice(2)))}</span><input type="number" inputmode="numeric" min="0" max="6" class="sc-a" value="${rs ? rs.a : ''}" aria-label="A 점수"><b>:</b><input type="number" inputmode="numeric" min="0" max="6" class="sc-b" value="${rs ? rs.b : ''}" aria-label="B 점수"><span class="sub">${esc(wkName(doc, m.bIds[0].slice(2)))}·${esc(wkName(doc, m.bIds[1].slice(2)))}</span><button type="button" class="small primary" data-wk-score-save="${esc(m.id)}">저장</button>${rs ? `<button type="button" class="small" data-wk-score-clear="${esc(m.id)}">지우기</button>` : ''}<button type="button" class="small" data-wk-score-close="1">닫기</button></div>` : '';
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''} ${editing ? 'scoring' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${adj ? '이름을 누르면 바꿀 사람을 고릅니다' : !(wkDoneOpen(doc) && wkCanWrite()) ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
-      <div class="mhead"><b class="court">${esc(wkCourtLabel(s, m.court))}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
+      <div class="mhead"><b class="court">${esc(wkCourtLabel(s, m.court, m.slot))}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
       <div class="mbody"><div class="side ${winA ? 'w' : ''}"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side ${winB ? 'w' : ''}"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${scoreEd}${picker}</div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
@@ -1941,11 +1963,11 @@
     if (short.length) issues.push(`경기 수 2 이상 부족: ${short.join(', ')} (최다 ${maxG})`);
     { const gl = ids.filter((id) => att[id].guest && (games[id] || 0) < maxG && (games[id] || 0) < avail(id)).map((id) => `${nm(id)} ${games[id] || 0}`); if (gl.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${gl.join(', ')}`); }
     { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
-    for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court)}코트 — ${bad[m.id].join(' · ')}`);
-    for (const m of ms) if (soft[m.id]) notes.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court)}코트 — ${soft[m.id].join(' · ')}`);
+    for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${bad[m.id].join(' · ')}`);
+    for (const m of ms) if (soft[m.id]) notes.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${soft[m.id].join(' · ')}`);
     { const men = ids.filter((id) => g(id) !== 'F').sort((a, b) => lv(b) - lv(a)); if (men.length >= 4) { const th = lv(men[3]); let feasible = false; if (isFinite(n)) for (let i = 0; i < n && !feasible; i++) if (courtsAtSlot(s, i) >= 1 && men.filter((id) => lv(id) >= th && avOk(id, i)).length >= 4) feasible = true; // 어떤 시간대에 th 이상 남자 4명이 함께 있어야 성립
       const top = ms.find((m) => { const all = [...m.aIds, ...m.bIds].map((x) => x.slice(2)); if (!all.every((id) => att[id] && g(id) !== 'F' && lv(id) >= th)) return false; const lo = Math.min(...all.map(lv)); return men.every((id) => lv(id) <= lo || all.includes(id) || !avOk(id, m.slot)); }); // 그 시간대에 있는 더 높은 남자는 전원 포함 = 그 시간대의 최상위 4명
-      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${wkCourtLabel(s, top.court)}코트` : feasible ? '상위 남복 없음 (다시 섞기로 만들 수 있음)' : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
+      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${wkCourtLabel(s, top.court, top.slot)}코트` : feasible ? '상위 남복 없음 (다시 섞기로 만들 수 있음)' : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
     return { bad, issues, notes };
   }
   /** 인당 경기 수 요약 (접기) */
@@ -1963,26 +1985,32 @@
   // ---- 아래 두 함수는 tools/gas-proxy/Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
   /** 코트 예약 문서 정리: { v, rev, courts:[라벨], times:['18','20'], res:{ 'YYYY-MM-DD': { '20': ['이름', '', …] } } } */
   function courtsClean(raw) {
-    var d = raw && typeof raw === 'object' ? raw : {};
+    var d = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
     var courts = (Array.isArray(d.courts) ? d.courts : []).slice(0, 8).map(function (x) { return String(x == null ? '' : x).trim().slice(0, 8); }).filter(Boolean);
     if (!courts.length) courts = ['1번', '2번', '3번'];
     var times = []; (Array.isArray(d.times) ? d.times : []).slice(0, 8).forEach(function (x) { var t = String(x == null ? '' : x).trim(); if (/^\d{1,2}(:\d{2})?$/.test(t) && times.indexOf(t) < 0) times.push(t); });
     if (!times.length) times = ['18', '20'];
     var res = {}; var src = d.res && typeof d.res === 'object' && !Array.isArray(d.res) ? d.res : {};
-    Object.keys(src).filter(function (k) { return /^\d{4}-\d{2}-\d{2}$/.test(k); }).sort().slice(-400).forEach(function (day) { // 최근 400일치만 (파일 크기 상한)
+    Object.keys(src).filter(function (k) { return courtsDateOk(k, null); }).sort().slice(-400).forEach(function (day) { // 실제 날짜만, 최근 400일치만 (파일 크기 상한)
       var rows = src[day]; if (!rows || typeof rows !== 'object') return; var outDay = {};
       times.forEach(function (t) { var arr = rows[t]; if (!Array.isArray(arr)) return; var row = courts.map(function (_, i) { return String(arr[i] == null ? '' : arr[i]).trim().slice(0, 12); }); if (row.some(Boolean)) outDay[t] = row; });
       if (Object.keys(outDay).length) res[day] = outDay;
     });
     return { v: 1, rev: d.rev | 0, courts: courts, times: times, res: res, updatedAt: String(d.updatedAt || '').slice(0, 30) };
   }
-  /** 코트 예약 칸 변경: changes = [{ d:'YYYY-MM-DD', t:'20', c:코트 순번(0~), n:'이름'|'' , p?:'내가 본 값' }] (최대 80칸). p 가 현재 값과 다르면(다른 사람이 먼저 바꿈) STALE */
-  function applyCourtsChanges(doc, changes) {
+  /** 실제 달력 날짜(YYYY-MM-DD)인지. now(ms)를 주면 그 앞뒤 400일 안인지도 본다 (먼 미래 날짜로 옛 예약을 밀어내지 못하게) */
+  function courtsDateOk(d, now) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return false;
+    var t = Date.parse(d + 'T00:00:00Z'); if (!isFinite(t) || new Date(t).toISOString().slice(0, 10) !== d) return false;
+    return now == null || Math.abs(t - now) <= 400 * 86400000;
+  }
+  /** 코트 예약 칸 변경: changes = [{ d:'YYYY-MM-DD', t:'20', c:코트 순번(0~), n:'이름'|'' , p?:'내가 본 값' }] (최대 80칸, 날짜는 오늘 앞뒤 400일). p 가 현재 값과 다르면(다른 사람이 먼저 바꿈) STALE */
+  function applyCourtsChanges(doc, changes, now) {
     if (!Array.isArray(changes) || !changes.length || changes.length > 80) return { code: 'INVALID' };
-    var next = JSON.parse(JSON.stringify(doc.res || {}));
+    var nowMs = now == null ? Date.now() : now; var next = JSON.parse(JSON.stringify(doc.res || {}));
     for (var i = 0; i < changes.length; i++) {
       var ch = changes[i];
-      if (!ch || !/^\d{4}-\d{2}-\d{2}$/.test(String(ch.d)) || doc.times.indexOf(String(ch.t)) < 0 || !Number.isInteger(ch.c) || ch.c < 0 || ch.c >= doc.courts.length || typeof ch.n !== 'string') return { code: 'INVALID' };
+      if (!ch || !courtsDateOk(ch.d, nowMs) || doc.times.indexOf(String(ch.t)) < 0 || !Number.isInteger(ch.c) || ch.c < 0 || ch.c >= doc.courts.length || typeof ch.n !== 'string') return { code: 'INVALID' };
       var n = ch.n.trim().slice(0, 12); var day = next[ch.d] || (next[ch.d] = {}); var row = day[String(ch.t)] || (day[String(ch.t)] = doc.courts.map(function () { return ''; }));
       var cur = row[ch.c] || '';
       if (ch.p != null && String(ch.p) !== cur && cur !== n) return { code: 'STALE' };
@@ -1993,60 +2021,72 @@
     return { ok: true };
   }
   // ---- /courts shared ----
-  const C = { doc: null, month: '', day: '', edit: false, draft: {}, sel: null, busy: false, msg: '' }; // day = 날짜별 보기에서 고른 날 (기본 오늘)
+  const C = { doc: null, month: '', day: '', edit: false, draft: {}, sel: null, busy: false, msg: '' }; // day = 날짜별 보기에서 고른 날 (기본 오늘). 수정 중(edit)에는 doc 을 바꾸지 않는다 — 저장 때 보내는 p(내가 본 값)가 흐려지지 않도록
   const CT_PATH = 'courts.json';
   async function courtsRead() { if (WK_MOCK) { const m = wkMock.get(CT_PATH); if (m) return m; try { const r = await fetch('data/' + CT_PATH + '?_=' + Date.now(), { cache: 'no-store' }); return r.ok ? await r.json() : null; } catch { return null; } } return dataRead(CT_PATH); }
   async function courtsRefresh() {
-    if (C.busy) return; if (!W.index) { try { await weeklyRefresh(); } catch {} } // 저장 수단(프록시 주소)을 알아야 수정 버튼을 보일 수 있다
-    const raw = await courtsRead(); if (C.busy) return; const d = courtsClean(raw);
+    if (!C.day) C.day = ymdOf(); if (!C.month) C.month = C.day.slice(0, 7);
+    if (C.busy || C.edit) { renderCourts(); return; }
+    if (!W.index) { try { await weeklyRefresh(); } catch {} } // 저장 수단(프록시 주소)을 알아야 수정 버튼을 보일 수 있다
+    const raw = await courtsRead(); if (C.busy || C.edit) return; const d = courtsClean(raw);
     if (raw || !C.doc) { if (!C.doc || (d.rev | 0) >= (C.doc.rev | 0)) C.doc = d; } // 읽기 실패(null)면 보던 내용을 유지
-    if (!C.day) C.day = ymdOf(); if (!C.month) C.month = C.day.slice(0, 7); renderCourts();
+    renderCourts();
   }
   /** 날짜 고르기: 그 날의 예약을 위 카드에 보여 주고, 월 표도 그 달로 옮긴다 */
-  function ctPickDay(ymd) { if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ymd || ''))) return; C.day = ymd; C.month = ymd.slice(0, 7); renderCourts(); }
+  function ctPickDay(ymd) { if (!courtsDateOk(ymd, null) || ymd < '2000-01-01' || ymd > '2100-12-31') return; C.day = ymd; C.month = ymd.slice(0, 7); renderCourts(); }
   const ctDayShift = (ymd, by) => { const d = new Date(ymd + 'T00:00:00'); d.setDate(d.getDate() + by); return ymdOf(d); };
   const ctKey = (d, t, c) => `${d}|${t}|${c}`;
   const ctSaved = (d, t, c) => C.doc?.res?.[d]?.[t]?.[c] || '';
   const ctVal = (d, t, c) => { const k = ctKey(d, t, c); return k in C.draft ? C.draft[k] : ctSaved(d, t, c); };
-  const ctTime = (t) => (String(t).includes(':') ? String(t) : `${t}시`);
-  /** 그 달의 주(월~금) 목록. 그 달 평일이 하나도 없는 주는 뺀다. 앞뒤 달 날짜는 흐리게 표시 */
-  function ctWeeks(month) {
-    const [y, m] = month.split('-').map(Number); const first = new Date(y, m - 1, 1), last = new Date(y, m, 0);
+  const ctTime = (t) => (String(t).includes(':') ? String(t) : `${t}~${+t + WK_COURT_BLOCK}시`); // 코트 예약은 2시간 단위 (18 → 18~20시)
+  const ctIsWeekend = (ymd) => { const g = new Date(ymd + 'T00:00:00').getDay(); return g === 0 || g === 6; };
+  /** 그 달에 주말 예약(저장·초안)이 있거나 고른 날이 그 달의 주말이면 토·일 열도 보인다 (평소에는 월~금) */
+  function ctHasWeekend(month) { const hit = (ymd) => ymd.slice(0, 7) === month && ctIsWeekend(ymd); if (C.day && hit(C.day)) return true; for (const d of Object.keys(C.doc?.res || {})) if (hit(d)) return true; for (const k of Object.keys(C.draft)) if (hit(k.split('|')[0])) return true; return false; }
+  /** 그 달의 주 목록 (월요일 시작). 보이는 요일 중 그 달 날짜가 하나도 없는 주는 뺀다. 앞뒤 달 날짜는 흐리게 표시 */
+  function ctWeeks(month, weekend) {
+    const [y, m] = month.split('-').map(Number); const first = new Date(y, m - 1, 1), last = new Date(y, m, 0); const idx = weekend ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4];
     const mon = new Date(first); mon.setDate(first.getDate() - ((first.getDay() + 6) % 7)); const weeks = [];
-    for (; mon <= last; mon.setDate(mon.getDate() + 7)) { const days = [0, 1, 2, 3, 4].map((i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return { ymd: ymdOf(x), inMonth: x.getMonth() === m - 1, md: `${x.getMonth() + 1}/${x.getDate()}`, dow: '월화수목금'[i] }; }); if (days.some((x) => x.inMonth)) weeks.push(days); }
+    for (; mon <= last; mon.setDate(mon.getDate() + 7)) { const days = idx.map((i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return { ymd: ymdOf(x), inMonth: x.getMonth() === m - 1, md: `${x.getMonth() + 1}/${x.getDate()}`, dow: '월화수목금토일'[i] }; }); if (days.some((x) => x.inMonth)) weeks.push(days); }
     return weeks;
   }
   const ctShift = (month, by) => { const [y, m] = month.split('-').map(Number); const d = new Date(y, m - 1 + by, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+  /** 표 구성(시간 줄·코트 수)에 없는 초안 칸을 버린다 → 버린 개수 */
+  function ctPruneDraft() { const doc = C.doc; if (!doc) return 0; let n = 0; for (const k of Object.keys(C.draft)) { const [d, t, c] = k.split('|'); if (doc.times.indexOf(t) < 0 || +c >= doc.courts.length) { delete C.draft[k]; n++; } else if (C.draft[k] === ctSaved(d, t, +c)) delete C.draft[k]; } return n; }
   function renderCourts() {
-    const box = $('#ct-view'); if (!box) return; const doc = C.doc; if (!doc) { box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
-    const [y, m] = C.month.split('-').map(Number); const weeks = ctWeeks(C.month); const today = ymdOf(); const meName = W.me ? (playerById(W.me)?.name || '') : '';
-    const nC = doc.courts.length; const nDraft = Object.keys(C.draft).length; const canEdit = wkCanWrite();
+    const top = $('#ct-top'), box = $('#ct-view'), card = $('#ct-daycard'); if (!box || !top || !card) return; const doc = C.doc;
+    if (!doc) { top.innerHTML = ''; card.hidden = true; box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
+    const [y, m] = C.month.split('-').map(Number); const weekend = ctHasWeekend(C.month); const weeks = ctWeeks(C.month, weekend); const today = ymdOf(); const meName = W.me ? (playerById(W.me)?.name || '') : '';
+    const nC = doc.courts.length; const nDraft = Object.keys(C.draft).length; const canEdit = wkCanWrite(); const dows = weekend ? '월화수목금토일' : '월화수목금';
+    $('#tab-courts').classList.toggle('ct-editing', C.edit);
     const cell = (day, t, ci) => { const v = ctVal(day.ymd, t, ci); const k = ctKey(day.ymd, t, ci); return `<td class="ct-cell c${ci % 3} ${v ? 'on' : ''} ${day.inMonth ? '' : 'out'} ${k in C.draft ? 'chg' : ''} ${v && v === meName ? 'me' : ''} ${day.ymd === today ? 'today' : ''} ${ci === 0 ? 'first' : ''}" ${C.edit ? `data-ct="${esc(k)}" role="button" tabindex="0" aria-label="${esc(day.md)} ${esc(ctTime(t))} ${esc(doc.courts[ci])}${v ? ' ' + esc(v) : ' 비어 있음'}"` : ''}>${v ? esc(v) : C.edit ? '<span class="plus" aria-hidden="true">+</span>' : ''}</td>`; };
+    // 머리: 월 이동 + 수정
+    top.innerHTML = `<div class="ct-head"><div class="ct-nav"><button type="button" class="small" id="ct-prev" aria-label="이전 달">◀</button><h3>${y}년 ${m}월 코트 예약 현황</h3><button type="button" class="small" id="ct-next" aria-label="다음 달">▶</button>${C.month !== today.slice(0, 7) ? '<button type="button" class="small" id="ct-today">이번 달</button>' : ''}</div>
+      <div class="ct-actions">${C.edit ? `<span class="sub">칸을 눌러 예약자를 넣거나 지우세요${nDraft ? ` · 바꾼 칸 ${nDraft}개` : ''}</span><button type="button" class="small primary" id="ct-save" ${nDraft && !C.busy ? '' : 'disabled'}>${C.busy ? '저장 중…' : '저장'}</button><button type="button" class="small" id="ct-cancel" ${C.busy ? 'disabled' : ''}>취소</button>` : canEdit ? '<button type="button" class="small" id="ct-edit"><svg class="ic"><use href="#i-edit"/></svg>수정</button>' : ''}</div></div>
+      <p class="hint ct-legend">${doc.courts.map((c, ci) => `<span class="ct-swatch c${ci % 3}">${esc(c)}</span>`).join('')}<span>칸의 이름 = 그 코트를 예약한 사람${doc.updatedAt ? ' · ' + new Date(doc.updatedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 수정' : ''}</span>${C.msg ? `<span class="warn">${esc(C.msg)}</span>` : ''}</p>`;
+    // 날짜별 보기: 오늘(기본) 또는 고른 날짜의 예약 — 시간 줄 × 코트 칸. 날짜 입력칸은 다시 만들지 않는다 (입력·선택 도중에 닫히지 않게)
+    const dsel = C.day || today; const dObj = { ymd: dsel, inMonth: true, md: fmtDate(dsel) }; const dayN = doc.times.reduce((a, t) => a + doc.courts.filter((_, ci) => ctVal(dsel, t, ci)).length, 0);
+    card.hidden = false; $('#ct-dayname').innerHTML = `${esc(fmtDate(dsel))}${dsel === today ? ' <span class="tag type fm">오늘</span>' : ''}`; $('#ct-dtoday').classList.toggle('on', dsel === today); $('#ct-daycount').textContent = dayN ? `예약 ${dayN}면` : '예약 없음';
+    { const inp = $('#ct-day'); if (inp.value !== dsel && document.activeElement !== inp) inp.value = dsel; }
+    $('#ct-dayview').innerHTML = `<div class="table-wrap"><table class="ct-table ct-daytable"><thead><tr class="ct-courts"><th class="ct-lbl"></th>${doc.courts.map((c) => `<th>${esc(c)} 코트</th>`).join('')}</tr></thead><tbody>${doc.times.map((t) => `<tr><th class="ct-lbl ct-time">${esc(ctTime(t))}</th>${doc.courts.map((_, ci) => cell(dObj, t, ci)).join('')}</tr>`).join('')}</tbody></table></div>`;
     // 넓은 화면: 요일이 가로 (주마다 날짜 줄 · 코트 줄 · 시간 줄)
-    const wide = `<div class="table-wrap ct-wide"><table class="ct-table"><thead><tr><th class="ct-lbl"></th>${'월화수목금'.split('').map((d) => `<th colspan="${nC}" class="ct-dow">${d}</th>`).join('')}</tr></thead>${weeks.map((days) => `<tbody>
+    const wide = `<div class="table-wrap ct-wide"><table class="ct-table ${weekend ? 'ct-7' : ''}"><thead><tr><th class="ct-lbl"></th>${dows.split('').map((d) => `<th colspan="${nC}" class="ct-dow">${d}</th>`).join('')}</tr></thead>${weeks.map((days) => `<tbody>
       <tr class="ct-dates"><th class="ct-lbl"></th>${days.map((d) => `<th colspan="${nC}" class="ct-date ${d.inMonth ? '' : 'out'} ${d.ymd === today ? 'today' : ''} ${d.ymd === C.day ? 'sel' : ''}" data-ct-day="${d.ymd}" role="button" tabindex="0" title="${esc(d.md)} 예약 보기">${esc(d.md)}</th>`).join('')}</tr>
       <tr class="ct-courts"><th class="ct-lbl">코트</th>${days.map(() => doc.courts.map((c, ci) => `<th class="${ci === 0 ? 'first' : ''}">${esc(c)}</th>`).join('')).join('')}</tr>
       ${doc.times.map((t) => `<tr><th class="ct-lbl ct-time">${esc(ctTime(t))}</th>${days.map((d) => doc.courts.map((_, ci) => cell(d, t, ci)).join('')).join('')}</tr>`).join('')}</tbody>`).join('')}</table></div>`;
     // 좁은 화면(폰): 주마다 표 하나, 날짜가 세로 · 시간×코트가 가로
     const narrow = `<div class="ct-narrow">${weeks.map((days) => `<div class="table-wrap"><table class="ct-table ct-week"><thead><tr><th class="ct-lbl"></th>${doc.times.map((t) => `<th colspan="${nC}" class="ct-dow">${esc(ctTime(t))}</th>`).join('')}</tr><tr class="ct-courts"><th class="ct-lbl">코트</th>${doc.times.map(() => doc.courts.map((c, ci) => `<th class="${ci === 0 ? 'first' : ''}">${esc(c)}</th>`).join('')).join('')}</tr></thead><tbody>${days.map((d) => `<tr><th class="ct-lbl ct-day ${d.inMonth ? '' : 'out'} ${d.ymd === today ? 'today' : ''} ${d.ymd === C.day ? 'sel' : ''}" data-ct-day="${d.ymd}" role="button" tabindex="0" title="${esc(d.md)} 예약 보기"><b>${d.dow}</b> ${esc(d.md)}</th>${doc.times.map((t) => doc.courts.map((_, ci) => cell(d, t, ci)).join('')).join('')}</tr>`).join('')}</tbody></table></div>`).join('')}</div>`;
-    // 날짜별 보기: 오늘(기본) 또는 고른 날짜의 예약 — 시간 줄 × 코트 칸
-    const dsel = C.day || today; const dObj = { ymd: dsel, inMonth: true, md: fmtDate(dsel) }; const dayN = doc.times.reduce((a, t) => a + doc.courts.filter((_, ci) => ctVal(dsel, t, ci)).length, 0);
-    const dayCard = `<div class="ct-daycard"><div class="ct-dayhead"><button type="button" class="small" id="ct-dprev" aria-label="전날">◀</button><b class="ct-dayname">${esc(fmtDate(dsel))}${dsel === today ? ' <span class="tag type fm">오늘</span>' : ''}</b><button type="button" class="small" id="ct-dnext" aria-label="다음 날">▶</button><button type="button" class="small ${dsel === today ? 'on' : ''}" id="ct-dtoday">오늘</button><label class="inline ct-dpick">날짜 <input type="date" id="ct-day" value="${esc(dsel)}"></label><span class="sub">${dayN ? `예약 ${dayN}면` : '예약 없음'}</span></div>
-      <div class="table-wrap"><table class="ct-table ct-daytable"><thead><tr class="ct-courts"><th class="ct-lbl"></th>${doc.courts.map((c) => `<th>${esc(c)} 코트</th>`).join('')}</tr></thead><tbody>${doc.times.map((t) => `<tr><th class="ct-lbl ct-time">${esc(ctTime(t))}</th>${doc.courts.map((_, ci) => cell(dObj, t, ci)).join('')}</tr>`).join('')}</tbody></table></div></div>`;
-    // 이번 달 예약 횟수 (그 달 날짜만)
-    const cnt = {}; for (const days of weeks) for (const d of days) if (d.inMonth) for (const t of doc.times) for (let ci = 0; ci < nC; ci++) { const v = ctVal(d.ymd, t, ci); if (v) cnt[v] = (cnt[v] || 0) + 1; }
+    // 이번 달 예약 횟수 (그 달의 모든 날짜 — 주말 포함)
+    const cnt = {}; const lastDay = new Date(y, m, 0).getDate(); for (let dd = 1; dd <= lastDay; dd++) { const ymd = `${C.month}-${String(dd).padStart(2, '0')}`; for (const t of doc.times) for (let ci = 0; ci < nC; ci++) { const v = ctVal(ymd, t, ci); if (v) cnt[v] = (cnt[v] || 0) + 1; } }
     const tally = Object.entries(cnt).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')); const total = tally.reduce((a, x) => a + x[1], 0);
-    const head = `<div class="ct-head"><div class="ct-nav"><button type="button" class="small" id="ct-prev" aria-label="이전 달">◀</button><h3>${y}년 ${m}월 코트 예약 현황</h3><button type="button" class="small" id="ct-next" aria-label="다음 달">▶</button>${C.month !== today.slice(0, 7) ? '<button type="button" class="small" id="ct-today">이번 달</button>' : ''}</div>
-      <div class="ct-actions">${C.edit ? `<span class="sub">칸을 눌러 예약자를 넣거나 지우세요${nDraft ? ` · 바꾼 칸 ${nDraft}개` : ''}</span><button type="button" class="small primary" id="ct-save" ${nDraft && !C.busy ? '' : 'disabled'}>${C.busy ? '저장 중…' : '저장'}</button><button type="button" class="small" id="ct-cancel" ${C.busy ? 'disabled' : ''}>취소</button>` : canEdit ? '<button type="button" class="small" id="ct-edit"><svg class="ic"><use href="#i-edit"/></svg>수정</button>' : ''}</div></div>`;
-    const legend = `<p class="hint ct-legend">${doc.courts.map((c, ci) => `<span class="ct-swatch c${ci % 3}">${esc(c)}</span>`).join('')}<span>칸의 이름 = 그 코트를 예약한 사람${doc.updatedAt ? ' · ' + new Date(doc.updatedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' 수정' : ''}</span>${C.msg ? `<span class="warn">${esc(C.msg)}</span>` : ''}</p>`;
     const sum = total ? `<p class="hint ct-tally"><b>${m}월 예약 ${total}건</b> · ${tally.map(([n, c]) => `${esc(n)} ${c}`).join(' · ')}</p>` : `<p class="hint">${m}월에는 아직 예약이 없습니다.${canEdit && !C.edit ? ' [수정]을 눌러 넣을 수 있습니다.' : ''}</p>`;
-    const settings = document.body.classList.contains('editor') && !C.edit ? `<details class="ct-settings"><summary>표 설정 (관리자) — 코트 이름·시간 줄</summary><form id="ct-form-settings" class="row" autocomplete="off"><label class="inline">코트 <input name="courts" value="${esc(doc.courts.join(', '))}" style="width:180px"></label><label class="inline">시간 <input name="times" value="${esc(doc.times.join(', '))}" style="width:140px"></label><button type="submit" class="small">저장</button><span class="hint">쉼표로 구분 (예: 1번, 2번, 3번 / 18, 20). 시간 줄을 지우면 그 줄의 예약도 함께 지워집니다.</span></form></details>` : '';
-    const keepFocus = document.activeElement?.id === 'ct-day';
-    box.innerHTML = head + legend + `<div class="ct-body ${C.edit ? 'editing' : ''}">${dayCard}<h4 class="ct-monthtitle">${m}월 전체</h4>${wide}${narrow}</div>` + sum + settings; if (keepFocus) $('#ct-day')?.focus();
+    const setOpen = !!$('#tab-courts .ct-settings')?.open;
+    const settings = document.body.classList.contains('editor') && !C.edit ? `<details class="ct-settings" ${setOpen ? 'open' : ''}><summary>표 설정 (관리자) — 코트 이름·시간 줄</summary><form id="ct-form-settings" class="row" autocomplete="off"><label class="inline">코트 <input name="courts" value="${esc(doc.courts.join(', '))}" style="width:180px"></label><label class="inline">시간 <input name="times" value="${esc(doc.times.join(', '))}" style="width:140px"></label><button type="submit" class="small">저장</button><span class="hint">쉼표로 구분 (예: 1번, 2번, 3번 / 18, 20). 같은 이름의 코트는 예약이 그대로 따라가고, 코트나 시간 줄을 없애면 그 예약도 지워집니다(저장 전에 몇 칸인지 묻습니다).</span></form></details>` : '';
+    box.innerHTML = `<h4 class="ct-monthtitle">${m}월 전체${weekend ? ' (토·일 포함)' : ''}</h4>${wide}${narrow}` + sum + settings;
   }
   function ctOpenCell(k) {
-    const [d, t, c] = k.split('|'); const doc = C.doc; if (!doc) return; C.sel = k;
-    $('#ct-modal-title').textContent = `${fmtDate(d)} ${ctTime(t)} · ${doc.courts[+c] || ''} 코트`;
+    const [d, t, c] = k.split('|'); const doc = C.doc; if (!doc || C.busy) return;
+    if (!courtsDateOk(d, Date.now())) { toast('오늘 기준 앞뒤 400일 이내의 날짜만 수정할 수 있습니다'); return; }
+    C.sel = k; $('#ct-modal-title').textContent = `${fmtDate(d)} ${ctTime(t)} · ${doc.courts[+c] || ''} 코트`;
     const inp = $('#ct-name'); inp.value = ctVal(d, t, +c);
     const names = [...state.players].map((p) => p.name).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'));
     $('#ct-name-chips').innerHTML = names.map((n) => `<button type="button" class="chip ${n === inp.value ? 'on' : ''}" data-ct-name="${esc(n)}">${esc(n)}</button>`).join('');
@@ -2057,17 +2097,18 @@
   async function courtsSave() {
     const keys = Object.keys(C.draft); if (!keys.length || C.busy) return;
     if (!adminKey && !(await wkRequireAuth())) return; // 멤버는 대진표 비밀번호
-    const changes = keys.map((k) => { const [d, t, c] = k.split('|'); return { d, t, c: +c, n: C.draft[k], p: ctSaved(d, t, +c) }; });
+    const changes = keys.map((k) => { const [d, t, c] = k.split('|'); return { d, t, c: +c, n: C.draft[k], p: ctSaved(d, t, +c) }; }); // p = 수정을 시작할 때 본 값 (수정 중에는 doc 이 바뀌지 않는다)
     C.busy = true; C.msg = ''; renderCourts(); let res;
     try {
       if (WK_MOCK) { const doc = courtsClean(await courtsRead()); const r = applyCourtsChanges(doc, changes); if (r.ok) wkMock.set(CT_PATH, doc); res = r.ok ? { ok: true, doc } : { ok: false, code: r.code, doc }; await new Promise((ok) => setTimeout(ok, 200)); }
       else if (adminKey) { let fail = null, result = null; const ok = await dataAdminUpdate(CT_PATH, (cur) => { const doc = courtsClean(cur); const r = applyCourtsChanges(doc, changes); if (!r.ok) { fail = { ok: false, code: r.code, doc }; return null; } result = doc; return doc; }, `코트 예약 ${changes.length}칸 수정`); res = fail || (ok && result ? { ok: true, doc: result } : { ok: false, code: 'GITHUB' }); }
-      else { const url = W.index?.proxy; if (!url) res = { ok: false, code: 'NOPROXY' }; else { try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', op: 'courts', auth: wkAuthHash() || '', value: changes, by: W.me || '' }), redirect: 'follow' }); res = await r.json(); } catch (e) { res = { ok: false, code: 'NETWORK' }; } } }
+      else { const url = W.index?.proxy; if (!url) res = { ok: false, code: 'NOPROXY' }; else { try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', op: 'courts', auth: WK_PW_HASH, key: wkAuthKey() || '', value: changes, by: W.me || '' }), redirect: 'follow' }); res = await r.json(); } catch (e) { res = { ok: false, code: 'NETWORK' }; } } }
     } catch (e) { res = { ok: false, code: 'ERROR' }; } finally { C.busy = false; }
     if (res && res.ok) { C.doc = courtsClean(res.doc); if (!WK_MOCK) wkFresh[CT_PATH] = { v: JSON.parse(JSON.stringify(C.doc)), t: Date.now() }; C.draft = {}; C.edit = false; toast(`코트 예약을 저장했습니다 (${changes.length}칸)`); renderCourts(); return; }
-    const code = res && res.code; let clash = ''; if (res && res.doc && typeof res.doc === 'object' && Array.isArray(res.doc.courts)) { C.doc = courtsClean(res.doc); clash = changes.filter((ch) => { const now = ctSaved(ch.d, ch.t, ch.c); return now !== ch.p && now !== ch.n; }).map((ch) => `${fmtDate(ch.d)} ${ctTime(ch.t)} ${C.doc.courts[ch.c] || ''} = ${ctSaved(ch.d, ch.t, ch.c) || '비어 있음'}`).join(', '); for (const k of Object.keys(C.draft)) { const [d, t, c] = k.split('|'); if (C.draft[k] === ctSaved(d, t, +c)) delete C.draft[k]; } }
-    if (code === 'AUTH') { try { localStorage.removeItem(WK_AUTH_KEY); } catch {} }
-    C.msg = code === 'STALE' ? `다른 분이 방금 같은 칸을 바꿨습니다${clash ? ` (지금 ${clash})` : ''} · 그대로 덮어쓰려면 다시 저장, 아니면 그 칸을 고치거나 취소하세요` : code === 'AUTH' ? '대진표 비밀번호가 맞지 않습니다 · 저장을 다시 누르면 비밀번호를 묻습니다' : code === 'INVALID' ? '저장하지 못했습니다 — 저장 서버가 옛 버전이면 코트 예약을 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : code === 'NOPROXY' ? '저장 서버 주소가 없어 관리자만 저장할 수 있습니다' : '저장하지 못했습니다 · 잠시 뒤 다시 시도하세요';
+    const code = res && res.code; const gotDoc = !!(res && res.doc && typeof res.doc === 'object' && Array.isArray(res.doc.courts)); let clash = '', pruned = 0;
+    if (gotDoc) { C.doc = courtsClean(res.doc); clash = changes.filter((ch) => C.doc.times.indexOf(ch.t) >= 0 && ch.c < C.doc.courts.length).filter((ch) => { const now = ctSaved(ch.d, ch.t, ch.c); return now !== ch.p && now !== ch.n; }).map((ch) => `${fmtDate(ch.d)} ${ctTime(ch.t)} ${C.doc.courts[ch.c] || ''} = ${ctSaved(ch.d, ch.t, ch.c) || '비어 있음'}`).join(', '); pruned = ctPruneDraft(); }
+    if (code === 'AUTH') wkForgetKey();
+    C.msg = code === 'STALE' ? `다른 분이 방금 같은 칸을 바꿨습니다${clash ? ` (지금 ${clash})` : ''} · 그대로 덮어쓰려면 다시 저장, 아니면 그 칸을 고치거나 취소하세요` : code === 'AUTH' ? '대진표 비밀번호 확인이 필요합니다 · 저장을 다시 누르면 비밀번호를 묻습니다' : code === 'INVALID' ? (pruned ? `표 구성이 바뀌어 ${pruned}칸을 뺐습니다 · 확인하고 다시 저장하세요` : gotDoc ? '저장할 수 없는 칸이 있습니다 (날짜는 오늘 앞뒤 400일 이내) · 확인하고 다시 저장하세요' : '저장하지 못했습니다 — 저장 서버가 옛 버전이라 코트 예약을 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)') : code === 'NOPROXY' ? '저장 서버 주소가 없어 관리자만 저장할 수 있습니다' : '저장하지 못했습니다 · 잠시 뒤 다시 시도하세요';
     toast(C.msg, 6000); renderCourts();
   }
   $('#tab-courts')?.addEventListener('click', async (e) => {
@@ -2078,25 +2119,29 @@
     if (t.closest('#ct-dtoday')) { ctPickDay(ymdOf()); return; }
     if (t.closest('#ct-dprev')) { ctPickDay(ctDayShift(C.day || ymdOf(), -1)); return; }
     if (t.closest('#ct-dnext')) { ctPickDay(ctDayShift(C.day || ymdOf(), 1)); return; }
-    const dh = t.closest('[data-ct-day]'); if (dh) { ctPickDay(dh.dataset.ctDay); $('.ct-daycard')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
-    if (t.closest('#ct-edit')) { if (!wkCanWrite()) return; if (!adminKey && !(await wkRequireAuth())) return; await courtsRefresh(); C.edit = true; C.msg = ''; renderCourts(); return; } // 최신 내용에서 시작
-    if (t.closest('#ct-cancel')) { if (Object.keys(C.draft).length && !confirm('바꾼 칸을 저장하지 않고 닫을까요?')) return; C.draft = {}; C.edit = false; C.msg = ''; renderCourts(); courtsRefresh(); return; }
+    if (t.closest('#ct-edit')) { if (!wkCanWrite() || C.edit) return; if (!adminKey && !(await wkRequireAuth())) return; await courtsRefresh(); C.edit = true; C.msg = ''; renderCourts(); return; } // 최신 내용에서 시작
+    if (t.closest('#ct-cancel')) { if (C.busy) return; if (Object.keys(C.draft).length && !confirm('바꾼 칸을 저장하지 않고 닫을까요?')) return; C.draft = {}; C.edit = false; C.msg = ''; renderCourts(); courtsRefresh(); return; }
     if (t.closest('#ct-save')) { await courtsSave(); return; }
     const cellEl = t.closest('[data-ct]'); if (cellEl && C.edit && !C.busy) { ctOpenCell(cellEl.dataset.ct); return; }
+    const dh = t.closest('[data-ct-day]'); if (dh) { ctPickDay(dh.dataset.ctDay); $('#ct-daycard')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); return; }
   });
   $('#tab-courts')?.addEventListener('change', (e) => { if (e.target.id === 'ct-day' && e.target.value) ctPickDay(e.target.value); });
-  $('#tab-courts')?.addEventListener('keydown', (e) => { const dh = e.target.closest?.('[data-ct-day]'); if (dh && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ctPickDay(dh.dataset.ctDay); return; } const cellEl = e.target.closest?.('[data-ct]'); if (cellEl && C.edit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ctOpenCell(cellEl.dataset.ct); } });
+  $('#tab-courts')?.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const cellEl = e.target.closest?.('[data-ct]'); if (cellEl) { if (C.edit && !C.busy) { e.preventDefault(); ctOpenCell(cellEl.dataset.ct); } return; } const dh = e.target.closest?.('[data-ct-day]'); if (dh) { e.preventDefault(); ctPickDay(dh.dataset.ctDay); } });
   $('#tab-courts')?.addEventListener('submit', async (e) => { // 관리자: 코트 이름·시간 줄
-    const f = e.target; if (f.id !== 'ct-form-settings') return; e.preventDefault(); if (!adminKey && !WK_MOCK) return; const fd = new FormData(f); const split = (v) => String(v || '').split(/[,\s·/]+/).map((x) => x.trim()).filter(Boolean);
-    const courts = split(fd.get('courts')), times = split(fd.get('times')).map((x) => x.replace(/시$/, '')); if (!courts.length || !times.length) { toast('코트와 시간을 하나 이상 넣으세요'); return; }
-    const mut = (cur) => { const doc = courtsClean({ ...courtsClean(cur), courts, times }); doc.rev = (doc.rev | 0) + 1; doc.updatedAt = new Date().toISOString(); return doc; };
-    let next = null; if (WK_MOCK) { next = mut(await courtsRead()); wkMock.set(CT_PATH, next); } else { const ok = await dataAdminUpdate(CT_PATH, (cur) => (next = mut(cur)), '코트 예약 표 설정'); if (!ok) next = null; }
-    if (next) { C.doc = next; C.draft = {}; toast('표 설정을 저장했습니다'); renderCourts(); }
+    const f = e.target; if (f.id !== 'ct-form-settings') return; e.preventDefault(); if ((!adminKey && !WK_MOCK) || C.busy) return; const fd = new FormData(f);
+    const courts = String(fd.get('courts') || '').split(/[,，]+/).map((x) => x.trim().slice(0, 8)).filter(Boolean).slice(0, 8), times = String(fd.get('times') || '').split(/[,，\s]+/).map((x) => x.trim().replace(/시$/, '')).filter(Boolean);
+    if (!courts.length || !times.length) { toast('코트와 시간을 하나 이상 넣으세요'); return; } if (new Set(courts).size !== courts.length) { toast('코트 이름이 겹칩니다'); return; }
+    // 예약은 코트 순번으로 저장되므로, 이름이 같은 코트는 열을 따라가게 다시 놓는다 (이름만 바꾼 경우는 같은 자리 유지)
+    const mut = (cur) => { const old = courtsClean(cur); const map = courts.map((lb, j) => { const i = old.courts.indexOf(lb); return i >= 0 ? i : (courts.length === old.courts.length && courts.indexOf(old.courts[j]) < 0 ? j : -1); }); const res = {}; for (const [d, rows] of Object.entries(old.res)) { res[d] = {}; for (const [t, arr] of Object.entries(rows)) res[d][t] = map.map((i) => (i >= 0 ? arr[i] || '' : '')); } const doc = courtsClean({ ...old, courts, times, res }); doc.rev = (old.rev | 0) + 1; doc.updatedAt = new Date().toISOString(); return doc; };
+    const count = (d) => Object.values(d.res).reduce((a, rows) => a + Object.values(rows).reduce((b, arr) => b + arr.filter(Boolean).length, 0), 0);
+    const lost = C.doc ? count(C.doc) - count(mut(C.doc)) : 0; if (lost > 0 && !confirm(`이 설정으로 바꾸면 예약 ${lost}칸이 지워집니다. 계속할까요?`)) return;
+    let next = null; C.busy = true; try { if (WK_MOCK) { next = mut(await courtsRead()); wkMock.set(CT_PATH, next); } else { const ok = await dataAdminUpdate(CT_PATH, (cur) => (next = mut(cur)), '코트 예약 표 설정'); if (!ok) next = null; } } finally { C.busy = false; }
+    if (next) { C.doc = next; C.draft = {}; toast('표 설정을 저장했습니다'); renderCourts(); } else toast('표 설정을 저장하지 못했습니다');
   });
   $('#ct-form')?.addEventListener('submit', (e) => { e.preventDefault(); if (C.sel) ctSetDraft(C.sel, $('#ct-name').value); });
   $('#ct-modal')?.addEventListener('click', (e) => { const t = e.target; if (t.id === 'ct-modal' || t.closest('#ct-close')) { ctCloseCell(); return; } if (t.closest('#ct-clear')) { if (C.sel) ctSetDraft(C.sel, ''); return; } const nb = t.closest('[data-ct-name]'); if (nb && C.sel) ctSetDraft(C.sel, nb.dataset.ctName); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && C.sel) ctCloseCell(); });
-  setInterval(() => { if (!document.hidden && $('#tab-courts')?.classList.contains('active') && !C.edit && !C.busy) courtsRefresh(); }, 60000); // 보고 있을 때만 1분마다 갱신
+  setInterval(() => { const tab = $('#tab-courts'); if (document.hidden || !tab?.classList.contains('active') || C.edit || C.busy || C.sel) return; if (tab.querySelector('.ct-settings')?.open || (tab.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName))) return; courtsRefresh(); }, 60000); // 보고 있을 때만 1분마다 갱신 (입력 중·설정을 펼친 동안은 건드리지 않는다)
   // ================= 관리자: 기록 모아보기 (정기 모임 세션 파일 + 지난 대회 아카이브 → 모임별·개인별 집계) =================
   const R = { recs: null, sel: null, busy: false }; const REC_MAX_SESSIONS = 12; // 기록에 넣는 정기 모임 수 (오늘 이전 최근 12회)
   /** 한 경기의 양쪽 선수 id 배열 (대회 아카이브는 unit → playerIds, 팀전은 aPlayers/bPlayers) */
@@ -2159,7 +2204,7 @@
       const who = (r, ids) => ids.map((pid) => { const q = P[pid], a = r.people[pid]; const guest = !q; return `<span class="${guest ? 'gname' : 'pname'} ${(q?.g || a?.g) === 'F' ? 'f' : 'm'}">${guest ? '<span class="gmark">G</span>' : ''}${esc(q?.name || a?.n || pid)}</span>`; }).join(' · ');
       html += `<div class="wkr-detail"><h4>${nm(sel)} <span class="sub">경기 ${sel.games} · 완료 ${sel.done}${sel.w || sel.l ? ` · ${sel.w}승 ${sel.l}패` : ''} · 마지막 ${esc(fmtDate(sel.last))}</span> <button type="button" class="small" id="wkr-close">닫기</button></h4>
         <div class="row wkr-lists"><div><b>짝</b> ${recTopHtml(sel.partners, P, 99)}</div><div><b>상대</b> ${recTopHtml(sel.opps, P, 99)}</div></div>
-        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court ? esc(wkCourtLabel(st, m.court)) : ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court ? esc(wkCourtLabel(st.startTime ? { ...st, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 } : st, m.court, m.slot)) : ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     }
     box.innerHTML = html; const csv = $('#wkr-csv'); if (csv) csv.hidden = !people.length;
   }
@@ -2251,8 +2296,9 @@
     e.preventDefault(); const f = e.target; const fd = new FormData(f); const date = String(fd.get('date') || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
     const st = { startTime: String(fd.get('startTime') || '18:00'), endTime: String(fd.get('endTime') || '22:00'), matchMinutes: Math.max(5, parseInt(fd.get('matchMinutes'), 10) || 30), breakMinutes: 0, courts: 2, minWomenDoubles: Math.max(0, parseInt(fd.get('minWomenDoubles'), 10) || 0) };
     if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime) || toMin(st.startTime) >= toMin(st.endTime)) { alert('시작·종료 시각을 확인하세요.'); return; }
-    { const cb = {}; let mx = 0; for (const h of wkHours(st)) { const v = Math.max(0, Math.min(8, parseInt(fd.get('c_' + h), 10) || 0)); cb[String(h)] = v; mx = Math.max(mx, v); } if (!mx) { alert('코트 수를 입력하세요.'); return; } st.courts = mx; if (new Set(Object.values(cb)).size > 1) st.courtsByHour = cb; } // 시간대마다 코트 수가 다르면 저장
-    { const names = wkCleanCourtNames(String(fd.get('courtNames') || '').split(/[,\s·/]+/).filter(Boolean)); if (names) st.courtNames = names; } // 실제 코트 번호 (예: 5, 7)
+    const blockOf = {}; for (const b of wkCourtBlocks(st)) for (const h of b.hours) blockOf[h] = b.key; // 시각 → 구간 입력칸
+    { const cb = {}; let mx = 0; for (const h of wkHours(st)) { const v = Math.max(Math.max(0, Math.min(8, parseInt(fd.get('c_' + blockOf[h]), 10) || 0)), wkParseCourtList(fd.get('n_' + blockOf[h])).length); cb[String(h)] = v; mx = Math.max(mx, v); } /* 번호를 코트 수보다 많이 적으면 코트 수를 거기에 맞춘다 */ if (!mx) { alert('코트 수를 입력하세요.'); return; } st.courts = mx; if (new Set(Object.values(cb)).size > 1) st.courtsByHour = cb; } // 시간대마다 코트 수가 다르면 저장
+    { const v = wkCourtNamesFromForm(wkHours(st), (h) => fd.get('n_' + blockOf[h]) ?? '', null); if (Array.isArray(v)) st.courtNames = v; else if (v) st.courtNamesByHour = v; } // 실제 코트 번호: 시간대마다 같으면 공통, 다르면 시간대별
     const id = date; const btn = f.querySelector('button[type=submit]'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
       // 같은 날짜 파일이 이미 있으면(목록에 있든, 목록에서 뺐든) 새 설정으로 다시 만들지 묻는다 — 확인하면 참석·대진·완료·점수를 비우고 rev 만 이어 간다 (멤버 폰의 rev 가 뒤로 가지 않도록)
@@ -2299,9 +2345,22 @@
     const f = $('#wk-form-session'); const box = $('#wk-court-hours'); if (!f || !box) return;
     const st = { startTime: f.startTime.value || '18:00', endTime: f.endTime.value || '22:00' }; if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime)) return;
     const prev = {}; box.querySelectorAll('input').forEach((i) => (prev[i.name] = i.value));
-    box.innerHTML = wkHours(st).map((h) => `<label class="inline wk-ch">${h}시 <input name="c_${h}" type="number" min="0" max="8" value="${esc(prev['c_' + h] ?? '2')}" style="width:52px"></label>`).join('');
+    box.innerHTML = wkCourtBlocks(st).map((b) => `<span class="wk-ch"><label class="inline">${b.from}~${b.to}시 <input name="c_${b.key}" type="number" min="0" max="8" value="${esc(prev['c_' + b.key] ?? '2')}" style="width:52px" aria-label="${b.from}~${b.to}시 코트 수">면</label><label class="inline">번호 <input name="n_${b.key}" maxlength="80" value="${esc(prev['n_' + b.key] ?? '')}" placeholder="예: 5, 7" style="width:92px" aria-label="${b.from}~${b.to}시 코트 번호"></label></span>`).join(''); // 코트는 2시간 단위로 예약하므로 구간마다 한 칸
   }
   $('#wk-form-session')?.addEventListener('change', (e) => { if (e.target.name === 'startTime' || e.target.name === 'endTime') wkRenderCourtInputs(); });
+  /** 모임 생성 폼: 고른 날짜의 코트 예약 현황에서 시작·종료 시각과 2시간 구간별 코트 수·번호를 채운다 (예약자가 적힌 코트만). quiet = 예약이 없을 때 조용히 */
+  async function wkFillFromCourts({ quiet = false } = {}) {
+    const f = $('#wk-form-session'); const date = f?.date.value; if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) { if (!quiet) toast('날짜를 먼저 고르세요'); return false; }
+    const doc = courtsClean(await courtsRead()); if (f.date.value !== date) return false; // 읽는 사이 날짜를 바꿨으면 버린다
+    const day = doc.res[date] || {}; const used = (t) => doc.courts.map((_, i) => i).filter((i) => (day[t] || [])[i]); const pad = (n) => String(n).padStart(2, '0');
+    const starts = doc.times.filter((t) => /^\d{1,2}$/.test(t) && used(t).length).map(Number).sort((x, y) => x - y);
+    if (!starts.length) { if (!quiet) toast(`${fmtDate(date)} 코트 예약이 없습니다 · 시간과 코트를 직접 넣거나 코트 예약 탭에서 먼저 넣으세요`, 5000); return false; }
+    f.startTime.value = `${pad(starts[0])}:00`; f.endTime.value = `${pad(Math.min(23, starts[starts.length - 1] + WK_COURT_BLOCK))}:00`; wkRenderCourtInputs(); const parts = [];
+    for (const b of wkCourtBlocks({ startTime: f.startTime.value, endTime: f.endTime.value })) { const idx = used(String(b.b)); const nums = idx.map((i) => doc.courts[i].replace(/번$/, '')).join(', '); const ci = f.querySelector(`[name="c_${b.key}"]`), ni = f.querySelector(`[name="n_${b.key}"]`); if (!ci || !ni) continue; ci.value = String(idx.length); ni.value = nums; parts.push(`${b.from}~${b.to}시 ${idx.length}면${nums ? `(${nums})` : ''}`); }
+    toast(`${fmtDate(date)} 코트 예약을 불러왔습니다 · ${parts.join(' · ')}`, 5000); return true;
+  }
+  $('#wk-fill-courts')?.addEventListener('click', () => wkFillFromCourts());
+  $('#wk-form-session [name=date]')?.addEventListener('change', () => wkFillFromCourts()); // 날짜를 고르면 그 날 예약으로 자동 설정 (예약이 없으면 알리고 그대로 둔다)
   function weeklyBoot() { const f = $('#wk-form-session [name=date]'); if (f && !f.value) { const d = new Date(); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); f.value = ymdOf(d); } wkRenderCourtInputs(); weeklyRefresh(); } // 기본값: 다음 토요일
 
   // ================= ⑧ 대회 페이지 (이번 대회 + 지난 대회 보관 — 대진과 참가자만, 점수·순위·NTRP 는 저장하지 않음) =================

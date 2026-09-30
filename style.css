@@ -531,7 +531,7 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 .ct-cell.on.c0, .ct-swatch.c0 { background: #dde7f4; } .ct-cell.on.c1, .ct-swatch.c1 { background: #e1eed8; } .ct-cell.on.c2, .ct-swatch.c2 { background: #f7e1d4; }
 .ct-cell.out { opacity: .45; } .ct-cell.today:not(.on) { background: color-mix(in srgb, var(--accent) 5%, #fff); }
 .ct-cell.me { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
-.ct-body.editing .ct-cell { cursor: pointer; } .ct-body.editing .ct-cell:hover, .ct-body.editing .ct-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+#tab-courts.ct-editing .ct-cell { cursor: pointer; } #tab-courts.ct-editing .ct-cell:hover, #tab-courts.ct-editing .ct-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ct-cell .plus { color: #c6cbc3; font-weight: 400; }
 .ct-cell.chg { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .ct-cell.chg:not(.on) { background: repeating-linear-gradient(135deg, #fff, #fff 5px, var(--accent-tint) 5px, var(--accent-tint) 10px); }
@@ -557,3 +557,10 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 
 .ct-table thead .ct-courts .ct-lbl { background: #fafaf7; border-bottom: 1px solid #e6e8e3; }
 .ct-table .ct-day { width: 66px; white-space: nowrap; }
+
+.ct-daycard[hidden] { display: none; }
+.ct-table.ct-7 { min-width: 1000px; } .ct-table.ct-7 th, .ct-table.ct-7 td { font-size: 13px; }
+
+.wk-ch { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 8px; background: #fff; } .wk-ch label.inline { font-family: var(--body); font-size: 13px; } .wk-ch input { padding: 3px 6px; }
+
+.ct-table .ct-time { font-size: 14px; white-space: nowrap; } .ct-daytable .ct-lbl, .ct-wide .ct-table .ct-lbl { width: 70px; }

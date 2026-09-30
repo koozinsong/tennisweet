@@ -175,8 +175,7 @@
         <label class="inline">종료 <input name="endTime" type="time" value="22:00" style="width:auto"></label>
         <label class="inline">경기 <select name="matchMinutes" style="width:auto"><option value="30">30분</option><option value="60">60분</option></select></label>
         <label class="inline">여복 최소 <input name="minWomenDoubles" type="number" min="0" max="5" value="1" style="width:56px"></label>
-        <span class="wk-ch-row"><span class="sub">시간대별 코트 수</span><span id="wk-court-hours"></span></span>
-        <label class="inline">코트 번호 <input name="courtNames" placeholder="예: 5, 7 (비우면 1, 2…)" style="width:170px"></label>
+        <span class="wk-ch-row"><span class="sub">2시간 구간별 코트 수 · 코트 번호 <small>(날짜를 고르면 코트 예약에서 자동으로 채웁니다 · 번호를 비우면 1, 2…)</small></span><span id="wk-court-hours"></span><button type="button" class="small" id="wk-fill-courts">코트 예약에서 가져오기</button></span>
         <button type="submit" class="primary">🆕 정기 모임 만들기</button>
       </form>
       <div id="wk-admin-list"></div>
@@ -341,6 +340,18 @@
 <!-- ============ ⑧ 코트 예약 현황 ============ -->
 <section id="tab-courts" class="tab">
   <h2>코트 예약</h2>
+  <div id="ct-top"></div>
+  <div class="ct-daycard" id="ct-daycard" hidden>
+    <div class="ct-dayhead">
+      <button type="button" class="small" id="ct-dprev" aria-label="전날">◀</button>
+      <b class="ct-dayname" id="ct-dayname"></b>
+      <button type="button" class="small" id="ct-dnext" aria-label="다음 날">▶</button>
+      <button type="button" class="small" id="ct-dtoday">오늘</button>
+      <label class="inline ct-dpick">날짜 <input type="date" id="ct-day" min="2000-01-01" max="2100-12-31"></label>
+      <span class="sub" id="ct-daycount"></span>
+    </div>
+    <div id="ct-dayview"></div>
+  </div>
   <div id="ct-view"></div>
 </section>
 
