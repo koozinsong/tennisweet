@@ -81,6 +81,7 @@
     <div class="cover-title"><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div>
     <button data-go="weekly" class="menu-main" id="cover-main"><span class="mm-row"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</span><small id="cover-weekly" class="sub"></small></button>
     <div class="cover-grid">
+      <button data-go="courts" class="span2"><svg class="ic"><use href="#i-court"/></svg>코트 예약</button>
       <button data-go="players"><svg class="ic"><use href="#i-users"/></svg>선수</button>
       <button data-go="tournament" id="cover-tour"><svg class="ic"><use href="#i-trophy"/></svg><span id="cover-tour-text">대회</span></button>
       <button data-go="admin" class="only-view"><svg class="ic"><use href="#i-lock"/></svg>관리자</button>
@@ -91,6 +92,7 @@
   <button class="brand" id="btn-home" title="첫 화면으로"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
   <nav class="tabs" aria-label="화면 선택">
     <button data-tab="weekly"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</button>
+    <button data-tab="courts"><svg class="ic"><use href="#i-court"/></svg>코트 예약</button>
     <button data-tab="players" class="active"><svg class="ic"><use href="#i-users"/></svg>선수</button>
     <button data-tab="setup" class="tab-sub"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button>
     <button data-tab="units" class="tab-sub"><svg class="ic"><use href="#i-team"/></svg>팀 구성</button>
@@ -148,6 +150,15 @@
     <label>비밀번호 <input type="password" id="wkpw-input" autocomplete="current-password" required></label>
     <div class="row"><button type="submit" class="primary">확인</button><button type="button" id="wkpw-cancel">취소</button></div>
     <div class="err" id="wkpw-err"></div>
+  </form>
+</div>
+<div id="ct-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="ct-modal-title" hidden>
+  <form class="modal-card" id="ct-form" autocomplete="off">
+    <h3 id="ct-modal-title">코트 예약</h3>
+    <label>예약한 사람 <input id="ct-name" maxlength="12" placeholder="이름을 누르거나 직접 입력 (비우면 예약 없음)"></label>
+    <div class="chips ct-names" id="ct-name-chips"></div>
+    <div class="row"><button type="submit" class="primary">적용</button><button type="button" id="ct-clear">비우기</button><button type="button" id="ct-close">닫기</button></div>
+    <p class="hint">적용한 칸은 표에 점선으로 표시되고, 위의 [저장]을 눌러야 모두에게 반영됩니다.</p>
   </form>
 </div>
 
@@ -327,6 +338,12 @@
 </section>
 
 <!-- ============ ⑧ 대회 (이번 대회 · 지난 대회 보관) ============ -->
+<!-- ============ ⑧ 코트 예약 현황 ============ -->
+<section id="tab-courts" class="tab">
+  <h2>코트 예약</h2>
+  <div id="ct-view"></div>
+</section>
+
 <section id="tab-tournament" class="tab">
   <h2>대회</h2>
   <div id="tour-view"></div>

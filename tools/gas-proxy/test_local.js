@@ -20,7 +20,7 @@ const call = (body) => JSON.parse(ctx.__doPost({ postData: { contents: JSON.stri
 const base = { v: 1, club: 'tennisweet', session: '2026-09-20' };
 const AUTH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 (Code.gs WK_PW_HASH)
 const results = [];
-{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 4]); }
+{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 5]); }
 results.push(['bad club', call({ ...base, club: 'x', op: 'set' }).code === 'INVALID']);
 results.push(['no session', call({ ...base, session: '2026-01-01', op: 'set', path: 'attendance.a', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }).code === 'NOSESSION']);
 let r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '19:00', until: '22:00' }, by: 'h0teikh' }); results.push(['attend ok', r.ok && r.rev === 1 && r.doc.attendance.h0teikh.n === '송국진']);
@@ -115,6 +115,30 @@ r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: 'x', g: '
   const a = run(appCtx), b = run(gsCtx); results.push(['app.js ↔ Code.gs applyWeeklyOp parity', a === b]); if (a !== b) console.log('APP', a, '\nGS ', b);
   results.push(['parity sequence exercised codes', /INVALID/.test(a) && /STALE/.test(a) && /"ok","ok"/.test(a)]);
   { const j = JSON.parse(a); const tail = j.codes.slice(-12); results.push(['parity: score seq codes', JSON.stringify(tail) === JSON.stringify(['ok', 'ok', 'INVALID', 'INVALID', 'INVALID', 'ok', 'ok', 'ok', 'ok', 'ok', 'INVALID', 'ok'])]); const sn = j.snaps.slice(-4); results.push(['parity: edit clears only edited score', sn[0] === '{"s0c1":{"a":6,"b":4},"s1c1":{"a":3,"b":5}}' && sn[1] === '{"s0c1":{"a":6,"b":4}}']); results.push(['parity: partial regen keeps slot0 score, null clears', sn[2] === '{"s0c1":{"a":6,"b":4}}' && sn[3] === '{}']); }
+}
+// ---- 코트 예약 (op courts → data/courts.json) ----
+{ const cb = { v: 1, club: 'tennisweet', op: 'courts' }; const P = 'data/courts.json';
+  let c = call({ ...cb, value: [{ d: '2026-10-01', t: '20', c: 0, n: '정배근' }] }); results.push(['courts: no auth → AUTH', c.code === 'AUTH' && !store[P]]);
+  c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-01', t: '20', c: 0, n: ' 정배근 ', p: '' }, { d: '2026-10-01', t: '18', c: 1, n: '김지선' }], by: 'me' }); results.push(['courts: creates file with defaults', c.ok && c.rev === 1 && JSON.stringify(store[P].res) === '{"2026-10-01":{"18":["","김지선",""],"20":["정배근","",""]}}' && store[P].courts.length === 3 && store[P].times.join() === '18,20']);
+  results.push(['courts: gh-pages copy in sync', JSON.stringify(store['gh:' + P]) === JSON.stringify(store[P])]);
+  c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-01', t: '20', c: 0, n: '윤성환', p: '' }] }); results.push(['courts: stale cell → STALE + doc', c.code === 'STALE' && c.doc && c.doc.res['2026-10-01']['20'][0] === '정배근' && store[P].rev === 1]);
+  c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-01', t: '20', c: 0, n: '윤성환', p: '정배근' }, { d: '2026-10-01', t: '18', c: 1, n: '', p: '김지선' }] }); results.push(['courts: replace + clear (empty row removed)', c.ok && c.rev === 2 && JSON.stringify(store[P].res) === '{"2026-10-01":{"20":["윤성환","",""]}}']);
+  c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-01', t: '20', c: 0, n: '윤성환', p: '정배근' }] }); results.push(['courts: same value despite stale p → ok', c.ok && c.rev === 3]);
+  const bad = [[{ d: '2026-10-1', t: '20', c: 0, n: 'x' }], [{ d: '2026-10-01', t: '19', c: 0, n: 'x' }], [{ d: '2026-10-01', t: '20', c: 3, n: 'x' }], [{ d: '2026-10-01', t: '20', c: 0.5, n: 'x' }], [{ d: '2026-10-01', t: '20', c: 0, n: 5 }], [], 'x', Array.from({ length: 81 }, () => ({ d: '2026-10-01', t: '20', c: 0, n: 'x' }))];
+  results.push(['courts: invalid changes rejected', bad.every((v) => call({ ...cb, auth: AUTH, value: v }).code === 'INVALID') && store[P].rev === 3]);
+  c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-02', t: '20', c: 2, n: '1234567890123456' }] }); results.push(['courts: name clipped to 12', c.ok && store[P].res['2026-10-02']['20'][2] === '123456789012']);
+  conflictOnce = true; const before = putCalls; c = call({ ...cb, auth: AUTH, value: [{ d: '2026-10-05', t: '18', c: 0, n: 'A' }] }); results.push(['courts: 409 retry', c.ok && putCalls - before === 2]);
+  results.push(['courts: session ops unaffected', call({ ...base, op: 'ping' }).ok === true]);
+  // app.js ↔ Code.gs 동등성 (courtsClean · applyCourtsChanges)
+  const app = fs.readFileSync(__dirname + '/../../app.js', 'utf8'); const fn = app.slice(app.indexOf('  function courtsClean(raw) {'), app.indexOf('  // ---- /courts shared ----'));
+  const appCtx = vm.createContext({ Date }); vm.runInContext(fn + '\nglobalThis.__clean = courtsClean; globalThis.__apply = applyCourtsChanges;', appCtx);
+  const gsCtx = vm.createContext({ ...gas }); vm.runInContext(fs.readFileSync(__dirname + '/Code.gs', 'utf8') + '\nglobalThis.__clean = courtsClean; globalThis.__apply = applyCourtsChanges;', gsCtx);
+  const raws = [null, 'x', { rev: '3', courts: [' A ', '', 'B', 5], times: ['18', '18', 'x', '7:30', 20], res: { '2026-10-01': { '18': ['  가 ', null, '나', '다'], '20': 'x', '21': ['z'] }, 'bad': { '18': ['q'] }, '2026-10-02': { '18': ['', ''] }, '2026-10-03': null } }, { courts: [], times: [], res: [] }];
+  const seq = [[{ d: '2026-10-01', t: '18', c: 0, n: '가', p: '' }], [{ d: '2026-10-01', t: '18', c: 0, n: '나', p: '' }], [{ d: '2026-10-01', t: '18', c: 0, n: '', p: '가' }], [{ d: '2026-10-09', t: '7:30', c: 1, n: 'x' }], [{ d: '2026-10-09', t: '18', c: 9, n: 'x' }], 'bad'];
+  const run = (ctx) => JSON.stringify(raws.map((raw) => { const doc = ctx.__clean(raw); const codes = seq.map((ch) => { const r = ctx.__apply(doc, ch); return r.ok ? 'ok' : r.code; }); delete doc.updatedAt; return { doc, codes }; }));
+  const a = run(appCtx), b = run(gsCtx); results.push(['courts: app.js ↔ Code.gs parity', a === b]); if (a !== b) console.log('APP', a, '\nGS ', b);
+  results.push(['courts: parity exercised ok/STALE/INVALID', /"ok"/.test(a) && /STALE/.test(a) && /INVALID/.test(a)]);
+  const seed = JSON.parse(fs.readFileSync(__dirname + '/../../data/courts.json', 'utf8')); const cs = appCtx.__clean(seed); results.push(['courts: seed file survives clean unchanged', JSON.stringify(cs.res) === JSON.stringify(seed.res) && cs.rev === seed.rev]);
 }
 for (const [name, ok] of results) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 process.exit(results.every(([, ok]) => ok) ? 0 : 1);

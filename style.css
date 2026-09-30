@@ -503,3 +503,57 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 .wk-cn-form input { text-align: center; }
 
 .hbtn.half { font-size: 15px; letter-spacing: -.02em; }
+
+/* ============ 코트 예약 현황 ============ */
+.cover-grid button.span2 { grid-column: span 2; }
+.ct-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
+.ct-nav { display: flex; align-items: center; gap: 8px; }
+.ct-nav h3 { margin: 0; font-size: 19px; color: var(--court-deep); text-transform: none; letter-spacing: -.01em; white-space: nowrap; }
+.ct-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ct-actions .ic { width: 13px; height: 13px; margin-right: 4px; }
+.ct-legend { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; }
+.ct-swatch { padding: 1px 9px; border-radius: 999px; font-weight: 700; color: var(--ink); }
+.ct-table { border-collapse: separate; border-spacing: 0; width: 100%; background: #fff; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; table-layout: fixed; }
+.ct-table th, .ct-table td { border-right: 1px solid #e6e8e3; border-bottom: 1px solid #e6e8e3; padding: 0; text-align: center; font-size: 13px; height: 38px; }
+.ct-table tr > :last-child { border-right: 0; }
+.ct-table .ct-dow { background: var(--court-deep); color: #fff; font-weight: 700; font-size: 14px; height: 34px; border-right-color: rgba(255,255,255,.22); border-bottom: 0; }
+.ct-table thead .ct-lbl { background: var(--court-deep); border-bottom: 0; }
+.ct-table .ct-lbl { width: 46px; color: var(--muted); font-weight: 600; font-size: 12px; background: #fafaf7; }
+.ct-table .ct-time, .ct-table .ct-day { color: var(--ink); font-family: var(--display); font-size: 16px; font-weight: 700; }
+.ct-table .ct-day { font-family: var(--body); font-size: 12px; font-weight: 500; width: 58px; line-height: 1.15; } .ct-table .ct-day b { font-size: 14px; margin-right: 1px; }
+.ct-dates th { background: #f1f2ee; height: 32px; border-top: 6px solid var(--bg); }
+.ct-table tbody:first-of-type .ct-dates th { border-top: 0; }
+.ct-date { font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--court-deep); letter-spacing: .01em; }
+.ct-date.out, .ct-day.out { color: #b9bdb6; } .ct-date.today, .ct-day.today { color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent); }
+.ct-courts th { color: var(--muted); font-weight: 500; font-size: 12px; height: 26px; background: #fff; }
+.ct-table .first { border-left: 2px solid #9fb0a6; }
+.ct-cell { color: var(--ink); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-cell.on.c0, .ct-swatch.c0 { background: #dde7f4; } .ct-cell.on.c1, .ct-swatch.c1 { background: #e1eed8; } .ct-cell.on.c2, .ct-swatch.c2 { background: #f7e1d4; }
+.ct-cell.out { opacity: .45; } .ct-cell.today:not(.on) { background: color-mix(in srgb, var(--accent) 5%, #fff); }
+.ct-cell.me { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+.ct-body.editing .ct-cell { cursor: pointer; } .ct-body.editing .ct-cell:hover, .ct-body.editing .ct-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ct-cell .plus { color: #c6cbc3; font-weight: 400; }
+.ct-cell.chg { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.ct-cell.chg:not(.on) { background: repeating-linear-gradient(135deg, #fff, #fff 5px, var(--accent-tint) 5px, var(--accent-tint) 10px); }
+.ct-wide { display: none; } .ct-narrow { display: grid; gap: 10px; }
+.ct-week .ct-cell, .ct-week th { font-size: 12.5px; }
+@media (min-width: 860px) { .ct-wide { display: block; } .ct-narrow { display: none; } .ct-table th, .ct-table td { font-size: 14px; height: 42px; } .ct-table .ct-lbl { width: 58px; } }
+.ct-tally { margin-top: 10px; } .ct-settings { margin-top: 12px; }
+.ct-names { margin: 8px 0 4px; } .ct-names .chip { border: 0; cursor: pointer; font-size: 14px; padding: 6px 12px; }
+
+/* 코트 예약: 날짜별 보기 */
+.ct-daycard { background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px 14px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.ct-dayhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ct-dayname { font-family: var(--display); font-size: 24px; letter-spacing: .01em; color: var(--court-deep); min-width: 96px; text-align: center; }
+.ct-dayname .tag { font-family: var(--body); font-size: 11px; vertical-align: 4px; }
+.ct-dpick input { width: auto; padding: 4px 6px; }
+#ct-dtoday.on { background: var(--court); border-color: var(--court-deep); color: #fff; }
+.ct-daytable th, .ct-daytable td { height: 48px; font-size: 16px; }
+.ct-daytable .ct-courts th { height: 30px; font-size: 13px; }
+.ct-daytable .ct-cell.today:not(.on) { background: #fff; }
+.ct-monthtitle { margin: 0 0 6px; font-size: 14px; color: var(--muted); font-weight: 600; }
+.ct-date[data-ct-day], .ct-day[data-ct-day] { cursor: pointer; }
+.ct-date.sel { background: var(--accent-tint); color: var(--accent); } .ct-table .ct-day.sel { background: var(--accent-tint); color: var(--accent); }
+
+.ct-table thead .ct-courts .ct-lbl { background: #fafaf7; border-bottom: 1px solid #e6e8e3; }
+.ct-table .ct-day { width: 66px; white-space: nowrap; }
