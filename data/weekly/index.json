@@ -1,18 +1,8 @@
 {
  "v": 1,
- "sessions": [
-  {
-   "id": "2026-10-01",
-   "date": "2026-10-01",
-   "courts": 3,
-   "matchMinutes": 30,
-   "startTime": "18:00",
-   "endTime": "22:00",
-   "courtsLabel": "코트 18~20시 1면 · 20~22시 3면"
-  }
- ],
+ "sessions": [],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-09-30T16:05:51.212Z",
+ "updatedAt": "2026-09-30T16:20:30.216Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
