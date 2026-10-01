@@ -521,10 +521,32 @@
     if (GEN_HOOK) { // 정기 모임: 상위 12개 판을 각각 교체 탐색으로 보정(시간대별 탐욕 선발이 놓친 판 — 예: 연속 휴식 1회 대신 전원 같은 경기 수)한 뒤 가장 좋은 판
       pool.sort((a, b) => a.sc - b.sc);
       for (const c of pool.slice(0, 12)) { repairSchedule(c.sch, s); c.sc = scheduleScore(c.sch); }
-      pool.sort((a, b) => a.sc - b.sc); best = pool[0].sch;
+      pool.sort((a, b) => a.sc - b.sc);
+      const top = pool.slice(0, 3); for (const c of top) { balanceSchedule(c.sch, s); c.sc = scheduleScore(c.sch) + balancePenalty(c.sch); } // 마지막 균형 조정: 다 짠 판에서 같은 시간대 안의 자리만 바꿔 양 팀 레벨 합을 맞춘다 (누가 언제 뛰는지는 그대로)
+      top.sort((a, b) => a.sc - b.sc); best = top[0].sch;
     }
     best.seed = seed; // 재현용: 이 번호로 다시 생성하면 같은 판
     return best;
+  }
+  /** 양 팀 레벨 합(여성은 −0.5 보정된 값) 차이가 큰 경기의 벌점 — 마지막 균형 조정의 목표. 혼복(양쪽 여 1)은 '남자 급 맞추기' 원칙이 먼저라 제외 */
+  function balancePenalty(sch) {
+    let p = 0; for (const m of sch.matches) { const A = (m.aIds || []).map((x) => x.replace(/^p:/, '')), B = (m.bIds || []).map((x) => x.replace(/^p:/, '')); if (A.length !== 2 || B.length !== 2) continue;
+      const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa === 1 && wb === 1) continue;
+      const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); if (d >= 1.5) p += 2400; else if (d >= 1) p += 800; } // 1.0 이상 차이는 파트너·상대 반복(300·100)보다 무겁게
+    return p;
+  }
+  /** 마지막 균형 조정(정기 모임): 누가 어느 시간대에 뛰는지는 그대로 두고, 같은 시간대 안에서 같은 성별 두 사람의 자리를 바꿔 본다 (같은 코트 = 조 변경, 다른 코트 = 맞교환). 판 점수 + 균형 벌점이 가장 많이 줄어드는 교환을 반복 채택. 이미 시작한 시간대는 손대지 않는다 */
+  function balanceSchedule(sch, s) {
+    const from = GEN_HOOK ? GEN_HOOK.fromSlot | 0 : 0; const J = () => scheduleScore(sch) + balancePenalty(sch); let base = J();
+    const slots = [...new Set(sch.matches.map((m) => m.slot))].filter((sl) => sl >= from).sort((a, b) => a - b);
+    for (let round = 0; round < 3; round++) { let any = false;
+      for (const sl of slots) { const seats = []; for (const m of sch.matches) if (m.slot === sl) for (const side of ['aIds', 'bIds']) for (let i = 0; i < 2; i++) seats.push({ m, side, i });
+        for (let guard = 0; guard < 12; guard++) { let bestGain = 1e-9, pick = null;
+          for (let x = 0; x < seats.length; x++) for (let y = x + 1; y < seats.length; y++) { const a = seats[x], b = seats[y]; if (a.m === b.m && a.side === b.side) continue; const pa = a.m[a.side][a.i], pb = b.m[b.side][b.i]; if (gOf(pa.slice(2)) !== gOf(pb.slice(2))) continue; // 성별이 같아야 코트 종류 유지
+            a.m[a.side][a.i] = pb; b.m[b.side][b.i] = pa; const sc = J(); a.m[a.side][a.i] = pa; b.m[b.side][b.i] = pb; if (base - sc > bestGain) { bestGain = base - sc; pick = { a, b, sc }; } }
+          if (!pick) break; const { a, b, sc } = pick; const pa = a.m[a.side][a.i]; a.m[a.side][a.i] = b.m[b.side][b.i]; b.m[b.side][b.i] = pa; base = sc; any = true; }
+      }
+      if (!any) break; }
   }
   /** 생성 뒤 보정(정기 모임): 각 시간대에서 쉬는 사람 ↔ 같은 성별의 뛰는 사람을 바꿔 보고 전체 점수(scheduleScore: 경기 수·규칙·중복·휴식)가 좋아지면 채택. 이미 시작한 시간대(fromSlot 이전)는 손대지 않는다 */
   /** 정기 모임 상위 남복: 남자 4명이 모두 상위 4번째 레벨(th) 이상이고 th 보다 높은 남자는 전원 포함된 남복 경기의 id 목록 (규칙이 성립하지 않으면 null) */

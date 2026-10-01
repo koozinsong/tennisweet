@@ -41,7 +41,7 @@ function analyze(d, sch) {
     if (resting.length && early.length) { const zero = av.filter((k) => !played.has(k)); out.lateRest.push(`${hhmm(T0(s, i))} 쉼 ${resting.map((k) => att[k].n)} / 이미 뛴 ${early.map((k) => att[k].n)}${zero.length <= 4 * ms.length ? '' : ' [자리 부족 — 불가피]'}`); }
     for (const k of playing) { games[k]++; played.add(k); }
     const tag = (m) => { const g = (x) => (att[x.slice(2)]?.g === 'F' ? 'F' : 'M'); const a = m.aIds.map(g).sort().join(''), b = m.bIds.map(g).sort().join(''); return a === b ? { FF: '여복', FM: '혼복', MM: '남복' }[a] : '잡복'; };
-    for (const m of ms) out.lines.push(`${hhmm(T0(s, i))} c${m.court} ${tag(m)}  ${m.aIds.map(nm).join('+')} vs ${m.bIds.map(nm).join('+')}`);
+    for (const m of ms) { const lv = (x) => { const v = T.W.index?.levels?.[x.slice(2)]; return Number.isFinite(v) ? v : (att[x.slice(2)]?.g === 'F' ? 3 : 3.5); }; const sa = m.aIds.reduce((a, x) => a + lv(x), 0), sb = m.bIds.reduce((a, x) => a + lv(x), 0); const dd = Math.abs(sa - sb); out.diffSum = (out.diffSum || 0) + dd; if (dd >= 1 && tag(m) !== '혼복') (out.big ??= []).push(`${hhmm(T0(s, i))} c${m.court} ${tag(m)} ${sa} vs ${sb}`); out.lines.push(`${hhmm(T0(s, i))} c${m.court} ${tag(m)}  ${m.aIds.map(nm).join('+')}(${sa}) vs ${m.bIds.map(nm).join('+')}(${sb})${dd >= 1 ? '  ◀ 차이 ' + dd : ''}`); }
   }
   const on = []; for (let i = 0; i < n; i++) on[i] = Math.min(courtsAt(s, i), Math.floor(ids.filter((k) => avail(att[k], s, i)).length / 4)) >= 1; // 코트가 서는 시간대 (4명 이상)
   const slotsOf = (k) => { let c = 0; for (let i = 0; i < n; i++) if (on[i] && avail(att[k], s, i)) c++; return c; };
@@ -58,7 +58,7 @@ function report(name, d, levels, gens = [1]) {
     let sch; const t0 = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, g); } catch (e) { console.log(`gen${g} ERROR ${e.message}`); allOk = false; continue; }
     const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false; // 여복 미달(ffMiss)은 경기 수 균등이 더 먼저라 생길 수 있어 참고로만 표시
     console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 2경기차 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
-    console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과');
+    console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과', '| 팀 합 차이 합계', a.diffSum || 0, '| 1.0 이상(혼복 제외):', JSON.stringify(a.big || []));
     console.log('   인당(이름 시간 경기/있는 시간대):', a.table.map((r) => `${r.n} ${r.when} ${r.games}/${r.slots}`).join(' · '));
     if (process.env.LINES || bad) console.log('   ' + a.lines.join('\n   '));
   }
@@ -79,13 +79,13 @@ if (mode === 'live') {
   run('남 4 먼저 + 여 3 나중', [...[1, 2, 3, 4].map((i) => M('m' + i, '19:00', '21:00')), F('a1', '20:00', '21:00'), F('a2', '20:00', '21:00'), F('a3', '20:00', '21:00')], { endTime: '21:00', matchMinutes: 60, courts: 3 });
 } else if (mode === 'fuzz') {
   const N = +process.argv[3] || 40; let a = 7; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
-  const tally = { runs: 0, dup: 0, bad: 0, empty: 0, lateRest: 0, gap2: 0, guest: 0, error: 0 }; const samples = []; const log = console.log;
+  const tally = { runs: 0, dup: 0, bad: 0, empty: 0, lateRest: 0, gap2: 0, guest: 0, error: 0, bigDiffMatches: 0, matches: 0, ms: 0 }; const samples = []; const log = console.log;
   for (let r = 0; r < N; r++) {
     const mm = pick([30, 60]); const courts = pick([1, 2, 3]); const n = 5 + Math.floor(rnd() * 14); const times = mm === 60 ? ['19:00', '20:00', '21:00'] : ['19:00', '19:30', '20:00', '20:30', '21:00']; const people = [];
     for (let i = 0; i < n; i++) { const g = rnd() < 0.4 ? 'F' : 'M'; const from = pick(times.slice(0, -1)); const until = rnd() < 0.7 ? '22:00' : pick(times.filter((t) => t > from).concat(['22:00'])); people.push(P((g === 'F' ? 'w' : 'm') + i, g, from, until, pick(g === 'F' ? [2.5, 3, 3.5] : [3, 3.5, 4]), rnd() < 0.1)); }
     const { doc: d, levels } = mkDoc(people, { matchMinutes: mm, courts, minWomenDoubles: pick([0, 1]) }); T.W.index = { levels }; T.W.id = d.id; tally.runs++;
-    let sch; try { sch = T.generateWeeklySchedule(d, null, 0, 1); } catch (e) { if (!/배정 가능한 경기가 없습니다/.test(e.message)) { tally.error++; samples.push([r, 'ERR', e.message]); } continue; }
-    const x = analyze(d, sch); if (x.dup.length) { tally.dup++; samples.push([r, 'dup', x.dup]); } if (x.bad.length) { tally.bad++; samples.push([r, 'bad', x.bad]); } if (x.empty.length) { tally.empty++; samples.push([r, 'empty', x.empty, people.map((p) => `${p.g}${p.from}-${p.until}`).join(' ')]); }
+    let sch; const tt = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, 1); tally.ms += Date.now() - tt; } catch (e) { if (!/배정 가능한 경기가 없습니다/.test(e.message)) { tally.error++; samples.push([r, 'ERR', e.message]); } continue; }
+    const x = analyze(d, sch); tally.bigDiffMatches += (x.big || []).length; tally.matches += sch.matches.length; if (x.dup.length) { tally.dup++; samples.push([r, 'dup', x.dup]); } if (x.bad.length) { tally.bad++; samples.push([r, 'bad', x.bad]); } if (x.empty.length) { tally.empty++; samples.push([r, 'empty', x.empty, people.map((p) => `${p.g}${p.from}-${p.until}`).join(' ')]); }
     if (x.lateRest.some((l) => !/불가피/.test(l))) { tally.lateRest++; samples.push([r, 'lateRest', x.lateRest]); } if (x.gap2.length) { tally.gap2++; samples.push([r, 'gap2', x.gap2, people.map((p) => `${p.g}${p.from}-${p.until}`).join(' '), `courts ${courts} mm ${mm}`]); } if (x.guestBehind.length) { tally.guest++; samples.push([r, 'guest', x.guestBehind]); } if ((d.settings.minWomenDoubles | 0) >= 1 && x.ffPossible && x.ff < 1) { tally.ffMiss = (tally.ffMiss || 0) + 1; samples.push([r, 'ffMiss', people.map((p) => `${p.g}${p.from}-${p.until}`).join(' '), `courts ${courts} mm ${mm}`]); }
   }
   log('\n##### FUZZ', JSON.stringify(tally)); for (const s of samples.slice(0, 14)) log('  ', JSON.stringify(s).slice(0, 600));
