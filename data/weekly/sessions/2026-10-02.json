@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 4,
+ "rev": 5,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -35,11 +35,18 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:q5s2g9": {
+   "n": "뿌꾸",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-01T23:49:56.535Z",
- "updatedAt": "2026-10-01T23:51:51.599Z"
+ "updatedAt": "2026-10-01T23:52:11.930Z"
 }
