@@ -3,7 +3,7 @@
  "id": "2026-10-01",
  "date": "2026-10-01",
  "status": "open",
- "rev": 59,
+ "rev": 60,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -147,11 +147,11 @@
   }
  },
  "schedule": {
-  "seed": 323034,
+  "seed": 345045,
   "gen": 7,
   "fromSlot": 0,
-  "inputHash": "14xhvzw",
-  "at": "2026-10-01T07:41:11.683Z",
+  "inputHash": "i8nltl",
+  "at": "2026-10-01T07:47:41.456Z",
   "by": "t136ug1",
   "matches": [
    {
@@ -159,12 +159,12 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
+     "p:243v8q3",
      "p:6kn0dof"
     ],
     "bIds": [
-     "p:k45yesm",
-     "p:243v8q3"
+     "p:t4lcpvt",
+     "p:k45yesm"
     ]
    },
    {
@@ -172,12 +172,12 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:k45yesm",
+     "p:t4lcpvt",
      "p:6kn0dof"
     ],
     "bIds": [
-     "p:243v8q3",
-     "p:t4lcpvt"
+     "p:k45yesm",
+     "p:243v8q3"
     ]
    },
    {
@@ -185,12 +185,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
+     "p:k45yesm",
      "p:243v8q3"
     ],
     "bIds": [
-     "p:t5tmwl5",
-     "p:k45yesm"
+     "p:t4lcpvt",
+     "p:t5tmwl5"
     ]
    },
    {
@@ -202,8 +202,8 @@
      "p:g:1d6hd9l"
     ],
     "bIds": [
-     "p:g:m1tm2n",
-     "p:g:19m23oi"
+     "p:g:1ge2qao",
+     "p:g:y6mm56"
     ]
    },
    {
@@ -211,12 +211,12 @@
     "slot": 4,
     "court": 3,
     "aIds": [
-     "p:g:y6mm56",
-     "p:df9dtam"
+     "p:g:19m23oi",
+     "p:18qv5bz"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:g:1ge2qao"
+     "p:g:m1tm2n",
+     "p:df9dtam"
     ]
    },
    {
@@ -224,12 +224,12 @@
     "slot": 5,
     "court": 1,
     "aIds": [
-     "p:45sqltb",
+     "p:t5tmwl5",
      "p:ev1tqiv"
     ],
     "bIds": [
-     "p:g:m1tm2n",
-     "p:g:13sylrj"
+     "p:g:1ge2qao",
+     "p:uzqomod"
     ]
    },
    {
@@ -237,12 +237,12 @@
     "slot": 5,
     "court": 2,
     "aIds": [
-     "p:t5tmwl5",
-     "p:g:19m23oi"
+     "p:6kn0dof",
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:g:1ge2qao",
-     "p:6kn0dof"
+     "p:g:y6mm56",
+     "p:g:m1tm2n"
     ]
    },
    {
@@ -250,12 +250,12 @@
     "slot": 5,
     "court": 3,
     "aIds": [
-     "p:df9dtam",
-     "p:g:1d6hd9l"
+     "p:g261xhp",
+     "p:g:13sylrj"
     ],
     "bIds": [
-     "p:18qv5bz",
-     "p:g:y6mm56"
+     "p:g:19m23oi",
+     "p:g:1d6hd9l"
     ]
    },
    {
@@ -263,12 +263,12 @@
     "slot": 6,
     "court": 1,
     "aIds": [
-     "p:t5tmwl5",
-     "p:45sqltb"
+     "p:45sqltb",
+     "p:ev1tqiv"
     ],
     "bIds": [
-     "p:ev1tqiv",
-     "p:g:19m23oi"
+     "p:g261xhp",
+     "p:g:1d6hd9l"
     ]
    },
    {
@@ -276,12 +276,12 @@
     "slot": 6,
     "court": 2,
     "aIds": [
-     "p:g:m1tm2n",
-     "p:g:1d6hd9l"
+     "p:t5tmwl5",
+     "p:g:13sylrj"
     ],
     "bIds": [
-     "p:g:1ge2qao",
-     "p:df9dtam"
+     "p:18qv5bz",
+     "p:g:m1tm2n"
     ]
    },
    {
@@ -289,12 +289,12 @@
     "slot": 6,
     "court": 3,
     "aIds": [
-     "p:g:y6mm56",
-     "p:uzqomod"
+     "p:g:19m23oi",
+     "p:df9dtam"
     ],
     "bIds": [
-     "p:18qv5bz",
-     "p:g:13sylrj"
+     "p:g:y6mm56",
+     "p:uzqomod"
     ]
    },
    {
@@ -302,12 +302,12 @@
     "slot": 7,
     "court": 1,
     "aIds": [
-     "p:t5tmwl5",
-     "p:g:13sylrj"
+     "p:g261xhp",
+     "p:g:y6mm56"
     ],
     "bIds": [
-     "p:18qv5bz",
-     "p:df9dtam"
+     "p:g:1ge2qao",
+     "p:g:m1tm2n"
     ]
    },
    {
@@ -315,12 +315,12 @@
     "slot": 7,
     "court": 2,
     "aIds": [
-     "p:g:1d6hd9l",
-     "p:g:1ge2qao"
+     "p:df9dtam",
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:45sqltb"
+     "p:g:13sylrj",
+     "p:ev1tqiv"
     ]
    },
    {
@@ -328,12 +328,12 @@
     "slot": 7,
     "court": 3,
     "aIds": [
-     "p:ev1tqiv",
-     "p:g:m1tm2n"
+     "p:uzqomod",
+     "p:g:19m23oi"
     ],
     "bIds": [
-     "p:g:y6mm56",
-     "p:g:19m23oi"
+     "p:18qv5bz",
+     "p:g:1d6hd9l"
     ]
    }
   ]
@@ -341,5 +341,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-09-30T16:20:44.383Z",
- "updatedAt": "2026-10-01T07:47:36.931Z"
+ "updatedAt": "2026-10-01T07:47:43.073Z"
 }
