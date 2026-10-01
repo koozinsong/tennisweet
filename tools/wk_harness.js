@@ -37,7 +37,7 @@ function analyze(d, sch) {
     const av = ids.filter((k) => avail(att[k], s, i)); const cap = feasCap(av.length, courtsAt(s, i)); if (ms.length < cap) out.empty.push(`${hhmm(T0(s, i))} ${ms.length}/${cap}면 (참석 ${av.length})`);
     const first = av.filter((k) => { for (let j = 0; j < i; j++) if (avail(att[k], s, j)) return false; return true; });
     const ffIds = new Set(ms.filter((m) => minFF.has(m.id)).flatMap((m) => [...m.aIds, ...m.bIds].map((x) => x.slice(2)))); // 여복 코트 (여복 우선: 이 코트 때문에 막 도착한 남자가 쉬는 것은 허용)
-    const early0 = [...playing].filter((k) => played.has(k)); const resting = first.filter((k) => !playing.has(k)).filter((k) => early0.some((q) => !(att[k].g !== 'F' && ffIds.has(q)))); const early = early0;
+    const early0 = [...playing].filter((k) => played.has(k) && !att[k].guest); const resting = first.filter((k) => !playing.has(k)).filter((k) => early0.some((q) => !(att[k].g !== 'F' && ffIds.has(q)))); const early = early0;
     if (resting.length && early.length) { const zero = av.filter((k) => !played.has(k)); out.lateRest.push(`${hhmm(T0(s, i))} 쉼 ${resting.map((k) => att[k].n)} / 이미 뛴 ${early.map((k) => att[k].n)}${zero.length <= 4 * ms.length ? '' : ' [자리 부족 — 불가피]'}`); }
     for (const k of playing) { games[k]++; played.add(k); }
     const tag = (m) => { const g = (x) => (att[x.slice(2)]?.g === 'F' ? 'F' : 'M'); const a = m.aIds.map(g).sort().join(''), b = m.bIds.map(g).sort().join(''); return a === b ? { FF: '여복', FM: '혼복', MM: '남복' }[a] : '잡복'; };
@@ -46,10 +46,10 @@ function analyze(d, sch) {
   const on = []; for (let i = 0; i < n; i++) on[i] = Math.min(courtsAt(s, i), Math.floor(ids.filter((k) => avail(att[k], s, i)).length / 4)) >= 1; // 코트가 서는 시간대 (4명 이상)
   const slotsOf = (k) => { let c = 0; for (let i = 0; i < n; i++) if (on[i] && avail(att[k], s, i)) c++; return c; };
   out.ff = sch.matches.filter((m) => [...m.aIds, ...m.bIds].every((x) => att[x.slice(2)]?.g === 'F')).length; out.ffPossible = (() => { for (let i = 0; i < n; i++) if (courtsAt(s, i) >= 1 && ids.filter((k) => att[k].g === 'F' && avail(att[k], s, i)).length >= 4) return true; return false; })();
-  const maxG = Math.max(0, ...Object.values(games)); const open = ids.filter((k) => games[k] < slotsOf(k));
-  out.gap2 = open.filter((k) => games[k] <= maxG - 2).map((k) => `${att[k].n} ${games[k]}/${maxG}`);
-  out.guestBehind = ids.filter((k) => att[k].guest && games[k] < slotsOf(k) && ids.some((q) => !att[q].guest && games[q] > games[k])).map((k) => `${att[k].n} ${games[k]}`);
-  out.table = ids.map((k) => ({ n: att[k].n, when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k] })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
+  const maxG = Math.max(0, ...Object.values(games)); const mem = ids.filter((k) => !att[k].guest); const maxM = Math.max(0, ...mem.map((k) => games[k])); const open = mem.filter((k) => games[k] < slotsOf(k));
+  out.gap2 = open.filter((k) => games[k] <= maxM - 2).map((k) => `${att[k].n} ${games[k]}/${maxM}`); // 회원끼리 2경기 이상 차이
+  out.guestBehind = ids.filter((k) => att[k].guest && games[k] < Math.min(slotsOf(k), maxG)).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장
+  out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k] })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
   return out;
 }
 function report(name, d, levels, gens = [1]) {
@@ -85,7 +85,7 @@ if (mode === 'live') {
     const mm = pick([30, 60]); const courts = pick([1, 2, 3]); const n = 5 + Math.floor(rnd() * 14); const times = mm === 60 ? ['19:00', '20:00', '21:00'] : ['19:00', '19:30', '20:00', '20:30', '21:00']; const people = [];
     for (let i = 0; i < n; i++) { const g = rnd() < 0.4 ? 'F' : 'M'; const from = pick(times.slice(0, -1)); const until = rnd() < 0.7 ? '22:00' : pick(times.filter((t) => t > from).concat(['22:00'])); people.push(P((g === 'F' ? 'w' : 'm') + i, g, from, until, pick(g === 'F' ? [2.5, 3, 3.5] : [3, 3.5, 4]), rnd() < 0.1)); }
     const { doc: d, levels } = mkDoc(people, { matchMinutes: mm, courts, minWomenDoubles: pick([0, 1]) }); T.W.index = { levels }; T.W.id = d.id; tally.runs++;
-    let sch; const tt = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, 1); tally.ms += Date.now() - tt; } catch (e) { if (!/배정 가능한 경기가 없습니다/.test(e.message)) { tally.error++; samples.push([r, 'ERR', e.message]); } continue; }
+    let sch; const tt = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, 1); const el = Date.now() - tt; tally.ms += el; if (process.env.TRACE) process.stderr.write(`#${r} ${n}명(게스트 ${people.filter((p) => p.guest).length}) ${courts}면 ${mm}분 ${el}ms\n`); if (el > (tally.maxMs || 0)) { tally.maxMs = el; tally.slowest = `#${r} ${n}명 ${courts}면 ${mm}분`; } } catch (e) { if (!/배정 가능한 경기가 없습니다/.test(e.message)) { tally.error++; samples.push([r, 'ERR', e.message]); } continue; }
     const x = analyze(d, sch); tally.bigDiffMatches += (x.big || []).length; tally.matches += sch.matches.length; if (x.dup.length) { tally.dup++; samples.push([r, 'dup', x.dup]); } if (x.bad.length) { tally.bad++; samples.push([r, 'bad', x.bad]); } if (x.empty.length) { tally.empty++; samples.push([r, 'empty', x.empty, people.map((p) => `${p.g}${p.from}-${p.until}`).join(' ')]); }
     if (x.lateRest.some((l) => !/불가피/.test(l))) { tally.lateRest++; samples.push([r, 'lateRest', x.lateRest]); } if (x.gap2.length) { tally.gap2++; samples.push([r, 'gap2', x.gap2, people.map((p) => `${p.g}${p.from}-${p.until}`).join(' '), `courts ${courts} mm ${mm}`]); } if (x.guestBehind.length) { tally.guest++; samples.push([r, 'guest', x.guestBehind]); } if ((d.settings.minWomenDoubles | 0) >= 1 && x.ffPossible && x.ff < 1) { tally.ffMiss = (tally.ffMiss || 0) + 1; samples.push([r, 'ffMiss', people.map((p) => `${p.g}${p.from}-${p.until}`).join(' '), `courts ${courts} mm ${mm}`]); }
   }
