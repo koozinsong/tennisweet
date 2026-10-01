@@ -28,6 +28,7 @@ const feasCap = (n, courts) => Math.min(courts, Math.floor(n / 4));
 function analyze(d, sch) {
   const s = d.settings; const n = nSlots(s); const att = d.attendance; const ids = Object.keys(att); const nm = (x) => att[x.slice(2)]?.n || x;
   const by = {}; for (const m of sch.matches) (by[m.slot] ??= []).push(m);
+  const minFF = new Set(sch.matches.filter((m) => [...m.aIds, ...m.bIds].every((x) => att[x.slice(2)]?.g === 'F')).sort((a, b) => a.slot - b.slot || a.court - b.court).slice(0, s.minWomenDoubles | 0).map((m) => m.id)); // 최소 여복에 해당하는 코트만 도착 우선의 예외
   const games = {}; ids.forEach((k) => { games[k] = 0; }); const played = new Set(); const out = { dup: [], lateRest: [], empty: [], bad: [], lines: [] };
   for (let i = 0; i < n; i++) {
     const ms = (by[i] || []).sort((a, b) => a.court - b.court); const seen = new Set(); const playing = new Set();
@@ -35,7 +36,7 @@ function analyze(d, sch) {
       const g = (x) => att[x.slice(2)]?.g; const wa = m.aIds.filter((x) => g(x) === 'F').length, wb = m.bIds.filter((x) => g(x) === 'F').length; if (Math.abs(wa - wb) > 1) out.bad.push(`${hhmm(T0(s, i))} c${m.court} 여${wa} vs 여${wb}`); }
     const av = ids.filter((k) => avail(att[k], s, i)); const cap = feasCap(av.length, courtsAt(s, i)); if (ms.length < cap) out.empty.push(`${hhmm(T0(s, i))} ${ms.length}/${cap}면 (참석 ${av.length})`);
     const first = av.filter((k) => { for (let j = 0; j < i; j++) if (avail(att[k], s, j)) return false; return true; });
-    const ffIds = new Set(ms.filter((m) => [...m.aIds, ...m.bIds].every((x) => att[x.slice(2)]?.g === 'F')).flatMap((m) => [...m.aIds, ...m.bIds].map((x) => x.slice(2)))); // 여복 코트 (여복 우선: 이 코트 때문에 막 도착한 남자가 쉬는 것은 허용)
+    const ffIds = new Set(ms.filter((m) => minFF.has(m.id)).flatMap((m) => [...m.aIds, ...m.bIds].map((x) => x.slice(2)))); // 여복 코트 (여복 우선: 이 코트 때문에 막 도착한 남자가 쉬는 것은 허용)
     const early0 = [...playing].filter((k) => played.has(k)); const resting = first.filter((k) => !playing.has(k)).filter((k) => early0.some((q) => !(att[k].g !== 'F' && ffIds.has(q)))); const early = early0;
     if (resting.length && early.length) { const zero = av.filter((k) => !played.has(k)); out.lateRest.push(`${hhmm(T0(s, i))} 쉼 ${resting.map((k) => att[k].n)} / 이미 뛴 ${early.map((k) => att[k].n)}${zero.length <= 4 * ms.length ? '' : ' [자리 부족 — 불가피]'}`); }
     for (const k of playing) { games[k]++; played.add(k); }
@@ -55,8 +56,8 @@ function report(name, d, levels, gens = [1]) {
   T.W.index = { levels: levels || {} }; T.W.id = d.id; console.log(`\n##### ${name}`); let allOk = true;
   for (const g of gens) {
     let sch; const t0 = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, g); } catch (e) { console.log(`gen${g} ERROR ${e.message}`); allOk = false; continue; }
-    const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || ffMiss || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false;
-    console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 2경기차 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음!)' : ''}`);
+    const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false; // 여복 미달(ffMiss)은 경기 수 균등이 더 먼저라 생길 수 있어 참고로만 표시
+    console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 2경기차 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
     console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과');
     console.log('   인당(이름 시간 경기/있는 시간대):', a.table.map((r) => `${r.n} ${r.when} ${r.games}/${r.slots}`).join(' · '));
     if (process.env.LINES || bad) console.log('   ' + a.lines.join('\n   '));
