@@ -3,7 +3,7 @@
  "id": "2026-10-01",
  "date": "2026-10-01",
  "status": "open",
- "rev": 11,
+ "rev": 12,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -78,11 +78,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "df9dtam": {
+   "n": "성기호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-09-30T16:20:44.383Z",
- "updatedAt": "2026-10-01T00:23:07.099Z"
+ "updatedAt": "2026-10-01T00:23:15.923Z"
 }
