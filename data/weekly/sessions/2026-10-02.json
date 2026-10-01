@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 1,
+ "rev": 2,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -17,9 +17,17 @@
    "3"
   ]
  },
- "attendance": {},
+ "attendance": {
+  "smnajd5": {
+   "n": "윤성민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  }
+ },
  "schedule": null,
  "done": {},
  "results": {},
- "createdAt": "2026-10-01T23:49:56.535Z"
+ "createdAt": "2026-10-01T23:49:56.535Z",
+ "updatedAt": "2026-10-01T23:51:43.179Z"
 }
