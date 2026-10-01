@@ -1617,9 +1617,10 @@
   /** 대진 생성·다시 섞기·조 조정에 동봉할 검증값: 관리자는 항상, 멤버는 이 기기에서 비밀번호를 맞춘 적이 있을 때 */
   function wkAuthHash() { return adminKey || wkAuthKey() ? WK_PW_HASH : null; } // 이 기기가 비밀번호를 통과했는가 (관리자는 항상)
   /** 대진표 비밀번호 확인: 없으면 모달로 묻고, 맞으면 기기에 저장. 취소 = false */
-  async function wkRequireAuth() {
+  async function wkRequireAuth(what) { // what = 'courts' 면 코트 예약 수정용 안내 (비밀번호는 대진표와 같은 하나)
     if (adminKey || wkAuthKey()) return true;
     const modal = $('#wkpw-modal'), form = $('#wkpw-form'), inp = $('#wkpw-input'), errEl = $('#wkpw-err'); if (!modal) return false;
+    { const tt = $('#wkpw-title'), hh = $('#wkpw-hint'); if (tt) tt.textContent = what === 'courts' ? '🎾 수정 비밀번호' : '🎾 대진표 비밀번호'; if (hh) hh.textContent = what === 'courts' ? '코트 예약을 고치려면 비밀번호가 필요합니다 — 대진 생성·조 조정에 쓰는 비밀번호와 같습니다. 보기는 누구나 할 수 있고, 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.' : '대진 생성·다시 섞기·조 조정은 비밀번호가 필요합니다 (코트 예약 수정도 같은 비밀번호). 참석 체크와 완료 표시는 누구나 할 수 있습니다. 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.'; }
     return new Promise((resolve) => {
       const opener = document.activeElement; errEl.textContent = ''; inp.value = ''; modal.hidden = false; inp.focus();
       const onKey = (e) => { if (e.key === 'Escape') done(false); };
@@ -2096,7 +2097,7 @@
   function ctSetDraft(k, name) { const [d, t, c] = k.split('|'); const v = String(name || '').trim().slice(0, 12); if (v === ctSaved(d, t, +c)) delete C.draft[k]; else C.draft[k] = v; ctCloseCell(); renderCourts(); }
   async function courtsSave() {
     const keys = Object.keys(C.draft); if (!keys.length || C.busy) return;
-    if (!adminKey && !(await wkRequireAuth())) return; // 멤버는 대진표 비밀번호
+    if (!adminKey && !(await wkRequireAuth('courts'))) return; // 멤버는 비밀번호 (대진표와 같은 것)
     const changes = keys.map((k) => { const [d, t, c] = k.split('|'); return { d, t, c: +c, n: C.draft[k], p: ctSaved(d, t, +c) }; }); // p = 수정을 시작할 때 본 값 (수정 중에는 doc 이 바뀌지 않는다)
     C.busy = true; C.msg = ''; renderCourts(); let res;
     try {
@@ -2108,7 +2109,7 @@
     const code = res && res.code; const gotDoc = !!(res && res.doc && typeof res.doc === 'object' && Array.isArray(res.doc.courts)); let clash = '', pruned = 0;
     if (gotDoc) { C.doc = courtsClean(res.doc); clash = changes.filter((ch) => C.doc.times.indexOf(ch.t) >= 0 && ch.c < C.doc.courts.length).filter((ch) => { const now = ctSaved(ch.d, ch.t, ch.c); return now !== ch.p && now !== ch.n; }).map((ch) => `${fmtDate(ch.d)} ${ctTime(ch.t)} ${C.doc.courts[ch.c] || ''} = ${ctSaved(ch.d, ch.t, ch.c) || '비어 있음'}`).join(', '); pruned = ctPruneDraft(); }
     if (code === 'AUTH') wkForgetKey();
-    C.msg = code === 'STALE' ? `다른 분이 방금 같은 칸을 바꿨습니다${clash ? ` (지금 ${clash})` : ''} · 그대로 덮어쓰려면 다시 저장, 아니면 그 칸을 고치거나 취소하세요` : code === 'AUTH' ? '대진표 비밀번호 확인이 필요합니다 · 저장을 다시 누르면 비밀번호를 묻습니다' : code === 'INVALID' ? (pruned ? `표 구성이 바뀌어 ${pruned}칸을 뺐습니다 · 확인하고 다시 저장하세요` : gotDoc ? '저장할 수 없는 칸이 있습니다 (날짜는 오늘 앞뒤 400일 이내) · 확인하고 다시 저장하세요' : '저장하지 못했습니다 — 저장 서버가 옛 버전이라 코트 예약을 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)') : code === 'NOPROXY' ? '저장 서버 주소가 없어 관리자만 저장할 수 있습니다' : '저장하지 못했습니다 · 잠시 뒤 다시 시도하세요';
+    C.msg = code === 'STALE' ? `다른 분이 방금 같은 칸을 바꿨습니다${clash ? ` (지금 ${clash})` : ''} · 그대로 덮어쓰려면 다시 저장, 아니면 그 칸을 고치거나 취소하세요` : code === 'AUTH' ? '비밀번호 확인이 필요합니다 · 저장을 다시 누르면 비밀번호를 묻습니다' : code === 'INVALID' ? (pruned ? `표 구성이 바뀌어 ${pruned}칸을 뺐습니다 · 확인하고 다시 저장하세요` : gotDoc ? '저장할 수 없는 칸이 있습니다 (날짜는 오늘 앞뒤 400일 이내) · 확인하고 다시 저장하세요' : '저장하지 못했습니다 — 저장 서버가 옛 버전이라 코트 예약을 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)') : code === 'NOPROXY' ? '저장 서버 주소가 없어 관리자만 저장할 수 있습니다' : '저장하지 못했습니다 · 잠시 뒤 다시 시도하세요';
     toast(C.msg, 6000); renderCourts();
   }
   $('#tab-courts')?.addEventListener('click', async (e) => {
@@ -2119,7 +2120,7 @@
     if (t.closest('#ct-dtoday')) { ctPickDay(ymdOf()); return; }
     if (t.closest('#ct-dprev')) { ctPickDay(ctDayShift(C.day || ymdOf(), -1)); return; }
     if (t.closest('#ct-dnext')) { ctPickDay(ctDayShift(C.day || ymdOf(), 1)); return; }
-    if (t.closest('#ct-edit')) { if (!wkCanWrite() || C.edit) return; if (!adminKey && !(await wkRequireAuth())) return; await courtsRefresh(); C.edit = true; C.msg = ''; renderCourts(); return; } // 최신 내용에서 시작
+    if (t.closest('#ct-edit')) { if (!wkCanWrite() || C.edit) return; if (!adminKey && !(await wkRequireAuth('courts'))) return; await courtsRefresh(); C.edit = true; C.msg = ''; renderCourts(); return; } // 최신 내용에서 시작
     if (t.closest('#ct-cancel')) { if (C.busy) return; if (Object.keys(C.draft).length && !confirm('바꾼 칸을 저장하지 않고 닫을까요?')) return; C.draft = {}; C.edit = false; C.msg = ''; renderCourts(); courtsRefresh(); return; }
     if (t.closest('#ct-save')) { await courtsSave(); return; }
     const cellEl = t.closest('[data-ct]'); if (cellEl && C.edit && !C.busy) { ctOpenCell(cellEl.dataset.ct); return; }
