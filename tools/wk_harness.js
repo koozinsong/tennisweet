@@ -58,7 +58,7 @@ function report(name, d, levels, gens = [1]) {
     let sch; const t0 = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, g); } catch (e) { console.log(`gen${g} ERROR ${e.message}`); allOk = false; continue; }
     const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false; // 여복 미달(ffMiss)은 경기 수 균등이 더 먼저라 생길 수 있어 참고로만 표시
     console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 2경기차 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
-    console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과', '| 팀 합 차이 합계', a.diffSum || 0, '| 1.0 이상(혼복 제외):', JSON.stringify(a.big || []));
+    console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과', '|', (rc.notes.find((x) => /상위 남복/.test(x)) || '').slice(0, 24), '| 팀 합 차이 합계', a.diffSum || 0, '| 1.0 이상(혼복 제외):', JSON.stringify(a.big || []));
     console.log('   인당(이름 시간 경기/있는 시간대):', a.table.map((r) => `${r.n} ${r.when} ${r.games}/${r.slots}`).join(' · '));
     if (process.env.LINES || bad) console.log('   ' + a.lines.join('\n   '));
   }
@@ -76,6 +76,7 @@ if (mode === 'live') {
   run('여 1 + 남 3 이 먼저', [F('w1', '19:00', '22:00'), M('m1', '19:00', '22:00'), M('m2', '19:00', '22:00', 3), M('m3', '19:00', '21:00', 4), ...[1, 2, 3, 4, 5, 6].map((i) => M('n' + i, '20:00', '22:00'))], { courts: 2 });
   run('여 7 + 남 1 (2면)', [...[1, 2, 3, 4, 5, 6, 7].map((i) => F('w' + i, '19:00', '21:00', [2.5, 3, 3.5][i % 3])), M('m1', '19:00', '21:00')], { endTime: '21:00', courts: 2 });
   run('여 8 먼저 + 남 1 나중 (3면)', [...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => F('w' + i, '19:00', '21:00')), M('m1', '20:00', '21:00')], { endTime: '21:00', courts: 3 });
+  run('상위 남자 1명이 훨씬 높음 (상위 남복 유지 확인)', [M('top', '19:00', '21:00', 5), M('a1', '19:00', '21:00', 3.5), M('a2', '19:00', '21:00', 3.5), M('a3', '19:00', '21:00', 3.5), ...[1, 2, 3, 4].map((i) => M('b' + i, '19:00', '21:00', 3))], { endTime: '21:00', matchMinutes: 60, courts: 2 });
   run('남 4 먼저 + 여 3 나중', [...[1, 2, 3, 4].map((i) => M('m' + i, '19:00', '21:00')), F('a1', '20:00', '21:00'), F('a2', '20:00', '21:00'), F('a3', '20:00', '21:00')], { endTime: '21:00', matchMinutes: 60, courts: 3 });
 } else if (mode === 'fuzz') {
   const N = +process.argv[3] || 40; let a = 7; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; const pick = (arr) => arr[Math.floor(rnd() * arr.length)];

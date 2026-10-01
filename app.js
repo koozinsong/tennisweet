@@ -522,8 +522,8 @@
       pool.sort((a, b) => a.sc - b.sc);
       for (const c of pool.slice(0, 12)) { repairSchedule(c.sch, s); c.sc = scheduleScore(c.sch); }
       pool.sort((a, b) => a.sc - b.sc);
-      const top = pool.slice(0, 3); for (const c of top) { balanceSchedule(c.sch, s); c.sc = scheduleScore(c.sch) + balancePenalty(c.sch); } // 마지막 균형 조정: 다 짠 판에서 같은 시간대 안의 자리만 바꿔 양 팀 레벨 합을 맞춘다 (누가 언제 뛰는지는 그대로)
-      top.sort((a, b) => a.sc - b.sc); best = top[0].sch;
+      const top = pool.slice(0, 3); for (const c of top) { balanceSchedule(c.sch, s); c.base = scheduleScore(c.sch); c.sc = c.base + balancePenalty(c.sch); } // 마지막 균형 조정: 다 짠 판에서 같은 시간대 안의 자리만 바꿔 양 팀 레벨 합을 맞춘다 (누가 언제 뛰는지는 그대로)
+      const minBase = Math.min(...top.map((c) => c.base)); best = top.filter((c) => c.base - minBase < 300).sort((a, b) => a.sc - b.sc)[0].sch; // 균형은 같은 급의 판 사이에서만 가른다 — 상위 남복(1500)·게스트 우선(2000)·연속 휴식(300) 같은 윗순위 항목을 균형 때문에 내주지 않는다
     }
     best.seed = seed; // 재현용: 이 번호로 다시 생성하면 같은 판
     return best;
@@ -541,8 +541,8 @@
     const slots = [...new Set(sch.matches.map((m) => m.slot))].filter((sl) => sl >= from).sort((a, b) => a - b);
     for (let round = 0; round < 3; round++) { let any = false;
       for (const sl of slots) { const seats = []; for (const m of sch.matches) if (m.slot === sl) for (const side of ['aIds', 'bIds']) for (let i = 0; i < 2; i++) seats.push({ m, side, i });
-        for (let guard = 0; guard < 12; guard++) { let bestGain = 1e-9, pick = null;
-          for (let x = 0; x < seats.length; x++) for (let y = x + 1; y < seats.length; y++) { const a = seats[x], b = seats[y]; if (a.m === b.m && a.side === b.side) continue; const pa = a.m[a.side][a.i], pb = b.m[b.side][b.i]; if (gOf(pa.slice(2)) !== gOf(pb.slice(2))) continue; // 성별이 같아야 코트 종류 유지
+        for (let guard = 0; guard < 12; guard++) { let bestGain = 1e-9, pick = null; const protect = new Set(topMenGames(sch) || []); // 상위 남복 경기: 같은 코트 안의 조 변경만 허용, 다른 코트와 사람을 바꾸지 않는다 (상위 남복 > NTRP 균형)
+          for (let x = 0; x < seats.length; x++) for (let y = x + 1; y < seats.length; y++) { const a = seats[x], b = seats[y]; if (a.m === b.m && a.side === b.side) continue; if (a.m !== b.m && (protect.has(a.m.id) || protect.has(b.m.id))) continue; const pa = a.m[a.side][a.i], pb = b.m[b.side][b.i]; if (gOf(pa.slice(2)) !== gOf(pb.slice(2))) continue; // 성별이 같아야 코트 종류 유지
             a.m[a.side][a.i] = pb; b.m[b.side][b.i] = pa; const sc = J(); a.m[a.side][a.i] = pa; b.m[b.side][b.i] = pb; if (base - sc > bestGain) { bestGain = base - sc; pick = { a, b, sc }; } }
           if (!pick) break; const { a, b, sc } = pick; const pa = a.m[a.side][a.i]; a.m[a.side][a.i] = b.m[b.side][b.i]; b.m[b.side][b.i] = pa; base = sc; any = true; }
       }
