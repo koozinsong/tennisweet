@@ -3,7 +3,7 @@
  "id": "2026-10-01",
  "date": "2026-10-01",
  "status": "open",
- "rev": 17,
+ "rev": 18,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -104,11 +104,18 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:4xggx0": {
+   "n": "게스트 3",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-09-30T16:20:44.383Z",
- "updatedAt": "2026-10-01T05:26:37.959Z"
+ "updatedAt": "2026-10-01T05:27:20.605Z"
 }
