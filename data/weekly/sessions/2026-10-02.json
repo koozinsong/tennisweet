@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 16,
+ "rev": 17,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -12,7 +12,6 @@
   "courts": 3,
   "minWomenDoubles": 1,
   "courtNames": [
-   "1",
    "2",
    "3"
   ]
@@ -196,5 +195,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-01T23:49:56.535Z",
- "updatedAt": "2026-10-02T05:12:25.440Z"
+ "updatedAt": "2026-10-02T06:30:32.883Z"
 }
