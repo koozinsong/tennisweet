@@ -47,8 +47,8 @@ function analyze(d, sch) {
   const slotsOf = (k) => { let c = 0; for (let i = 0; i < n; i++) if (on[i] && avail(att[k], s, i)) c++; return c; };
   out.ff = sch.matches.filter((m) => [...m.aIds, ...m.bIds].every((x) => att[x.slice(2)]?.g === 'F')).length; out.ffPossible = (() => { for (let i = 0; i < n; i++) if (courtsAt(s, i) >= 1 && ids.filter((k) => att[k].g === 'F' && avail(att[k], s, i)).length >= 4) return true; return false; })();
   const maxG = Math.max(0, ...Object.values(games)); const mem = ids.filter((k) => !att[k].guest); const maxM = Math.max(0, ...mem.map((k) => games[k])); const open = mem.filter((k) => games[k] < slotsOf(k));
-  out.gap2 = open.filter((k) => games[k] <= maxM - 2 || games[k] <= maxG - 3).map((k) => `${att[k].n} ${games[k]}/${maxM}(전체 ${maxG})`); // 회원끼리 2경기 이상, 또는 전체 최다(게스트 포함)보다 3경기 이상 차이
-  const canGive = open.some((k) => games[k] >= maxG - 1); out.guestBehind = ids.filter((k) => { if (!att[k].guest) return false; const tg = Math.min(slotsOf(k), maxG); return games[k] < tg && (canGive || games[k] < tg - 1); }).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장 — 회원이 자리를 내주면 최다보다 3경기 이상 뒤지게 되는 경우(게스트가 자리보다 많음)의 1경기 부족은 불가피
+  out.gap2 = open.filter((k) => games[k] <= maxM - 2 || games[k] <= maxG - 3 || (games[k] === 0 && maxG >= 2)).map((k) => `${att[k].n} ${games[k]}/${maxM}(전체 ${maxG})`); // 회원끼리 2경기 이상, 또는 전체 최다(게스트 포함)보다 3경기 이상 차이
+  const canGive = mem.some((k) => games[k] >= Math.max(maxG - 1, 2)); /* 룰 체크(wkRuleCheck)와 같은 기준: 전체 회원 중 자리를 내줄 수 있는 사람 */ out.guestBehind = ids.filter((k) => { if (!att[k].guest) return false; const tg = Math.min(slotsOf(k), maxG); return games[k] < tg && (canGive || games[k] < tg - 1); }).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장 — 회원이 자리를 내주면 최다보다 3경기 이상 뒤지게 되는 경우(게스트가 자리보다 많음)의 1경기 부족은 불가피
   out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k] })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
   return out;
 }
@@ -84,6 +84,17 @@ if (mode === 'live') {
   run('게스트가 자리보다 많음 (게스트 10 + 회원 6, 2면)', [...[1, 2, 3, 4, 5, 6].map((i) => M('회' + i, '19:00', '22:00', 3.5)), ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => M('G' + i, '19:00', '22:00', null, true))], { courts: 2 });
   run('게스트가 늦게 오고 일찍 감 + 여자 게스트', [...[1, 2, 3, 4].map((i) => F('w' + i, '19:00', '22:00', 3)), ...[1, 2, 3, 4, 5, 6].map((i) => M('회' + i, '19:00', '22:00', 3.5)), M('G늦', '20:30', '22:00', null, true), M('G일찍', '19:00', '20:00', null, true), F('G여', '19:30', '21:30', null, true)], { courts: 2 });
   run('여복 마지막 기회에 게스트 남자가 자리를 다 씀 (여복 생략)', [F('w1', '19:00', '20:00'), F('w2', '19:00', '20:00'), F('w3', '19:00', '20:00'), F('w4', '19:00', '20:00'), ...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => M('G' + i, '19:00', '20:00', null, true))], { endTime: '20:00', matchMinutes: 60, courts: 2 });
+  const Gs = (k, a = '19:00', b = '22:00') => Array.from({ length: k }, (_, i) => M('G' + (i + 1), a, b, null, true)), Ms = (k, a = '19:00', b = '22:00') => Array.from({ length: k }, (_, i) => M('회' + (i + 1), a, b, 3.5));
+  // 10/2 검토에서 나온 구성 — 게스트만으로 자리가 차는 날에도 회원이 0경기로 남지 않아야 한다 (누군가 2경기를 뛰는 동안)
+  run('1면 3타임(60분) 게스트 6 + 회원 2', [...Gs(6), ...Ms(2)], { matchMinutes: 60, courts: 1 });
+  run('1면 4타임 게스트 8 + 회원 1', [...Gs(8, '20:00'), ...Ms(1, '20:00')], { startTime: '20:00', courts: 1 });
+  run('2면 2타임(60분) 게스트 8 + 회원 4', [...Gs(8, '19:00', '21:00'), ...Ms(4, '19:00', '21:00')], { endTime: '21:00', matchMinutes: 60, courts: 2 });
+  run('17명 3면 게스트 6 — 도착 직후 휴식이 없어야 함', [M('G0', '19:00', '22:00', null, true), F('w1', '19:00', '22:00', 3.5), F('G2', '19:00', '19:30', null, true), M('m3', '19:30', '22:00', 4), M('m4', '19:30', '20:00', 3), F('w5', '20:30', '21:00', 3.5), F('w6', '19:30', '22:00', 3.5), M('G7', '20:30', '22:00', null, true), M('m8', '19:00', '19:30', 3.5), F('w9', '19:00', '20:30', 3), M('G10', '19:00', '20:00', null, true), M('m11', '19:00', '22:00', 4), M('G12', '19:00', '22:00', null, true), M('m13', '19:00', '22:00', 3.5), M('G14', '19:00', '20:30', null, true), M('m15', '21:00', '22:00', 3.5), M('m16', '19:00', '19:30', 3)], { courts: 3, minWomenDoubles: 1 });
+} else if (mode === 'late') { // 참고용: 막판에 여럿이 도착 (1면) — 모두 한 번은 뛰어야 한다 (회원끼리 2경기 차이는 자리 수상 피할 수 없어 ✗ 로 나올 수 있음, 0경기가 없는지만 본다)
+  const F = (n, a, b, lv = 3, gst) => P(n, 'F', a, b, lv, gst), M = (n, a, b, lv = 3.5, gst) => P(n, 'M', a, b, lv, gst); const run = (name, people, st) => { const { doc: d, levels } = mkDoc(people, st); return report(name, d, levels, [1, 2]); };
+  const late6 = [1, 2, 3, 4, 5, 6].map((i) => M('m' + i, '21:00', '22:00', 3.5));
+  run('1면 18~22시: 회원 2 + 게스트 2 종일, 회원 6 이 21시 도착', [M('a1', '18:00', '22:00'), M('a2', '18:00', '22:00'), M('E1', '18:00', '22:00', null, true), M('E2', '18:00', '22:00', null, true), ...late6], { startTime: '18:00', courts: 1 });
+  run('1면 18~22시: 게스트 4 종일, 회원 6 이 21시 도착', [...[1, 2, 3, 4].map((i) => M('E' + i, '18:00', '22:00', null, true)), ...late6], { startTime: '18:00', courts: 1 });
 } else if (mode === 'fuzz') {
   const N = +process.argv[3] || 40; let a = 7; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
   const tally = { runs: 0, dup: 0, bad: 0, empty: 0, lateRest: 0, gap2: 0, guest: 0, error: 0, bigDiffMatches: 0, matches: 0, ms: 0 }; const samples = []; const log = console.log;

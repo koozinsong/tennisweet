@@ -569,11 +569,11 @@
       const games = {}; for (const m of sch.matches) for (const x of [...m.aIds, ...m.bIds]) games[x] = (games[x] || 0) + 1;
       const all = ps.map((p) => 'p:' + p.id); const g = (id) => games[id] || 0; const maxG = Math.max(...all.map(g));
       const guest = new Set(ps.filter((p) => p.guest).map((p) => 'p:' + p.id));
-      const maxM = Math.max(0, ...all.filter((id) => !guest.has(id)).map(g)); const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : g(id) <= maxM - 2)), his = all.filter((id) => !guest.has(id) && g(id) === maxM); if (!los.length || !his.length) return false;
+      const maxM = Math.max(0, ...all.filter((id) => !guest.has(id)).map(g)); const late = new Set(); for (const p of ps) { let f = -1; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) { f = i; break; } if (f >= from && restingAt(f).includes('p:' + p.id) && sch.matches.some((m) => m.slot === f)) late.add('p:' + p.id); } /* late = 도착한 첫 시간대에 쉬는 사람 */ const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : g(id) <= maxM - 2) || late.has(id)), his = all.filter((id) => !guest.has(id) && g(id) === maxM); if (!los.length || (!his.length && !late.size)) return false;
       for (const lo of los) for (let A = from; A < n; A++) { if (!restingAt(A).includes(lo)) continue;
         for (const sa of seatsOf(A)) { if (protect.has(sa.m.id)) continue; const X = sa.m[sa.side][sa.i]; if (gender(X) !== gender(lo)) continue;
           for (let B = from; B < n; B++) { if (B === A || !restingAt(B).includes(X)) continue;
-            for (const sb of seatsOf(B)) { if (protect.has(sb.m.id)) continue; const hi = sb.m[sb.side][sb.i]; if (!his.includes(hi) || gender(hi) !== gender(X)) continue;
+            for (const sb of seatsOf(B)) { if (protect.has(sb.m.id)) continue; const hi = sb.m[sb.side][sb.i]; if (!(his.includes(hi) || (hi === lo && late.has(lo))) || gender(hi) !== gender(X)) continue;
               sa.m[sa.side][sa.i] = lo; sb.m[sb.side][sb.i] = X; const sc = scheduleScore(sch);
               if (sc < base - 1e-9) { base = sc; return true; }
               sa.m[sa.side][sa.i] = X; sb.m[sb.side][sb.i] = hi;
@@ -594,9 +594,10 @@
           seat: for (const cross of (GEN_HOOK ? [false, true] : [false])) for (const m of ms) { // 1차: 같은 성별 자리(코트 종류 유지)를 그 시간대 전체에서 먼저, 개선이 없을 때만 2차: 성별이 다른 자리 (정기 모임만)
             for (const side of ['aIds', 'bIds']) for (let i = 0; i < 2; i++) {
               const q = m[side][i]; if ((gOf(q.slice(2)) !== rG) !== cross) continue; // 대회: 성별이 같아야 종류 유지. 정기 모임 2차: 코트가 유효한 종류로 남으면 성별이 달라도 교체 (남복↔잡복↔혼복)
-              m[side][i] = rid; if (!okCourt(m)) { m[side][i] = q; continue; }
+              m[side][i] = rid; let sw = null; if (!okCourt(m)) { for (const j of [0, 1]) { const t = m.aIds[1]; m.aIds[1] = m.bIds[j]; m.bIds[j] = t; if (okCourt(m)) { sw = j; break; } m.bIds[j] = m.aIds[1]; m.aIds[1] = t; } if (sw == null) { m[side][i] = q; continue; } } /* 성별이 다른 사람으로 바꿔 여여 vs 남남이 되면 짝을 다시 맞춘다 */
               const sc = scheduleScore(sch);
-              if (sc < base - 1e-9) { base = sc; improved = true; break seat; } // 한 자리만 바꾸고 다시 계산 (안쪽 for 만 빠져나오면 같은 사람이 같은 경기 두 자리에 들어간다)
+              if (sc < base - 1e-9) { base = sc; improved = true; break seat; }
+              if (sw != null) { const t = m.aIds[1]; m.aIds[1] = m.bIds[sw]; m.bIds[sw] = t; } /* 채택 안 하면 짝 바꾼 것도 되돌림 */ // 한 자리만 바꾸고 다시 계산 (안쪽 for 만 빠져나오면 같은 사람이 같은 경기 두 자리에 들어간다)
               m[side][i] = q;
             }
           }
@@ -632,9 +633,9 @@
       const open = mem.filter((p) => g(p) < AVs[p.id]); // 더 뛸 수 있었던 회원 (게스트는 아래에서 따로: 최대 경기 보장)
       const minG = open.length ? Math.min(...open.map(g)) : maxM;
       spread = Math.max(0, maxM - minG); // 회원끼리 차이 1 이내가 목표
-      loss = open.reduce((a, p) => a + Math.max(0, maxM - 1 - g(p)), 0); // 회원 최다보다 2경기 이상 적은 회원 = 손해
-      memFar = open.reduce((a, p) => a + Math.max(0, maxG - 2 - g(p)), 0); // 회원이 전체 최다(게스트 포함)보다 3경기 이상 적음 = 게스트 보장으로도 넘지 못하는 하한 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
-      for (const gp of ps.filter((p) => p.guest)) guestLoss += Math.max(0, Math.min(AVs[gp.id], maxG) - g(gp)); // 게스트 최대 경기 보장: 최다(뛸 수 있는 시간대 한도)보다 모자란 경기 수 — 여복·회원 공정성보다 위
+      loss = open.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxM - 1) - g(p)), 0); // 회원 최다보다 2경기 이상 적은 회원 = 손해 (머무는 시간대 한도 — 2타임만 있는 사람 둘은 2+0 과 1+1 이 같은 값)
+      memFar = open.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxG - 2) - g(p)) + (g(p) === 0 && maxG >= 2 ? 1 : 0), 0); // (누군가 2경기 뛰는 동안 0경기인 회원은 한 단위 더 — 0경기 금지) 회원이 전체 최다(게스트 포함)보다 3경기 이상 적음 = 게스트 보장으로도 넘지 못하는 하한 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
+      for (const gp of ps.filter((p) => p.guest)) { const sh = Math.max(0, Math.min(AVs[gp.id], maxG) - g(gp)); guestLoss += sh + Math.max(0, sh - 1); } // (2경기 이상 모자라면 가중) 게스트 최대 경기 보장: 최다(뛸 수 있는 시간대 한도)보다 모자란 경기 수 — 여복·회원 공정성보다 위
       let below = 0; for (const p of ps) { const need = Math.min(AVs[p.id], 2); if (g(p) < need) below += need - g(p); } spread += below * 20; // 최소 경기 수(2, 시간대가 1개면 1) 미달은 크게 불리
     } else { const g = Object.values(games); spread = g.length ? Math.max(...g) - Math.min(...g) : 0; }
     // 3연속 출전 횟수
@@ -1996,10 +1997,11 @@
     const ids = Object.keys(att); const maxG = ids.length ? Math.max(...ids.map((id) => games[id] || 0)) : 0;
     if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
     const memIds = ids.filter((id) => !att[id].guest); const maxM = memIds.length ? Math.max(...memIds.map((id) => games[id] || 0)) : maxG; // 회원 공정성은 회원끼리 (게스트는 최대 경기 보장이라 따로)
-    const short = memIds.filter((id) => (games[id] || 0) < avail(id) && ((games[id] || 0) < maxM - 1 || (games[id] || 0) < maxG - 2)).map((id) => `${nm(id)} ${games[id] || 0}`); // 회원 최다보다 2 이상, 또는 전체 최다(게스트 포함)보다 3 이상 적음
+    const short = memIds.filter((id) => (games[id] || 0) < avail(id) && ((games[id] || 0) < maxM - 1 || (games[id] || 0) < maxG - 2 || ((games[id] || 0) === 0 && maxG >= 2))).map((id) => `${nm(id)} ${games[id] || 0}`); // 회원 최다보다 2 이상, 전체 최다(게스트 포함)보다 3 이상 적음, 또는 누군가 2경기 뛰는 동안 0경기
     if (short.length) issues.push(`경기 수 부족: ${short.join(', ')} (회원 최다 ${maxM}${maxG > maxM ? ` · 게스트 최다 ${maxG}` : ''})`);
-    { const canGive = memIds.some((id) => (games[id] || 0) >= maxG - 1); /* 회원 중 누군가 자리를 내줘도 최다보다 3경기 이상 뒤지지 않는가 — 아니면 게스트가 자리보다 많아 생긴 불가피한 부족 */
-      const gl = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id)) && (canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1)).map((id) => `${nm(id)} ${games[id] || 0}`); if (gl.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${gl.join(', ')}`); }
+    { const canGive = memIds.some((id) => (games[id] || 0) >= Math.max(maxG - 1, 2)); /* (1경기뿐인 회원은 내줄 수 없음) 회원 중 누군가 자리를 내줘도 최다보다 3경기 이상 뒤지지 않는가 — 아니면 게스트가 자리보다 많아 생긴 불가피한 부족 */
+      const gAll = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id))); const gBad = gAll.filter((id) => canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1); const gOk = gAll.filter((id) => !gBad.includes(id)); const fmt = (a) => a.map((id) => `${nm(id)} ${games[id] || 0}`).join(', ');
+      if (gBad.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${fmt(gBad)}`); if (gOk.length) notes.push(`게스트가 최다(${maxG})보다 1경기 적음: ${fmt(gOk)} (게스트가 자리보다 많아 회원 최소 경기를 지키느라 허용)`); }
     { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
     if ((s.minWomenDoubles || 0) >= 1 && ffMs.length < s.minWomenDoubles && isFinite(n)) { let can = false; for (let i = 0; i < n && !can; i++) if (courtsAtSlot(s, i) >= 1 && Object.keys(att).filter((id) => g(id) === 'F' && avOk(id, i)).length >= 4) can = true; if (can) notes.push(`여복 ${ffMs.length}경기 (설정 최소 ${s.minWomenDoubles}) — 여복을 넣으면 누군가 2경기 이상 뒤져서 생략됐습니다. 조 조정으로 직접 만들 수 있습니다`); }
     for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${bad[m.id].join(' · ')}`);
