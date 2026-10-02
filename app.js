@@ -624,7 +624,7 @@
     const st = state.settings, nSl = maxSlots(st); let cap = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) cap += Math.min(courtsAtSlot(st, sl), Math.floor(activePlayers().filter((p) => playerAvailable(p, st, sl)).length / 4)); // 코트 수 상한 (시도 간 상수) → 경기 수가 적은 판은 크게 불리
     const missing = Math.max(0, cap - sch.matches.length);
     const ffCnt = sch.matches.filter((m) => [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])].every((x) => gOf(x) === 'F')).length; const ffShort = Math.max(0, (st.minWomenDoubles || 0) - ffCnt); // 여복 최소 미달
-    let spread, loss = 0, guestLoss = 0; if (GEN_HOOK) { // 정기 모임: 전원 경기 수를 같게 (일찍 와서 더 뛴 사람은 공유 시간대에서 양보). 참석 시간대를 다 뛴 사람은 상한이라 제외
+    let spread, loss = 0, guestLoss = 0, memFar = 0; if (GEN_HOOK) { // 정기 모임: 전원 경기 수를 같게 (일찍 와서 더 뛴 사람은 공유 시간대에서 양보). 참석 시간대를 다 뛴 사람은 상한이라 제외
       const ps = activePlayers(); const g = (p) => games[p.id] || 0;
       const playable = []; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) playable[sl] = Math.min(courtsAtSlot(st, sl), Math.floor(ps.filter((p) => playerAvailable(p, st, sl)).length / 4)) >= 1; // 코트가 서는 시간대 (4명 이상 + 코트 1면 이상)
       const AVs = {}; ps.forEach((p) => { let av = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) if (playable[sl] && playerAvailable(p, st, sl)) av++; AVs[p.id] = av; }); // 머무는 동안 실제로 뛸 수 있는 시간대 수 (사람이 모자라 코트가 안 서는 시간대는 손해로 세지 않는다)
@@ -633,6 +633,7 @@
       const minG = open.length ? Math.min(...open.map(g)) : maxM;
       spread = Math.max(0, maxM - minG); // 회원끼리 차이 1 이내가 목표
       loss = open.reduce((a, p) => a + Math.max(0, maxM - 1 - g(p)), 0); // 회원 최다보다 2경기 이상 적은 회원 = 손해
+      memFar = open.reduce((a, p) => a + Math.max(0, maxG - 2 - g(p)), 0); // 회원이 전체 최다(게스트 포함)보다 3경기 이상 적음 = 게스트 보장으로도 넘지 못하는 하한 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
       for (const gp of ps.filter((p) => p.guest)) guestLoss += Math.max(0, Math.min(AVs[gp.id], maxG) - g(gp)); // 게스트 최대 경기 보장: 최다(뛸 수 있는 시간대 한도)보다 모자란 경기 수 — 여복·회원 공정성보다 위
       let below = 0; for (const p of ps) { const need = Math.min(AVs[p.id], 2); if (g(p) < need) below += need - g(p); } spread += below * 20; // 최소 경기 수(2, 시간대가 1개면 1) 미달은 크게 불리
     } else { const g = Object.values(games); spread = g.length ? Math.max(...g) - Math.min(...g) : 0; }
@@ -646,7 +647,7 @@
     const menBad = GEN_HOOK ? sch.matches.filter((m) => { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wA = A.filter((x) => gOf(x) === 'F'), wB = B.filter((x) => gOf(x) === 'F'); if (wA.length !== 1 || wB.length !== 1 || A.length !== 2 || B.length !== 2) return false; const mA = A.find((x) => gOf(x) !== 'F'), mB = B.find((x) => gOf(x) !== 'F'); return fmMixBad(ntrpOf(wA[0]), ntrpOf(mA), ntrpOf(wB[0]), ntrpOf(mB)); }).length : state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 대회: 특별 규칙 위반은 사실상 배제. 정기 모임: 혼복 원칙 위반 ×3000 ('경기 없음' 1e4 보다 가볍게)
     let mixBad = 0, mixSoft = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa + wb === 3) { mixSoft += 600; continue; } /* 여 3·남 1 코트는 다른 방법이 없을 때만: 혼복 남자 급 300·여 1 잡복 벌점보다 위, 게스트 우선 2000·공정성·빈 코트보다 아래 */ if (wa + wb !== 1) continue; const sumA = A.reduce((a, x) => a + ntrpOf(x), 0), sumB = B.reduce((a, x) => a + ntrpOf(x), 0); const short = (wa ? sumB : sumA) - (wa ? sumA : sumB); if (short >= 1.5) mixBad += 1; else if (short > 0) mixSoft += 60 + 40 * short; const side = wa ? A : B, other = wa ? B : A; const mate = side.find((x) => gOf(x) !== 'F'); if (mate && other.some((x) => ntrpOf(x) > ntrpOf(mate))) mixSoft += 150; } // 잡복 원칙: 여자 쪽(여자 −0.5 반영) 합 ≥ 남자 둘 합
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 2e4 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + guestLoss * (GEN_HOOK ? 4e4 : 2000) + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + spread * spreadW + ntrpDiff * 60 + sameBig * 300 + topMiss * 1500 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 2e4 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + spread * spreadW + ntrpDiff * 60 + sameBig * 300 + topMiss * 1500 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   function generateRotationOnce(s, seed) {
@@ -677,13 +678,13 @@
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
     // 정기 모임 공정성: (a) 기대 경기 수(참석 시간대마다 자리/인원 비율 누적) 대비 부족한 사람 먼저, (b) 남은 시간대가 적은 사람(곧 가는 사람) 먼저
-    const weekly = !!GEN_HOOK; let AVG_REMAIN = 0;
+    const weekly = !!GEN_HOOK; let AVG_REMAIN = 0; let MIN_MEM = Infinity; // MIN_MEM = 그 시간대에 있는 회원 중 가장 적게 뛴 경기 수 (게스트 우선의 한도)
     const slotPlayable = []; for (let i = 0; i < n; i++) slotPlayable[i] = !weekly || Math.min(courtsAtSlot(s, i), Math.floor(ps.filter((p) => playerAvailable(p, s, i)).length / 4)) >= 1; // 정기 모임: 코트가 서는 시간대만 '남은 시간대'로 센다
     const remainOf = (p, slot) => { let r = 0; for (let i = slot; i < n; i++) if (slotPlayable[i] && playerAvailable(p, s, i)) r++; return r; };
     const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
     // 최소 보장: 참석 시간대가 2개 이상이면 최소 2경기, 1개면 1경기. 남은 시간대를 다 뛰어야 채울 수 있으면 최우선(-300)
     const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
-    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest ? 2e4 : 0) - (played[p.id] === 0 ? 1e4 : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
+    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest && played[p.id] < MIN_MEM + 2 ? 2e4 : 0) - (played[p.id] === 0 ? (remainOf(p, slot) <= 1 ? 4e4 : 1e4) : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
     const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
@@ -833,7 +834,7 @@
 
     const matches = []; let round = 0;
     for (let slot = 0; slot < n; slot++) {
-      if (weekly) { const av = availAt(slot); AVG_REMAIN = av.length ? av.reduce((a, p) => a + remainOf(p, slot), 0) / av.length : 0; }
+      if (weekly) { const av = availAt(slot); AVG_REMAIN = av.length ? av.reduce((a, p) => a + remainOf(p, slot), 0) / av.length : 0; const mm = av.filter((p) => !p.guest).map((p) => played[p.id]); MIN_MEM = mm.length ? Math.min(...mm) : Infinity; }
       if (GEN_HOOK && slot < GEN_HOOK.fromSlot) { const fx = GEN_HOOK.fixed.filter((m) => m.slot === slot); if (fx.length) { for (const m of fx) matches.push({ id: uid(), phase: 'rot', round, slot, court: m.court, aIds: m.aIds, bIds: m.bIds }); round++; } continue; } // 이미 시작한 시간대는 그대로
       const avail = availAt(slot);
       const used = new Set(); const courts = [];
@@ -1995,9 +1996,10 @@
     const ids = Object.keys(att); const maxG = ids.length ? Math.max(...ids.map((id) => games[id] || 0)) : 0;
     if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
     const memIds = ids.filter((id) => !att[id].guest); const maxM = memIds.length ? Math.max(...memIds.map((id) => games[id] || 0)) : maxG; // 회원 공정성은 회원끼리 (게스트는 최대 경기 보장이라 따로)
-    const short = memIds.filter((id) => (games[id] || 0) < avail(id) && (games[id] || 0) < maxM - 1).map((id) => `${nm(id)} ${games[id] || 0}`);
-    if (short.length) issues.push(`경기 수 2 이상 부족: ${short.join(', ')} (회원 최다 ${maxM})`);
-    { const gl = ids.filter((id) => att[id].guest && (games[id] || 0) < maxG && (games[id] || 0) < avail(id)).map((id) => `${nm(id)} ${games[id] || 0}`); if (gl.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${gl.join(', ')}`); }
+    const short = memIds.filter((id) => (games[id] || 0) < avail(id) && ((games[id] || 0) < maxM - 1 || (games[id] || 0) < maxG - 2)).map((id) => `${nm(id)} ${games[id] || 0}`); // 회원 최다보다 2 이상, 또는 전체 최다(게스트 포함)보다 3 이상 적음
+    if (short.length) issues.push(`경기 수 부족: ${short.join(', ')} (회원 최다 ${maxM}${maxG > maxM ? ` · 게스트 최다 ${maxG}` : ''})`);
+    { const canGive = memIds.some((id) => (games[id] || 0) >= maxG - 1); /* 회원 중 누군가 자리를 내줘도 최다보다 3경기 이상 뒤지지 않는가 — 아니면 게스트가 자리보다 많아 생긴 불가피한 부족 */
+      const gl = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id)) && (canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1)).map((id) => `${nm(id)} ${games[id] || 0}`); if (gl.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${gl.join(', ')}`); }
     { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
     if ((s.minWomenDoubles || 0) >= 1 && ffMs.length < s.minWomenDoubles && isFinite(n)) { let can = false; for (let i = 0; i < n && !can; i++) if (courtsAtSlot(s, i) >= 1 && Object.keys(att).filter((id) => g(id) === 'F' && avOk(id, i)).length >= 4) can = true; if (can) notes.push(`여복 ${ffMs.length}경기 (설정 최소 ${s.minWomenDoubles}) — 여복을 넣으면 누군가 2경기 이상 뒤져서 생략됐습니다. 조 조정으로 직접 만들 수 있습니다`); }
     for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${bad[m.id].join(' · ')}`);
