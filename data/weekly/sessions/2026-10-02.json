@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 15,
+ "rev": 16,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -170,7 +170,7 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:uzqomod",
+     "p:18qv5bz",
      "p:g:13ftyjk"
     ],
     "bIds": [
@@ -196,5 +196,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-01T23:49:56.535Z",
- "updatedAt": "2026-10-02T05:09:39.423Z"
+ "updatedAt": "2026-10-02T05:12:25.440Z"
 }
