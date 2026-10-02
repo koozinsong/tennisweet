@@ -1,0 +1,44 @@
+{
+ "v": 1,
+ "id": "2026-10-08",
+ "date": "2026-10-08",
+ "status": "open",
+ "rev": 1,
+ "settings": {
+  "startTime": "18:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtsByHour": {
+   "18": 1,
+   "19": 1,
+   "20": 3,
+   "21": 3
+  },
+  "courtNamesByHour": {
+   "18": [
+    "2"
+   ],
+   "19": [
+    "2"
+   ],
+   "20": [
+    "1",
+    "2",
+    "3"
+   ],
+   "21": [
+    "1",
+    "2",
+    "3"
+   ]
+  }
+ },
+ "attendance": {},
+ "schedule": null,
+ "done": {},
+ "results": {},
+ "createdAt": "2026-10-02T20:36:36.982Z"
+}
