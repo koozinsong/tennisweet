@@ -1,0 +1,338 @@
+{
+ "v": 1,
+ "id": "2026-09-17",
+ "date": "2026-09-17",
+ "status": "open",
+ "rev": 160,
+ "settings": {
+  "startTime": "19:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1
+ },
+ "attendance": {
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "19:00",
+   "until": "21:00"
+  },
+  "45sqltb": {
+   "n": "정배근",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "df9dtam": {
+   "n": "성기호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:3igyma": {
+   "n": "임영균",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ev1tqiv": {
+   "n": "이현용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "328ljva": {
+   "n": "이종민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  }
+ },
+ "schedule": {
+  "seed": 47940,
+  "gen": 21,
+  "fromSlot": 0,
+  "inputHash": "13wbqcx",
+  "at": "2026-09-17T06:30:24.396Z",
+  "by": "t4lcpvt",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:uzqomod",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:lvcpucm",
+     "p:ev1tqiv"
+    ]
+   },
+   {
+    "id": "s2c3",
+    "slot": 2,
+    "court": 3,
+    "aIds": [
+     "p:g:3igyma",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:ibws5ld"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:45sqltb",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:lvcpucm",
+     "p:g:3igyma"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:k45yesm",
+     "p:243v8q3"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:t5tmwl5"
+    ]
+   },
+   {
+    "id": "s3c3",
+    "slot": 3,
+    "court": 3,
+    "aIds": [
+     "p:uzqomod",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:df9dtam",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s4c1",
+    "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s4c2",
+    "slot": 4,
+    "court": 2,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s4c3",
+    "slot": 4,
+    "court": 3,
+    "aIds": [
+     "p:df9dtam",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:ibws5ld"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s5c2",
+    "slot": 5,
+    "court": 2,
+    "aIds": [
+     "p:k45yesm",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:6kn0dof",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s5c3",
+    "slot": 5,
+    "court": 3,
+    "aIds": [
+     "p:328ljva",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:45sqltb"
+    ]
+   }
+  ]
+ },
+ "done": {
+  "s1c1": true,
+  "s2c1": true,
+  "s2c3": true,
+  "s3c1": true,
+  "s3c2": true,
+  "s3c3": true,
+  "s4c1": true,
+  "s4c2": true,
+  "s4c3": true,
+  "s5c1": true,
+  "s5c3": true,
+  "s0c1": true
+ },
+ "createdAt": "2026-09-13T14:05:47.838Z",
+ "updatedAt": "2026-09-18T04:32:02.955Z",
+ "results": {
+  "s0c1": {
+   "a": 6,
+   "b": 4
+  },
+  "s1c1": {
+   "a": 2,
+   "b": 3
+  },
+  "s3c2": {
+   "a": 5,
+   "b": 5
+  },
+  "s4c2": {
+   "a": 4,
+   "b": 6
+  },
+  "s5c1": {
+   "a": 5,
+   "b": 5
+  }
+ }
+}

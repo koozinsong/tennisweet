@@ -1,0 +1,52 @@
+{
+ "v": 1,
+ "id": "2026-10-02",
+ "date": "2026-10-02",
+ "status": "open",
+ "rev": 5,
+ "settings": {
+  "startTime": "20:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtNames": [
+   "1",
+   "2",
+   "3"
+  ]
+ },
+ "attendance": {
+  "smnajd5": {
+   "n": "윤성민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "18qv5bz": {
+   "n": "신윤호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:q5s2g9": {
+   "n": "뿌꾸",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": null,
+ "done": {},
+ "results": {},
+ "createdAt": "2026-10-01T23:49:56.535Z",
+ "updatedAt": "2026-10-01T23:52:11.930Z"
+}
