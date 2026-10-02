@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 8,
+ "rev": 9,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -49,11 +49,18 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:1udvdca": {
+   "n": "이경열",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-01T23:49:56.535Z",
- "updatedAt": "2026-10-02T04:07:43.167Z"
+ "updatedAt": "2026-10-02T04:08:00.231Z"
 }
