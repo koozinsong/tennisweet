@@ -3,7 +3,7 @@
  "id": "2026-10-02",
  "date": "2026-10-02",
  "status": "open",
- "rev": 14,
+ "rev": 15,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -80,11 +80,11 @@
   }
  },
  "schedule": {
-  "seed": 259274,
+  "seed": 327509,
   "gen": 2,
   "fromSlot": 0,
-  "inputHash": "1ghc33g",
-  "at": "2026-10-02T04:08:44.607Z",
+  "inputHash": "1monf2z",
+  "at": "2026-10-02T05:09:38.226Z",
   "by": "g261xhp",
   "matches": [
    {
@@ -92,12 +92,25 @@
     "slot": 0,
     "court": 1,
     "aIds": [
-     "p:g:q5s2g9",
+     "p:g:1udvdca",
+     "p:g:13ftyjk"
+    ],
+    "bIds": [
+     "p:g:1tgvyev",
+     "p:uzqomod"
+    ]
+   },
+   {
+    "id": "s0c2",
+    "slot": 0,
+    "court": 2,
+    "aIds": [
+     "p:g:18u4h0s",
      "p:g261xhp"
     ],
     "bIds": [
-     "p:g:18u4h0s",
-     "p:g:1tgvyev"
+     "p:g:q5s2g9",
+     "p:g:69ra8i"
     ]
    },
    {
@@ -105,12 +118,25 @@
     "slot": 1,
     "court": 1,
     "aIds": [
+     "p:18qv5bz",
+     "p:g:69ra8i"
+    ],
+    "bIds": [
+     "p:g:1tgvyev",
+     "p:g:q5s2g9"
+    ]
+   },
+   {
+    "id": "s1c2",
+    "slot": 1,
+    "court": 2,
+    "aIds": [
      "p:g:18u4h0s",
-     "p:18qv5bz"
+     "p:g:13ftyjk"
     ],
     "bIds": [
      "p:g:1udvdca",
-     "p:g:1tgvyev"
+     "p:g261xhp"
     ]
    },
    {
@@ -118,12 +144,25 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:g:1udvdca",
-     "p:g:q5s2g9"
+     "p:g:13ftyjk",
+     "p:g:69ra8i"
+    ],
+    "bIds": [
+     "p:g:q5s2g9",
+     "p:g:1udvdca"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:g:1tgvyev",
+     "p:18qv5bz"
     ],
     "bIds": [
      "p:uzqomod",
-     "p:g261xhp"
+     "p:g:18u4h0s"
     ]
    },
    {
@@ -131,11 +170,24 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:g:18u4h0s",
-     "p:g:1udvdca"
+     "p:uzqomod",
+     "p:g:13ftyjk"
     ],
     "bIds": [
-     "p:g:q5s2g9",
+     "p:g:69ra8i",
+     "p:g:18u4h0s"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:g261xhp",
+     "p:g:q5s2g9"
+    ],
+    "bIds": [
+     "p:g:1udvdca",
      "p:g:1tgvyev"
     ]
    }
@@ -144,5 +196,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-01T23:49:56.535Z",
- "updatedAt": "2026-10-02T05:09:27.640Z"
+ "updatedAt": "2026-10-02T05:09:39.423Z"
 }
