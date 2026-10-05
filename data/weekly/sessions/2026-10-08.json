@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 4,
+ "rev": 5,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -54,11 +54,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-05T09:33:26.534Z"
+ "updatedAt": "2026-10-05T09:33:33.368Z"
 }
