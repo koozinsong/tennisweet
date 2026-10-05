@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 2,
+ "rev": 3,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -42,11 +42,17 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "rw9ebrx": {
+   "n": "이석우",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-05T09:33:08.251Z"
+ "updatedAt": "2026-10-05T09:33:19.128Z"
 }
