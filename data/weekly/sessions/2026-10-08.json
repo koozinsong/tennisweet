@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 14,
+ "rev": 15,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -114,11 +114,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "ev1tqiv": {
+   "n": "이현용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-06T08:56:00.860Z"
+ "updatedAt": "2026-10-06T08:56:06.147Z"
 }
