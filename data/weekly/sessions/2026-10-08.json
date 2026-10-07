@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 31,
+ "rev": 32,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -127,8 +127,8 @@
   "gen": 5,
   "fromSlot": 0,
   "inputHash": "1dykn3c",
-  "at": "2026-10-07T06:22:34.569Z",
-  "by": "t136ug1",
+  "at": "2026-10-07T06:23:36.101Z",
+  "by": "tool",
   "matches": [
    {
     "id": "s2c1",
@@ -252,7 +252,7 @@
     "slot": 6,
     "court": 2,
     "aIds": [
-     "p:243v8q3",
+     "p:nba8nn1",
      "p:rw9ebrx"
     ],
     "bIds": [
@@ -265,7 +265,7 @@
     "slot": 6,
     "court": 3,
     "aIds": [
-     "p:t4lcpvt",
+     "p:uzqomod",
      "p:g261xhp"
     ],
     "bIds": [
@@ -279,11 +279,11 @@
     "court": 1,
     "aIds": [
      "p:t4lcpvt",
-     "p:h0teikh"
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:lvcpucm"
+     "p:t5tmwl5",
+     "p:328ljva"
     ]
    },
    {
