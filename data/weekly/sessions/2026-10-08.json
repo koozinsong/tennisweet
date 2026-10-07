@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 60,
+ "rev": 61,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -306,12 +306,12 @@
     "slot": 7,
     "court": 3,
     "aIds": [
-     "p:h0teikh",
+     "p:328ljva",
      "p:nba8nn1"
     ],
     "bIds": [
      "p:g261xhp",
-     "p:328ljva"
+     "p:h0teikh"
     ]
    }
   ]
@@ -319,5 +319,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-07T14:15:48.435Z"
+ "updatedAt": "2026-10-07T14:24:16.332Z"
 }
