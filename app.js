@@ -1599,7 +1599,7 @@
   /** 외부에서 온 세션 문서 검증·정리 (화면 속성에 들어가므로 형식을 강제) */
   function assertWeekly(doc) {
     if (!doc || typeof doc !== 'object' || !SESSION_RE.test(String(doc.id || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(doc.date || ''))) throw new Error('세션 형식 오류');
-    const att = {}; for (const [k, v] of Object.entries(doc.attendance || {})) { if (!ID_RE.test(k) || !v || typeof v.n !== 'string' || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from || '') || !TIME_RE.test(v.until || '')) continue; att[k] = { n: v.n.slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}) }; }
+    const att = {}; for (const [k, v] of Object.entries(doc.attendance || {})) { if (!ID_RE.test(k) || !v || typeof v.n !== 'string' || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from || '') || !TIME_RE.test(v.until || '')) continue; att[k] = { n: v.n.slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}) }; }
     doc.attendance = att;
     if (doc.schedule && typeof doc.schedule === 'object') {
       const ms = (Array.isArray(doc.schedule.matches) ? doc.schedule.matches : []).filter((m) => m && MID_RE.test(String(m.id)) && Number.isInteger(m.slot) && Number.isInteger(m.court) && [m.aIds, m.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every((x) => typeof x === 'string' && ID_RE.test(x)))).slice(0, 64).map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds }));
