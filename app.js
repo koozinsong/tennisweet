@@ -565,17 +565,21 @@
     const gender = (id) => gOf(id.slice(2));
     const slotOf = (m) => m.slot; const seatsOf = (slot) => { const out = []; for (const m of sch.matches) if (m.slot === slot) for (const side of ['aIds', 'bIds']) for (let i = 0; i < 2; i++) out.push({ m, side, i }); return out; };
     const restingAt = (slot) => { const playing = new Set(sch.matches.filter((m) => m.slot === slot).flatMap((m) => [...m.aIds, ...m.bIds])); return ps.filter((p) => playerAvailable(p, s, slot) && !playing.has('p:' + p.id)).map((p) => 'p:' + p.id); };
+    const okCourtOf = (m) => { const wa = m.aIds.filter((x) => gOf(x.slice(2)) === 'F').length, wb = m.bIds.filter((x) => gOf(x.slice(2)) === 'F').length; return Math.abs(wa - wb) <= 1; }; // 남복·여복·혼복·잡복(여 1 또는 여 3) — 여자 둘 vs 남자 둘만 불가
     const tryTwo = () => { // 2단계 교체: lo(경기 적음)가 쉬는 시간대 A 에서 X 대신 들어가고, X 는 hi(경기 많음)가 뛰는 시간대 B 에 hi 대신 들어간다
       const games = {}; for (const m of sch.matches) for (const x of [...m.aIds, ...m.bIds]) games[x] = (games[x] || 0) + 1;
       const all = ps.map((p) => 'p:' + p.id); const g = (id) => games[id] || 0; const maxG = Math.max(...all.map(g));
       const guest = new Set(ps.filter((p) => p.guest).map((p) => 'p:' + p.id));
-      const maxM = Math.max(0, ...all.filter((id) => !guest.has(id)).map(g)); const late = new Set(); for (const p of ps) { let f = -1; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) { f = i; break; } if (f >= from && restingAt(f).includes('p:' + p.id) && sch.matches.some((m) => m.slot === f)) late.add('p:' + p.id); } /* late = 도착한 첫 시간대에 쉬는 사람 */ const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : g(id) <= maxM - 2) || late.has(id)), his = all.filter((id) => !guest.has(id) && g(id) === maxM); if (!los.length || (!his.length && !late.size)) return false;
+      const late = new Set(); for (const p of ps) { let f = -1; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) { f = i; break; } if (f >= from && restingAt(f).includes('p:' + p.id) && sch.matches.some((m) => m.slot === f)) late.add('p:' + p.id); } /* late = 도착한 첫 시간대에 쉬는 사람 */ const byId = {}; for (const p of ps) byId[p.id] = p; const sx = seatsOfMatches(sch.matches, (x) => guest.has('p:' + x)); const X = expectedGames(ps, n, (id, sl) => playerAvailable(byId[id], s, sl), sx.seatsAt, sx.guestSeatsAt); const eOf = (id) => X.E[id.slice(2)] || 0; /* 기대 경기 수(실제 자리 기준) */ const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : g(id) < flE(eOf(id))) || late.has(id)), his = all.filter((id) => !guest.has(id) && g(id) >= 1 && g(id) - 1 >= flE(eOf(id))); if (!los.length || (!his.length && !late.size)) return false;
       for (const lo of los) for (let A = from; A < n; A++) { if (!restingAt(A).includes(lo)) continue;
-        for (const sa of seatsOf(A)) { if (protect.has(sa.m.id)) continue; const X = sa.m[sa.side][sa.i]; if (gender(X) !== gender(lo)) continue;
+        for (const sa of seatsOf(A)) { if (protect.has(sa.m.id)) continue; const X = sa.m[sa.side][sa.i]; const crossA = gender(X) !== gender(lo); if (crossA && !late.has(lo)) continue; /* 성별이 다른 자리는 도착 직후 쉬는 사람을 옮길 때만 (코트 종류가 유효하게 남아야 함) */
           for (let B = from; B < n; B++) { if (B === A || !restingAt(B).includes(X)) continue;
-            for (const sb of seatsOf(B)) { if (protect.has(sb.m.id)) continue; const hi = sb.m[sb.side][sb.i]; if (!(his.includes(hi) || (hi === lo && late.has(lo))) || gender(hi) !== gender(X)) continue;
-              sa.m[sa.side][sa.i] = lo; sb.m[sb.side][sb.i] = X; const sc = scheduleScore(sch);
+            for (const sb of seatsOf(B)) { if (protect.has(sb.m.id)) continue; const hi = sb.m[sb.side][sb.i]; const crossB = gender(hi) !== gender(X); if (!(his.includes(hi) || (hi === lo && late.has(lo))) || (crossB && !late.has(lo))) continue;
+              sa.m[sa.side][sa.i] = lo; sb.m[sb.side][sb.i] = X; let ok = true; const undo = [];
+              for (const [m, cross] of [[sa.m, crossA], [sb.m, crossB]]) { if (!cross || okCourtOf(m)) continue; let fixed = false; for (const j of [0, 1]) { const t = m.aIds[1]; m.aIds[1] = m.bIds[j]; m.bIds[j] = t; if (okCourtOf(m)) { fixed = true; undo.push([m, j]); break; } m.bIds[j] = m.aIds[1]; m.aIds[1] = t; } if (!fixed) { ok = false; break; } } /* 여여 vs 남남이 되면 짝을 다시 맞춰 본다 */
+              const sc = ok ? scheduleScore(sch) : Infinity;
               if (sc < base - 1e-9) { base = sc; return true; }
+              for (const [m, j] of undo.reverse()) { const t = m.aIds[1]; m.aIds[1] = m.bIds[j]; m.bIds[j] = t; }
               sa.m[sa.side][sa.i] = X; sb.m[sb.side][sb.i] = hi;
             } } } }
       return false;
@@ -629,12 +633,13 @@
       const ps = activePlayers(); const g = (p) => games[p.id] || 0;
       const playable = []; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) playable[sl] = Math.min(courtsAtSlot(st, sl), Math.floor(ps.filter((p) => playerAvailable(p, st, sl)).length / 4)) >= 1; // 코트가 서는 시간대 (4명 이상 + 코트 1면 이상)
       const AVs = {}; ps.forEach((p) => { let av = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) if (playable[sl] && playerAvailable(p, st, sl)) av++; AVs[p.id] = av; }); // 머무는 동안 실제로 뛸 수 있는 시간대 수 (사람이 모자라 코트가 안 서는 시간대는 손해로 세지 않는다)
-      const maxG = ps.length ? Math.max(...ps.map(g)) : 0; const mem = ps.filter((p) => !p.guest); const maxM = mem.length ? Math.max(...mem.map(g)) : maxG;
-      const open = mem.filter((p) => g(p) < AVs[p.id]); // 더 뛸 수 있었던 회원 (게스트는 아래에서 따로: 최대 경기 보장)
-      const minG = open.length ? Math.min(...open.map(g)) : maxM;
-      spread = Math.max(0, maxM - minG); // 회원끼리 차이 1 이내가 목표
-      loss = open.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxM - 1) - g(p)), 0); // 회원 최다보다 2경기 이상 적은 회원 = 손해 (머무는 시간대 한도 — 2타임만 있는 사람 둘은 2+0 과 1+1 이 같은 값)
-      memFar = open.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxG - 2) - g(p)) + (g(p) === 0 && maxG >= 2 ? 1 : 0), 0); // (누군가 2경기 뛰는 동안 0경기인 회원은 한 단위 더 — 0경기 금지) 회원이 전체 최다(게스트 포함)보다 3경기 이상 적음 = 게스트 보장으로도 넘지 못하는 하한 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
+      const maxG = ps.length ? Math.max(...ps.map(g)) : 0; const mem = ps.filter((p) => !p.guest);
+      const byId = {}; for (const p of ps) byId[p.id] = p; const seatsX = seatsOfMatches(sch.matches, (x) => !!byId[x]?.guest);
+      const X = expectedGames(ps, isFinite(nSl) ? nSl : 0, (id, sl) => playable[sl] && playerAvailable(byId[id], st, sl), seatsX.seatsAt, seatsX.guestSeatsAt); // 이 판의 실제 자리로 잰 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적, 게스트 우선)
+      let under = 0, over = 0; const devs = []; for (const p of mem) { const e = X.E[p.id] || 0; under += Math.max(0, flE(e) - g(p)); over += Math.max(0, g(p) - ceE(e)); devs.push(g(p) - e); }
+      spread = devs.length ? Math.max(...devs) - Math.min(...devs) : 0; // 회원끼리 기대 대비 편차의 폭 (연속값) — 작을수록 고르게
+      loss = under + over; // 기대의 내림보다 적게, 올림보다 많이 뛴 회원 = 손해/과다 (같은 시간에 있던 사람끼리는 자연히 1경기 차이 이내; 오래 있는 사람은 그만큼 더 뛴다)
+      memFar = mem.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxG - 2, flE(X.Eq[p.id] || 0)) - g(p)) + (g(p) === 0 && maxG >= 2 ? 1 : 0), 0); // 회원 하한: 전체 최다(게스트 포함)보다 3경기 이상 적으면서 균등 기대에도 못 미침, 또는 누군가 2경기 뛰는 동안 0경기 — 게스트 보장으로도 넘지 못한다 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
       for (const gp of ps.filter((p) => p.guest)) { const sh = Math.max(0, Math.min(AVs[gp.id], maxG) - g(gp)); guestLoss += sh + Math.max(0, sh - 1); } // (2경기 이상 모자라면 가중) 게스트 최대 경기 보장: 최다(뛸 수 있는 시간대 한도)보다 모자란 경기 수 — 여복·회원 공정성보다 위
       let below = 0; for (const p of ps) { const need = Math.min(AVs[p.id], 2); if (g(p) < need) below += need - g(p); } spread += below * 20; // 최소 경기 수(2, 시간대가 1개면 1) 미달은 크게 불리
     } else { const g = Object.values(games); spread = g.length ? Math.max(...g) - Math.min(...g) : 0; }
@@ -683,9 +688,10 @@
     const slotPlayable = []; for (let i = 0; i < n; i++) slotPlayable[i] = !weekly || Math.min(courtsAtSlot(s, i), Math.floor(ps.filter((p) => playerAvailable(p, s, i)).length / 4)) >= 1; // 정기 모임: 코트가 서는 시간대만 '남은 시간대'로 센다
     const remainOf = (p, slot) => { let r = 0; for (let i = slot; i < n; i++) if (slotPlayable[i] && playerAvailable(p, s, i)) r++; return r; };
     const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
+    const byIdP = {}; for (const p of ps) byIdP[p.id] = p; const EXP = weekly ? expectedGames(ps, n, (id, sl) => slotPlayable[sl] && playerAvailable(byIdP[id], s, sl), (sl) => 4 * Math.min(courtsAtSlot(s, sl), Math.floor(availAt(sl).length / 4)), null) : null; // 기대 경기 수(계획: 코트가 다 서는 전제) — '뛴 경기 − 기대'가 적은 사람부터 고르면 오래 있는 사람이 그만큼 더 뛴다
     // 최소 보장: 참석 시간대가 2개 이상이면 최소 2경기, 1개면 1경기. 남은 시간대를 다 뛰어야 채울 수 있으면 최우선(-300)
     const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
-    const prio = (p, slot) => played[p.id] * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest && played[p.id] < MIN_MEM + 2 ? 2e4 : 0) - (played[p.id] === 0 ? (remainOf(p, slot) <= 1 ? 4e4 : 1e4) : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
+    const prio = (p, slot) => (played[p.id] - (weekly ? EXP.upTo(p.id, slot) : 0)) * 100 + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest && played[p.id] < MIN_MEM + 2 ? 2e4 : 0) - (played[p.id] === 0 ? (remainOf(p, slot) <= 1 ? 4e4 : 1e4) : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
     const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
@@ -1971,6 +1977,23 @@
     return html;
   }
   /** 정기 모임 룰 체크 — 생성·조 조정 뒤 판이 규칙을 지키는지: 잡복 원칙(여자−0.5+파트너 ≥ 상대 남자 합), 혼복 남자 NTRP, 같은 시간대 중복, 경기 수 차이 */
+  /** 기대 경기 수 — 시간대마다 (자리 수 ÷ 그 시간대에 있는 사람 수)를 머무는 시간대 전체에 누적한 값. 오래 있는 사람이 그만큼 더 뛰는 것이 공정의 기준이다 (경기 수를 전원 같게 맞추면 오래 있는 사람이 더 쉬게 된다).
+   *  게스트는 최대 경기 보장이라 자리를 먼저 차지하고, 남은 자리를 그 시간대의 회원이 똑같이 나눈다.
+   *  people: [{ id, guest }], n: 시간대 수, av(id, slot): 그 시간대에 있는가, seatsAt(slot): 자리 수(계획: 코트×4 / 실제: 경기×4), guestSeatsAt(slot): 게스트가 쓴 자리(없으면 min(게스트 수, 자리))
+   *  반환 { E: 기대(게스트 우선 반영), Eq: 균등 기대(게스트 구분 없음 — 회원 하한 계산용), upTo(id, slot): slot 앞까지의 누적 기대 } */
+  function expectedGames(people, n, av, seatsAt, guestSeatsAt) {
+    const E = {}, Eq = {}, pre = {}; for (const p of people) { E[p.id] = 0; Eq[p.id] = 0; pre[p.id] = []; }
+    for (let sl = 0; sl < n; sl++) {
+      for (const p of people) pre[p.id][sl] = E[p.id];
+      const here = people.filter((p) => av(p.id, sl)); const seats = Math.max(0, seatsAt(sl) | 0); if (here.length < 4 || seats <= 0) continue;
+      const gs = here.filter((p) => p.guest), ms = here.filter((p) => !p.guest); const gSeats = Math.min(seats, guestSeatsAt ? Math.max(0, guestSeatsAt(sl) | 0) : gs.length);
+      const mShare = ms.length ? Math.min(1, Math.max(0, seats - gSeats) / ms.length) : 0, gShare = gs.length ? Math.min(1, gSeats / gs.length) : 0, eq = Math.min(1, seats / here.length);
+      for (const p of here) { E[p.id] += p.guest ? gShare : mShare; Eq[p.id] += eq; }
+    }
+    return { E, Eq, upTo: (id, slot) => (pre[id] && pre[id][slot] != null ? pre[id][slot] : E[id] || 0) };
+  }
+  const seatsOfMatches = (ms, isGuest) => { const seatsAt = [], gSeatsAt = []; for (const m of ms) { const all = [...(m.aIds || []), ...(m.bIds || [])].map((x) => (x.startsWith('p:') ? x.slice(2) : x)); seatsAt[m.slot] = (seatsAt[m.slot] || 0) + all.length; gSeatsAt[m.slot] = (gSeatsAt[m.slot] || 0) + all.filter(isGuest).length; } return { seatsAt: (sl) => seatsAt[sl] || 0, guestSeatsAt: (sl) => gSeatsAt[sl] || 0 }; }; // 실제 대진의 시간대별 자리 수·게스트가 쓴 자리
+  const flE = (x) => Math.floor(x + 1e-6), ceE = (x) => Math.ceil(x - 1e-6), fmtE = (x) => (Math.round(x * 10) / 10).toFixed(1);
   function wkRuleCheck(doc, s, ms) {
     const att = doc.attendance || {}; const L = W.index?.levels || {}; const lv = (id) => { const a = att[id]; if (!a) return 0; return Number.isFinite(L[id]) ? L[id] : WK_GUEST_NTRP - (a.g === 'F' ? 0.5 : 0); };
     const g = (id) => (att[id]?.g === 'F' ? 'F' : 'M'); const nm = (id) => wkName(doc, id); const bad = {}, soft = {}; const issues = [], notes = []; // bad[mid] = 위반, soft[mid] = 참고
@@ -1996,10 +2019,15 @@
     const avail = (id) => { let c = 0; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i)) c++; return c; }; // 머무는 동안 실제로 뛸 수 있는 시간대 수
     const ids = Object.keys(att); const maxG = ids.length ? Math.max(...ids.map((id) => games[id] || 0)) : 0;
     if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
-    const memIds = ids.filter((id) => !att[id].guest); const maxM = memIds.length ? Math.max(...memIds.map((id) => games[id] || 0)) : maxG; // 회원 공정성은 회원끼리 (게스트는 최대 경기 보장이라 따로)
-    const short = memIds.filter((id) => (games[id] || 0) < avail(id) && ((games[id] || 0) < maxM - 1 || (games[id] || 0) < maxG - 2 || ((games[id] || 0) === 0 && maxG >= 2))).map((id) => `${nm(id)} ${games[id] || 0}`); // 회원 최다보다 2 이상, 전체 최다(게스트 포함)보다 3 이상 적음, 또는 누군가 2경기 뛰는 동안 0경기
-    if (short.length) issues.push(`경기 수 부족: ${short.join(', ')} (회원 최다 ${maxM}${maxG > maxM ? ` · 게스트 최다 ${maxG}` : ''})`);
-    { const canGive = memIds.some((id) => (games[id] || 0) >= Math.max(maxG - 1, 2)); /* (1경기뿐인 회원은 내줄 수 없음) 회원 중 누군가 자리를 내줘도 최다보다 3경기 이상 뒤지지 않는가 — 아니면 게스트가 자리보다 많아 생긴 불가피한 부족 */
+    const memIds = ids.filter((id) => !att[id].guest); const gm = (id) => games[id] || 0;
+    const sx = seatsOfMatches(ms, (x) => !!att[x]?.guest); const X = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (이 대진의 실제 자리 기준, 게스트 우선) — 공정의 기준: 머문 시간대마다 자리/인원 비율 누적
+    const floorOf = (id) => Math.max(flE(X.E[id] || 0), Math.min(avail(id), maxG - 2, flE(X.Eq[id] || 0)), maxG >= 2 ? 1 : 0); // 회원 하한: 기대의 내림, 전체 최다 −2(균등 기대 한도), 누군가 2경기 뛰면 0경기 금지
+    const shortIds = memIds.filter((id) => gm(id) < avail(id) && gm(id) < floorOf(id)); const short = shortIds.map((id) => `${nm(id)} ${gm(id)} (기대 ${fmtE(X.E[id] || 0)})`);
+    let memSeats = 0; if (isFinite(n)) for (let i = 0; i < n; i++) memSeats += sx.seatsAt(i) - sx.guestSeatsAt(i); const needFloor = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), floorOf(id)) : 0), 0); const slack = Math.max(0, needFloor - memSeats); // 하한의 합이 회원 자리보다 많으면(0경기 금지·짧게 머무는 사람의 올림 때문) 그만큼은 누군가 1경기 모자랄 수밖에 없다
+    if (short.length) (shortIds.length <= slack && shortIds.every((id) => gm(id) >= floorOf(id) - 1) ? notes : issues).push(`경기 수 부족: ${short.join(', ')}${shortIds.length <= slack ? ' (자리 수상 불가피)' : ''}`);
+    const over = memIds.filter((id) => gm(id) > ceE(X.E[id] || 0)).map((id) => `${nm(id)} ${gm(id)} (기대 ${fmtE(X.E[id] || 0)})`); // 기대의 올림보다 많이 뛴 회원 (그만큼 다른 회원이 덜 뛴다)
+    if (over.length) issues.push(`경기 수 과다: ${over.join(', ')}`);
+    { const canGive = memIds.some((id) => gm(id) >= 2 && gm(id) - 1 >= floorOf(id)); /* 회원 중 하한을 지키면서 자리를 내줄 수 있는 사람이 있는가 — 없으면 게스트가 자리보다 많아 생긴 불가피한 부족 */
       const gAll = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id))); const gBad = gAll.filter((id) => canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1); const gOk = gAll.filter((id) => !gBad.includes(id)); const fmt = (a) => a.map((id) => `${nm(id)} ${games[id] || 0}`).join(', ');
       if (gBad.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${fmt(gBad)}`); if (gOk.length) notes.push(`게스트가 최다(${maxG})보다 1경기 적음: ${fmt(gOk)} (게스트가 자리보다 많아 회원 최소 경기를 지키느라 허용)`); }
     { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
@@ -2019,8 +2047,9 @@
     const wl = {}; let scored = 0; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const t = typeOf(m); for (const x of [...A, ...B]) { games[x] = (games[x] || 0) + 1; (tc[x] ??= { FF: 0, FM: 0, MM: 0, MIX: 0 })[t]++; } const rs = doc.results?.[m.id]; if (rs && rs.a !== rs.b) { scored++; const wIds = rs.a > rs.b ? A : B, lIds = rs.a > rs.b ? B : A; for (const x of wIds) (wl[x] ??= { w: 0, l: 0 }).w++; for (const x of lIds) (wl[x] ??= { w: 0, l: 0 }).l++; } } // 점수가 있는 경기의 승-패
     const rows = [...att].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || a.name.localeCompare(b.name, 'ko'));
     const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
+    const n = maxSlots(s); const avOk = (id, i) => { const a = doc.attendance[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; const sx = seatsOfMatches(ms, (x) => !!doc.attendance[x]?.guest); const X = expectedGames(att.map((p) => ({ id: p.id, guest: !!p.guest })), isFinite(n) ? n : 0, avOk, sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적)
     const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; return `<tr class="${gN === mx && mx !== mn ? 'hi' : ''} ${gN === mn && mx !== mn ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b></td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && gN > ceE(e) ? 'hi' : ''} ${!p.guest && gN < flE(e) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b></td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
   }
   // ================= 코트 예약 현황 (data/courts.json — 월별 표, 누구나 보기 · 수정은 대진표 비밀번호 또는 관리자) =================
   // ---- 아래 두 함수는 tools/gas-proxy/Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----

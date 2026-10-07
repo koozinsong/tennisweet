@@ -2,12 +2,13 @@
 // 사용: node tools/wk_harness.js live [날짜…]     실제 data/weekly 세션으로 생성해 보고 불변식·인당 경기 수를 출력
 //       node tools/wk_harness.js early             일찍 온 사람 시나리오 (여 3·남 1 등)
 //       node tools/wk_harness.js fuzz [횟수]        무작위 구성으로 불변식 검사 (중복·빈 코트·도착 직후 휴식·2경기 차이·게스트)
+//       node tools/wk_harness.js json <날짜> [gen] [by]  그 세션 대진을 앱과 같은 seed 로 생성해 JSON 출력 (파일 저장은 하지 않음)
 const fs = require('fs'); const vm = require('vm'); const path = require('path');
 const ROOT = path.join(__dirname, '..');
 let src = fs.readFileSync(process.env.APP || path.join(ROOT, 'app.js'), 'utf8'); // APP=다른 app.js 경로 (이전 판과 비교할 때)
 { const lines = src.split('\n'); let ln = -1; for (let i = lines.length - 1; i >= 0; i--) if (lines[i] === '  (async () => {') { ln = i; break; }
   if (ln < 0) throw new Error('init IIFE not found');
-  lines.splice(ln, 0, '  globalThis.__T = { generateWeeklySchedule, wkRuleCheck, wkSettings, wkAttendees, W };');
+  lines.splice(ln, 0, '  globalThis.__T = { generateWeeklySchedule, wkRuleCheck, wkSettings, wkAttendees, expectedGames: typeof expectedGames === \'function\' ? expectedGames : null, W };');
   lines.splice(ln + 1, 1, '  (async () => { return; '); src = lines.join('\n'); } // 초기화(네트워크·렌더)는 실행하지 않는다
 const el = () => new Proxy({ classList: { contains: () => false, toggle() {}, add() {}, remove() {} }, style: {}, dataset: {}, value: '', textContent: '', innerHTML: '', hidden: false, addEventListener() {}, removeEventListener() {}, setAttribute() {}, getAttribute: () => null, querySelector: () => null, querySelectorAll: () => [], closest: () => null, focus() {}, click() {}, appendChild() {}, remove() {} }, { get: (t, k) => (k in t ? t[k] : (typeof k === 'string' && /^[a-z]/.test(k) ? () => undefined : undefined)) });
 const store = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), clear: () => m.clear() }; };
@@ -16,6 +17,12 @@ const ctx = { console, setTimeout, clearTimeout, setInterval: () => 0, clearInte
 ctx.window = ctx; ctx.globalThis = ctx; ctx.self = ctx;
 vm.createContext(ctx); vm.runInContext(src, ctx, { filename: 'app.js' });
 const T = ctx.__T; if (!T) throw new Error('export failed');
+if (!T.expectedGames) T.expectedGames = function expectedGames(people, n, av, seatsAt, guestSeatsAt) { // app.js 의 같은 이름 함수 사본 (APP= 로 이전 판을 돌릴 때)
+  const E = {}, Eq = {}, pre = {}; for (const p of people) { E[p.id] = 0; Eq[p.id] = 0; pre[p.id] = []; }
+  for (let sl = 0; sl < n; sl++) { for (const p of people) pre[p.id][sl] = E[p.id]; const here = people.filter((p) => av(p.id, sl)); const seats = Math.max(0, seatsAt(sl) | 0); if (here.length < 4 || seats <= 0) continue;
+    const gs = here.filter((p) => p.guest), ms = here.filter((p) => !p.guest); const gSeats = Math.min(seats, guestSeatsAt ? Math.max(0, guestSeatsAt(sl) | 0) : gs.length);
+    const mShare = ms.length ? Math.min(1, Math.max(0, seats - gSeats) / ms.length) : 0, gShare = gs.length ? Math.min(1, gSeats / gs.length) : 0, eq = Math.min(1, seats / here.length); for (const p of here) { E[p.id] += p.guest ? gShare : mShare; Eq[p.id] += eq; } }
+  return { E, Eq, upTo: (id, slot) => (pre[id] && pre[id][slot] != null ? pre[id][slot] : E[id] || 0) }; };
 
 const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
 const T0 = (s, i) => toMin(s.startTime) + i * (s.matchMinutes + (s.breakMinutes || 0));
@@ -47,9 +54,12 @@ function analyze(d, sch) {
   const slotsOf = (k) => { let c = 0; for (let i = 0; i < n; i++) if (on[i] && avail(att[k], s, i)) c++; return c; };
   out.ff = sch.matches.filter((m) => [...m.aIds, ...m.bIds].every((x) => att[x.slice(2)]?.g === 'F')).length; out.ffPossible = (() => { for (let i = 0; i < n; i++) if (courtsAt(s, i) >= 1 && ids.filter((k) => att[k].g === 'F' && avail(att[k], s, i)).length >= 4) return true; return false; })();
   const maxG = Math.max(0, ...Object.values(games)); const mem = ids.filter((k) => !att[k].guest); const maxM = Math.max(0, ...mem.map((k) => games[k])); const open = mem.filter((k) => games[k] < slotsOf(k));
-  out.gap2 = open.filter((k) => games[k] <= maxM - 2 || games[k] <= maxG - 3 || (games[k] === 0 && maxG >= 2)).map((k) => `${att[k].n} ${games[k]}/${maxM}(전체 ${maxG})`); // 회원끼리 2경기 이상, 또는 전체 최다(게스트 포함)보다 3경기 이상 차이
-  const canGive = mem.some((k) => games[k] >= Math.max(maxG - 1, 2)); /* 룰 체크(wkRuleCheck)와 같은 기준: 전체 회원 중 자리를 내줄 수 있는 사람 */ out.guestBehind = ids.filter((k) => { if (!att[k].guest) return false; const tg = Math.min(slotsOf(k), maxG); return games[k] < tg && (canGive || games[k] < tg - 1); }).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장 — 회원이 자리를 내주면 최다보다 3경기 이상 뒤지게 되는 경우(게스트가 자리보다 많음)의 1경기 부족은 불가피
-  out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k] })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
+  const X = (() => { const seatsAt = [], gSeatsAt = []; for (const m of sch.matches) { const all = [...m.aIds, ...m.bIds].map((x) => x.slice(2)); seatsAt[m.slot] = (seatsAt[m.slot] || 0) + all.length; gSeatsAt[m.slot] = (gSeatsAt[m.slot] || 0) + all.filter((x) => att[x]?.guest).length; } return T.expectedGames(ids.map((k) => ({ id: k, guest: !!att[k].guest })), n, (k, i) => avail(att[k], s, i), (i) => seatsAt[i] || 0, (i) => gSeatsAt[i] || 0); })(); // 기대 경기 수 (룰 체크와 같은 계산)
+  const fl = (x) => Math.floor(x + 1e-6), ce = (x) => Math.ceil(x - 1e-6); const floorOf = (k) => Math.max(fl(X.E[k] || 0), Math.min(slotsOf(k), maxG - 2, fl(X.Eq[k] || 0)), maxG >= 2 ? 1 : 0); out.E = X.E;
+  let memSeats = 0; for (const m of sch.matches) memSeats += [...m.aIds, ...m.bIds].filter((x) => !att[x.slice(2)]?.guest).length; const needFloor = mem.reduce((a, k) => a + (slotsOf(k) >= 1 ? Math.min(slotsOf(k), floorOf(k)) : 0), 0); const slack = Math.max(0, needFloor - memSeats); const shortIds = mem.filter((k) => games[k] < slotsOf(k) && games[k] < floorOf(k)); const unavoidable = shortIds.length <= slack && shortIds.every((k) => games[k] >= floorOf(k) - 1); out.shortNote = unavoidable && shortIds.length ? shortIds.map((k) => `${att[k].n} ${games[k]} (기대 ${(X.E[k] || 0).toFixed(1)}, 자리 수상 불가피)`) : []; // 하한의 합 > 회원 자리면 1경기 부족은 불가피 (룰 체크와 같은 기준)
+  out.gap2 = mem.filter((k) => (!unavoidable && games[k] < slotsOf(k) && games[k] < floorOf(k)) || games[k] > ce(X.E[k] || 0)).map((k) => `${att[k].n} ${games[k]} (기대 ${(X.E[k] || 0).toFixed(1)})`); // 기대의 내림보다 적게(하한 포함) 또는 올림보다 많이 뛴 회원
+  const canGive = mem.some((k) => games[k] >= 2 && games[k] - 1 >= floorOf(k)); /* 룰 체크(wkRuleCheck)와 같은 기준: 하한을 지키면서 자리를 내줄 수 있는 회원 */ out.guestBehind = ids.filter((k) => { if (!att[k].guest) return false; const tg = Math.min(slotsOf(k), maxG); return games[k] < tg && (canGive || games[k] < tg - 1); }).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장 — 회원이 자리를 내주면 최다보다 3경기 이상 뒤지게 되는 경우(게스트가 자리보다 많음)의 1경기 부족은 불가피
+  out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k], e: X.E[k] || 0 })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
   return out;
 }
 function report(name, d, levels, gens = [1]) {
@@ -57,9 +67,9 @@ function report(name, d, levels, gens = [1]) {
   for (const g of gens) {
     let sch; const t0 = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, g); } catch (e) { console.log(`gen${g} ERROR ${e.message}`); allOk = false; continue; }
     const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false; // 여복 미달(ffMiss)은 경기 수 균등이 더 먼저라 생길 수 있어 참고로만 표시
-    console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 2경기차 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
+    console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 불균형 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
     console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과', '|', (rc.notes.find((x) => /상위 남복/.test(x)) || '').slice(0, 24), '| 팀 합 차이 합계', a.diffSum || 0, '| 1.0 이상(혼복 제외):', JSON.stringify(a.big || []));
-    console.log('   인당(이름 시간 경기/있는 시간대):', a.table.map((r) => `${r.n} ${r.when} ${r.games}/${r.slots}`).join(' · '));
+    console.log('   인당(이름 시간 경기/있는 시간대 (기대)):', a.table.map((r) => `${r.n} ${r.when} ${r.games}/${r.slots} (${r.e.toFixed(1)})`).join(' · '));
     if (process.env.LINES || bad) console.log('   ' + a.lines.join('\n   '));
   }
   return allOk;
@@ -95,6 +105,12 @@ if (mode === 'live') {
   const late6 = [1, 2, 3, 4, 5, 6].map((i) => M('m' + i, '21:00', '22:00', 3.5));
   run('1면 18~22시: 회원 2 + 게스트 2 종일, 회원 6 이 21시 도착', [M('a1', '18:00', '22:00'), M('a2', '18:00', '22:00'), M('E1', '18:00', '22:00', null, true), M('E2', '18:00', '22:00', null, true), ...late6], { startTime: '18:00', courts: 1 });
   run('1면 18~22시: 게스트 4 종일, 회원 6 이 21시 도착', [...[1, 2, 3, 4].map((i) => M('E' + i, '18:00', '22:00', null, true)), ...late6], { startTime: '18:00', courts: 1 });
+} else if (mode === 'json') { // node tools/wk_harness.js json <날짜> [gen] [by] → 그 세션을 앱과 같은 seed 로 생성해 schedule 객체를 JSON 으로 출력 (파일은 건드리지 않음 — 관리자가 직접 저장할 때 씀)
+  const id = process.argv[3]; const gen = +process.argv[4] || 1; const by = process.argv[5] || 'tool';
+  const idx = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/weekly/index.json'), 'utf8')); const d = JSON.parse(fs.readFileSync(path.join(ROOT, `data/weekly/sessions/${id}.json`), 'utf8'));
+  T.W.index = { levels: idx.levels || {} }; T.W.id = d.id; T.W.me = by; const sch = T.generateWeeklySchedule(d, null, 0, gen); const a = analyze(d, sch);
+  process.stderr.write(`${id} gen${gen} seed ${sch.seed} 경기 ${sch.matches.length} | 불균형 ${JSON.stringify(a.gap2)} 도착휴식 ${JSON.stringify(a.lateRest)} 게스트 ${JSON.stringify(a.guestBehind)}\n   인당: ${a.table.map((r) => `${r.n} ${r.games}/${r.slots} (${r.e.toFixed(1)})`).join(' · ')}\n   ${a.lines.join('\n   ')}\n`);
+  process.stdout.write(JSON.stringify(sch));
 } else if (mode === 'fuzz') {
   const N = +process.argv[3] || 40; let a = 7; const rnd = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
   const tally = { runs: 0, dup: 0, bad: 0, empty: 0, lateRest: 0, gap2: 0, guest: 0, error: 0, bigDiffMatches: 0, matches: 0, ms: 0 }; const samples = []; const log = console.log;
