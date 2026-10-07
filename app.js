@@ -1565,7 +1565,7 @@
       else if (coll === 'attendance') {
         const v = op.value; if (!v || typeof v.n !== 'string' || !v.n.trim() || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from) || !TIME_RE.test(v.until) || v.from >= v.until) return { code: 'INVALID' };
         if (!doc.attendance[key] && Object.keys(doc.attendance).length >= 80) return { code: 'FULL' }; // 파일 무한 팽창 방지
-        doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}) };
+        doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}) }; // y = 양보 (경기 수를 1 적게)
       } else if (coll === 'done') { if (op.value !== true || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.done[key] = true; }
       else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > WK_SCORE_MAX || v.b < 0 || v.b > WK_SCORE_MAX || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~6)를 넣으면 완료로도 표시
     } else if (op.op === 'generate') {
@@ -1640,7 +1640,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
-  const PROXY_VERSION_NEED = 5; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json)
+  const PROXY_VERSION_NEED = 6; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y)
   const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
   const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
@@ -1729,7 +1729,7 @@
     while (i < hours.length) { const v = cb[String(hours[i])] ?? s.courts; let j = i; while (j + 1 < hours.length && (cb[String(hours[j + 1])] ?? s.courts) === v) j++; parts.push(`${hours[i]}~${hours[j] + 1}시 ${v}면`); i = j + 1; }
     return parts.length === 1 ? `코트 ${parts[0].replace(/^\S+ /, '')}` : '코트 ' + parts.join(' · ');
   }
-  const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
+  const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, yield: !!a.y, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
   const wkName = (doc, id) => doc?.attendance?.[id]?.n || playerById(id)?.name || id;
   function wkStatus(msg, bad) { const el = $('#wk-status'); if (!el) return; el.textContent = msg || ''; el.classList.toggle('bad', !!bad); const rb = $('#wk-retry'); if (rb) rb.hidden = !W.failed.length; }
   function wkCoverMeta() { const s = wkSessions().find((x) => x.id === W.id); if (!s) return '예정된 모임 없음'; const st = W.doc ? wkSettings(W.doc) : null; const n = W.doc ? Object.keys(W.doc.attendance).length : null; return `${fmtDate(s.date)}${st ? ` ${st.startTime.slice(0, 2)}~${st.endTime.slice(0, 2)}시` : ''}${n != null ? ` · 참석 ${n}명` : ''}${W.doc?.schedule ? ' · 대진 있음' : ''}`; }
@@ -1812,7 +1812,7 @@
     if (!closed && W.cnEdit) { const cur = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || '').join(', ').replace(/(, )+$/, '');
       html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호를 쉼표로 (대진표의 1·2·… 코트 순서대로, 예: 5, 7). ${perHour ? '시간대마다 코트가 다르면 줄마다 따로 적으세요.' : '시간대마다 다르면 [시간대별로]를 누르세요.'}</span>${perHour || W.cnByHour ? wkCourtBlocks(s, (h) => cntAt(h) + '|' + cur(h)).filter((b) => cntAt(b.from) > 0).map((b) => `<label class="inline">${b.from}~${b.to}시 <small>(${cntAt(b.from)}면)</small> <input name="cnh_${b.key}" maxlength="80" value="${esc(cur(b.from))}" placeholder="${Array.from({ length: cntAt(b.from) }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(84, cntAt(b.from) * 44)}px"></label>`).join('') : `<label class="inline">코트 <input name="cn_all" maxlength="80" value="${esc((s.courtNames || []).join(', '))}" placeholder="${Array.from({ length: s.courts }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(96, s.courts * 44)}px"></label><button type="button" class="small" id="wk-cn-byhour">시간대별로</button>`}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`; }
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
-    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${esc(name)}${a ? `<small>${esc(wkShort(a.from))}~${esc(wkShort(a.until))}</small>` : ''}</button>`;
+    const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${a?.y ? '<span class="ymark">양보</span>' : ''}${esc(name)}${a ? `<small>${esc(wkShort(a.from))}~${esc(wkShort(a.until))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
     html += `<h3>참석 ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
       <p class="hint">${wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
@@ -1832,12 +1832,13 @@
       <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" ${isNew ? '' : 'disabled'}><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
       <div class="wk-hours"><span class="lbl">도착</span>${hb('from', wkArriveTimes(s))}</div>
       <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', wkLeaveTimes(s))}</div>
+      ${e.guest ? '' : `<div class="wk-hours"><span class="lbl">양보</span><button class="hbtn ${e.yield ? 'sel' : ''}" id="wk-yield" type="button">${e.yield ? '양보함 — 경기 수를 1 적게' : '양보 안 함'}</button><span class="sub">양보하면 기대 경기 수가 1 줄어 자리가 모자랄 때 먼저 빠지고, 다시 섞어도 유지됩니다</span></div>`}
       <div class="row"><button id="wk-save" class="primary">${esc(wkShort(e.from))}~${esc(wkShort(e.until))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
     </div>`;
   }
   function wkOpen(id) {
     const doc = W.doc; if (!doc) return; const s = wkSettings(doc); const a = doc.attendance[id]; const p = playerById(id); if (!a && !p) return;
-    W.edit = { id, guest: a ? !!a.guest : false, name: a?.n || p?.name || '', gender: a?.g || (p?.gender === 'F' ? 'F' : 'M'), from: a?.from || s.startTime, until: a?.until || s.endTime, attending: !!a };
+    W.edit = { id, guest: a ? !!a.guest : false, name: a?.n || p?.name || '', gender: a?.g || (p?.gender === 'F' ? 'F' : 'M'), from: a?.from || s.startTime, until: a?.until || s.endTime, attending: !!a, yield: !!a?.y };
     renderWeeklyView(); $('.wk-panel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   async function wkSaveEdit() {
@@ -1849,7 +1850,8 @@
     }
     if (toMin(e.from) >= toMin(e.until)) { toast('퇴장 시각이 도착보다 뒤여야 합니다'); return; }
     W.edit = null;
-    const ok = await wkSend({ op: 'set', path: 'attendance.' + id, value: { n: name, g: e.gender === 'F' ? 'F' : 'M', from: e.from, until: e.until, ...(e.guest ? { guest: true } : {}) } });
+    const ok = await wkSend({ op: 'set', path: 'attendance.' + id, value: { n: name, g: e.gender === 'F' ? 'F' : 'M', from: e.from, until: e.until, ...(e.guest ? { guest: true } : {}), ...(e.yield && !e.guest ? { y: true } : {}) } });
+    if (ok && e.yield && !e.guest && W.doc?.attendance?.[id] && !W.doc.attendance[id].y) toast('⚠ 양보 표시가 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전입니다. Apps Script 를 새 버전으로 배포해 주세요'); /* 옛 프록시는 모르는 필드를 버린다 */
     if (ok && !e.guest && !W.me) { W.me = id; localStorage.setItem('tennisweet.me', id); renderWeeklyView(); }
   }
   $('#tab-weekly')?.addEventListener('click', async (e) => {
@@ -1862,6 +1864,7 @@
     if (t.closest('#wk-guest-add')) { const s = wkSettings(W.doc); W.edit = { id: null, guest: true, name: '', gender: '', from: s.startTime, until: s.endTime, attending: false }; renderWeeklyView(); return; }
     const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; const st = wkSettings(W.doc); const step = (st.matchMinutes || 30) + (st.breakMinutes || 0); if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + step); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - step); renderWeeklyView(); return; }
     const gb = t.closest('[data-wk-gender]'); if (gb && W.edit) { W.edit.gender = gb.dataset.wkGender; renderWeeklyView(); return; }
+    if (t.closest('#wk-yield') && W.edit) { W.edit.yield = !W.edit.yield; renderWeeklyView(); return; }
     if (t.closest('#wk-close')) { W.edit = null; renderWeeklyView(); return; }
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
     if (t.closest('#wk-absent') && W.edit) { const { id, name, guest } = W.edit; W.edit = null; if (confirm(guest ? `게스트 ${name} 님을 이 모임에서 삭제할까요?` : `${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
@@ -1876,7 +1879,7 @@
   $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
-  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}`).join(',')).toString(36);
+  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}`).join(',')).toString(36);
   function generateWeeklySchedule(doc, hist, fromSlot, gen) {
     const ps = wkAttendees(doc); const s = wkSettings(doc);
     const fixed = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
@@ -1981,6 +1984,7 @@
   /** 기대 경기 수 — 시간대마다 (자리 수 ÷ 그 시간대에 있는 사람 수)를 머무는 시간대 전체에 누적한 값. 오래 있는 사람이 그만큼 더 뛰는 것이 공정의 기준이다 (경기 수를 전원 같게 맞추면 오래 있는 사람이 더 쉬게 된다).
    *  게스트는 최대 경기 보장이라 자리를 먼저 차지하고, 남은 자리를 그 시간대의 회원이 똑같이 나눈다.
    *  people: [{ id, guest }], n: 시간대 수, av(id, slot): 그 시간대에 있는가, seatsAt(slot): 자리 수(계획: 코트×4 / 실제: 경기×4), guestSeatsAt(slot): 게스트가 쓴 자리(없으면 min(게스트 수, 자리))
+   *  people 의 yield(양보)가 참이면 기대를 1 줄인다 (그 사람이 자리가 모자랄 때 먼저 빠지고, 올림 몫을 받지 않는다). 하한(Eq 기반·0경기 금지)은 그대로.
    *  반환 { E: 기대(게스트 우선 반영), Eq: 균등 기대(게스트 구분 없음 — 회원 하한 계산용), upTo(id, slot): slot 앞까지의 누적 기대 } */
   function expectedGames(people, n, av, seatsAt, guestSeatsAt) {
     const E = {}, Eq = {}, pre = {}; for (const p of people) { E[p.id] = 0; Eq[p.id] = 0; pre[p.id] = []; }
@@ -1991,7 +1995,8 @@
       const mShare = ms.length ? Math.min(1, Math.max(0, seats - gSeats) / ms.length) : 0, gShare = gs.length ? Math.min(1, gSeats / gs.length) : 0, eq = Math.min(1, seats / here.length);
       for (const p of here) { E[p.id] += p.guest ? gShare : mShare; Eq[p.id] += eq; }
     }
-    return { E, Eq, upTo: (id, slot) => (pre[id] && pre[id][slot] != null ? pre[id][slot] : E[id] || 0) };
+    const yd = {}; for (const p of people) if (p.yield) { yd[p.id] = 1; E[p.id] = Math.max(0, E[p.id] - 1); }
+    return { E, Eq, upTo: (id, slot) => (pre[id] && pre[id][slot] != null ? pre[id][slot] : (E[id] || 0) + (yd[id] || 0)) - (yd[id] || 0) };
   }
   const seatsOfMatches = (ms, isGuest) => { const seatsAt = [], gSeatsAt = []; for (const m of ms) { const all = [...(m.aIds || []), ...(m.bIds || [])].map((x) => (x.startsWith('p:') ? x.slice(2) : x)); seatsAt[m.slot] = (seatsAt[m.slot] || 0) + all.length; gSeatsAt[m.slot] = (gSeatsAt[m.slot] || 0) + all.filter(isGuest).length; } return { seatsAt: (sl) => seatsAt[sl] || 0, guestSeatsAt: (sl) => gSeatsAt[sl] || 0 }; }; // 실제 대진의 시간대별 자리 수·게스트가 쓴 자리
   const flE = (x) => Math.floor(x + 1e-6), ceE = (x) => Math.ceil(x - 1e-6), fmtE = (x) => (Math.round(x * 10) / 10).toFixed(1);
@@ -2024,7 +2029,7 @@
     const ids = Object.keys(att); const maxG = ids.length ? Math.max(...ids.map((id) => games[id] || 0)) : 0;
     if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
     const memIds = ids.filter((id) => !att[id].guest); const gm = (id) => games[id] || 0;
-    const sx = seatsOfMatches(ms, (x) => !!att[x]?.guest); const X = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (이 대진의 실제 자리 기준, 게스트 우선) — 공정의 기준: 머문 시간대마다 자리/인원 비율 누적
+    const sx = seatsOfMatches(ms, (x) => !!att[x]?.guest); const X = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest, yield: !!att[id].y })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (이 대진의 실제 자리 기준, 게스트 우선) — 공정의 기준: 머문 시간대마다 자리/인원 비율 누적
     const topEq = topEqOf(ids, gm, (id) => X.Eq[id] || 0, maxG); const floorOf = (id, E = X.E) => memFloorOf(E[id] || 0, X.Eq[id] || 0, avail(id), maxG, topEq); const hardOf = (id) => hardFloorOf(X.Eq[id] || 0, avail(id), maxG, topEq); // 회원 하한: 기대의 내림, 전체 최다 −2(최다인 사람이 더 오래 있던 만큼은 빼 줌), 누군가 2경기 뛰면 0경기 금지
     const shortIds = memIds.filter((id) => gm(id) < avail(id) && gm(id) < floorOf(id)); const short = shortIds.map((id) => `${nm(id)} ${gm(id)} (기대 ${fmtE(X.E[id] || 0)}${floorOf(id) > flE(X.E[id] || 0) ? ` · 최소 ${floorOf(id)}` : ''})`);
     let memSeats = 0, memCap = 0; if (isFinite(n)) for (let i = 0; i < n; i++) { memSeats += sx.seatsAt(i) - sx.guestSeatsAt(i); memCap += Math.min(sx.seatsAt(i), memIds.filter((id) => avOk(id, i)).length); } const needFloor = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), floorOf(id)) : 0), 0), hardNeed = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), hardOf(id)) : 0), 0); const slack = Math.max(0, needFloor - Math.max(memSeats, Math.min(memCap, hardNeed))); // 하한의 합이 회원 자리보다 많으면(짧게 머무는 사람의 올림 때문) 그만큼은 누군가 1경기 모자랄 수밖에 없다. 회원 자리는 게스트가 쓰고 남은 자리이되, 게스트 보장보다 위인 하한(최다 −2·0경기 금지)만큼은 게스트를 밀어내고라도 확보할 수 있으므로(앉을 수 있는 자리 한도 안에서) 게스트가 다 차지한 판 자체를 '불가피'로 보지 않는다
@@ -2035,7 +2040,7 @@
       const canSwap = (i, j) => { if (g(i) !== g(j)) return false; for (let sl = 0; sl < nS; sl++) if (playAt[i]?.has(sl) && sl !== firstOf(i) && avOk(j, sl) && !playAt[j]?.has(sl)) return true; return false; }; // i 가 뛰고 j 가 쉬는 시간대가 있어 자리 하나를 바로 옮길 수 있는가 (i 의 도착 시간대는 제외)
       const unb = []; for (const i of memIds) for (const j of memIds) if (i !== j && gm(i) - gm(j) >= 2 && dev(i) - dev(j) > 1 + 1e-6 && canSwap(i, j)) unb.push(`${nm(i)} ${gm(i)} (기대 ${fmtE(X.E[i] || 0)}) > ${nm(j)} ${gm(j)} (기대 ${fmtE(X.E[j] || 0)})`);
       if (unb.length) issues.push(`경기 수 불균형: ${unb.join(', ')}`); } // 둘 다 자기 기대의 올림·내림 안에 있어도(기대가 정수 경계에 걸치면) 2경기 벌어질 수 있다 — 자리 하나로 고칠 수 있는 경우만 표시
-    { const Xp = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, null); /* 게스트가 자리를 먼저 차지했을 때의 기대 — 자리를 내주면 그 시간대 회원 기대가 그만큼 내려가므로, 내줄 수 있는지는 내주기 전 기대(X.E, 자기 자리가 자기 하한을 올림)가 아니라 이 기준으로 잰다 */
+    { const Xp = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest, yield: !!att[id].y })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, null); /* 게스트가 자리를 먼저 차지했을 때의 기대 — 자리를 내주면 그 시간대 회원 기대가 그만큼 내려가므로, 내줄 수 있는지는 내주기 전 기대(X.E, 자기 자리가 자기 하한을 올림)가 아니라 이 기준으로 잰다 */
       const canGive = memIds.some((id) => gm(id) >= 2 && gm(id) - 1 >= floorOf(id, Xp.E)); /* 회원 중 하한을 지키면서 자리를 내줄 수 있는 사람이 있는가 — 없으면 게스트가 자리보다 많아 생긴 불가피한 부족 */
       const gAll = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id))); const gBad = gAll.filter((id) => canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1); const gOk = gAll.filter((id) => !gBad.includes(id)); const fmt = (a) => a.map((id) => `${nm(id)} ${games[id] || 0}`).join(', ');
       if (gBad.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${fmt(gBad)}`); if (gOk.length) notes.push(`게스트가 최다(${maxG})보다 1경기 적음: ${fmt(gOk)} (게스트가 자리보다 많아 회원 최소 경기를 지키느라 허용)`); }
@@ -2056,10 +2061,10 @@
     const wl = {}; let scored = 0; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const t = typeOf(m); for (const x of [...A, ...B]) { games[x] = (games[x] || 0) + 1; (tc[x] ??= { FF: 0, FM: 0, MM: 0, MIX: 0 })[t]++; } const rs = doc.results?.[m.id]; if (rs && rs.a !== rs.b) { scored++; const wIds = rs.a > rs.b ? A : B, lIds = rs.a > rs.b ? B : A; for (const x of wIds) (wl[x] ??= { w: 0, l: 0 }).w++; for (const x of lIds) (wl[x] ??= { w: 0, l: 0 }).l++; } } // 점수가 있는 경기의 승-패
     const rows = [...att].sort((a, b) => (games[b.id] || 0) - (games[a.id] || 0) || a.name.localeCompare(b.name, 'ko'));
     const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
-    const n = maxSlots(s); const avOk = (id, i) => { const a = doc.attendance[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; const sx = seatsOfMatches(ms, (x) => !!doc.attendance[x]?.guest); const X = expectedGames(att.map((p) => ({ id: p.id, guest: !!p.guest })), isFinite(n) ? n : 0, avOk, sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적)
+    const n = maxSlots(s); const avOk = (id, i) => { const a = doc.attendance[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; const sx = seatsOfMatches(ms, (x) => !!doc.attendance[x]?.guest); const X = expectedGames(att.map((p) => ({ id: p.id, guest: !!p.guest, yield: !!p.yield })), isFinite(n) ? n : 0, avOk, sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적)
     const slotOn = []; if (isFinite(n)) for (let i = 0; i < n; i++) slotOn[i] = Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => avOk(p.id, i)).length / 4)) >= 1; const avail = (id) => { let c = 0; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i)) c++; return c; }; const maxG = Math.max(0, ...att.map((p) => games[p.id] || 0)); const topEq = topEqOf(att, (p) => games[p.id] || 0, (p) => X.Eq[p.id] || 0, maxG); const isLow = (p, gN) => gN < avail(p.id) && gN < memFloorOf(X.E[p.id] || 0, X.Eq[p.id] || 0, avail(p.id), maxG, topEq); // 룰 체크의 '경기 수 부족'과 같은 하한
     const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && gN > ceE(e) ? 'hi' : ''} ${!p.guest && isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b></td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && gN > ceE(e) ? 'hi' : ''} ${!p.guest && isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b>${p.yield ? ' <span class="ymark">양보</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div></div>`;
   }
   // ================= 코트 예약 현황 (data/courts.json — 월별 표, 누구나 보기 · 수정은 대진표 비밀번호 또는 관리자) =================
   // ---- 아래 두 함수는 tools/gas-proxy/Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----

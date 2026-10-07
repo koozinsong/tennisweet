@@ -22,15 +22,16 @@ const call = (body) => JSON.parse(ctx.__doPost({ postData: { contents: JSON.stri
 const base = { v: 1, club: 'tennisweet', session: '2026-09-20' };
 const AUTH = TEST_KEY; const OLD_VERIFIER = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 옛 방식의 공개 검증값 — 이제 인증으로 통하지 않아야 한다
 const results = [];
-{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 5]); }
+{ const p = call({ ...base, op: 'ping' }); results.push(['ping', p.ok === true && p.v === 6]); }
 results.push(['bad club', call({ ...base, club: 'x', op: 'set' }).code === 'INVALID']);
 results.push(['no session', call({ ...base, session: '2026-01-01', op: 'set', path: 'attendance.a', value: { n: 'x', g: 'M', from: '18:00', until: '22:00' } }).code === 'NOSESSION']);
 let r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '19:00', until: '22:00' }, by: 'h0teikh' }); results.push(['attend ok', r.ok && r.rev === 1 && r.doc.attendance.h0teikh.n === '송국진']);
 r = call({ ...base, op: 'set', path: 'attendance.g:abc', value: { n: '홍길동', g: 'F', from: '18:00', until: '22:00', guest: true } }); results.push(['guest ok', r.ok && r.doc.attendance['g:abc'].guest === true && r.rev === 2]);
+r = call({ ...base, op: 'set', path: 'attendance.yy1', value: { n: '양보자', g: 'M', from: '18:00', until: '22:00', y: true } }); results.push(['yield stored', r.ok && r.doc.attendance.yy1.y === true]); r = call({ ...base, op: 'set', path: 'attendance.yy1', value: { n: '양보자', g: 'M', from: '18:00', until: '22:00' } }); results.push(['yield cleared when omitted', r.ok && r.doc.attendance.yy1.y === undefined]);
 r = call({ ...base, op: 'set', path: 'attendance.h0teikh', value: { n: '송국진', g: 'M', from: '22:00', until: '19:00' } }); results.push(['bad time invalid', r.code === 'INVALID']);
 r = call({ ...base, op: 'set', path: 'done.s0c1', value: true }); results.push(['done before schedule invalid', r.code === 'INVALID']);
-r = call({ ...base, op: 'generate', key: AUTH, base: 1, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'x', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:h0teikh', 'p:g:abc'], bIds: ['p:a', 'p:b'] }] } }); results.push(['generate stale', r.code === 'STALE' && r.rev === 2]);
-r = call({ ...base, op: 'generate', key: AUTH, base: 2, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'x', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:h0teikh', 'p:g:abc'], bIds: ['p:a', 'p:b'] }] } }); results.push(['generate ok', r.ok && r.rev === 3 && r.doc.schedule.matches.length === 1]);
+r = call({ ...base, op: 'generate', key: AUTH, base: 1, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'x', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:h0teikh', 'p:g:abc'], bIds: ['p:a', 'p:b'] }] } }); results.push(['generate stale', r.code === 'STALE' && r.rev === 4]);
+r = call({ ...base, op: 'generate', key: AUTH, base: 4, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'x', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:h0teikh', 'p:g:abc'], bIds: ['p:a', 'p:b'] }] } }); results.push(['generate ok', r.ok && r.rev === 5 && r.doc.schedule.matches.length === 1]);
 r = call({ ...base, op: 'generate', base: 2, value: { seed: 1, gen: 1, fromSlot: 0, inputHash: 'x', matches: [{ id: 's0c1', slot: 0, court: 1, aIds: ['p:h0teikh', 'p:g:abc'], bIds: ['p:a', 'p:b'] }] } }); results.push(['generate without auth → AUTH', r.code === 'AUTH']);
 r = call({ ...base, op: 'edit', key: 'wrong', base: 2, value: [{ id: 's0c1', aIds: ['p:h0teikh', 'p:a'], bIds: ['p:g:abc', 'p:b'] }] }); results.push(['edit wrong auth → AUTH', r.code === 'AUTH']);
 r = call({ ...base, op: 'generate', auth: OLD_VERIFIER, key: OLD_VERIFIER, base: 2, value: null }); results.push(['public verifier no longer authenticates (pass-the-hash closed)', r.code === 'AUTH']);

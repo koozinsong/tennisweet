@@ -436,6 +436,7 @@ button.wk-del:hover { background: var(--danger-bg); }
 .chip.on.guest.m { background: var(--mm); } .chip.on.guest.f { background: var(--ff); }
 .gmark { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .02em; background: #d97706; color: #fff; border-radius: 6px; padding: 0 4px; margin-right: 5px; }
 .chip.guest:not(.on) .gmark { background: #fde3c4; }
+.ymark { display: inline-block; font-size: 11px; font-weight: 700; background: #0ea5e9; color: #fff; border-radius: 6px; padding: 0 4px; margin-right: 5px; } /* 양보 (경기 수를 1 적게) */
 .gname.m, .pname.m { color: var(--mm); } .gname.f, .pname.f { color: var(--ff); } /* 표의 이름: 남 파랑 · 여 로즈 (글자 표시 대신 색으로) */
 .mcard .gname::after, table .gname::after { content: " G"; font-size: 11px; font-weight: 800; color: #d97706; }
 .tag.type.mix { background: #dff3f5; color: #0e7c86; } .mcard.t-mix { border-left-color: #0e7c86; }
