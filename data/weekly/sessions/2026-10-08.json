@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 55,
+ "rev": 56,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -163,11 +163,11 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:328ljva",
+     "p:lvcpucm",
      "p:h0teikh"
     ],
     "bIds": [
-     "p:lvcpucm",
+     "p:328ljva",
      "p:45sqltb"
     ]
    },
@@ -319,5 +319,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-07T08:09:00.484Z"
+ "updatedAt": "2026-10-07T08:20:05.692Z"
 }
