@@ -76,6 +76,7 @@ function report(name, d, levels, gens = [1]) {
 }
 const P = (n, g, from, until, lv, guest) => ({ n, g, from, until, lv, guest });
 function mkDoc(people, settings) { const att = {}, levels = {}; people.forEach((p, i) => { const k = 'p' + i; att[k] = { n: p.n, g: p.g, from: p.from, until: p.until, ...(p.guest ? { guest: true } : {}) }; if (p.lv != null) levels[k] = p.lv; }); return { doc: { v: 1, id: '2026-10-01', date: '2026-10-01', status: 'open', rev: 1, settings: { startTime: '19:00', endTime: '22:00', matchMinutes: 30, breakMinutes: 0, courts: 2, minWomenDoubles: 1, ...settings }, attendance: att, schedule: null, done: {} }, levels }; }
+if (require.main !== module) { module.exports = { T, analyze, report, mkDoc, P, nSlots, courtsAt, avail, hhmm, T0 }; return; } // 다른 스크립트에서 require 하면 로더·분석만 제공 (모드 실행 안 함)
 const mode = process.argv[2] || 'live';
 if (mode === 'live') {
   const idx = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/weekly/index.json'), 'utf8')); const want = process.argv.slice(3); const ids = want.length ? want : idx.sessions.map((s) => s.id);
