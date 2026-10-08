@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 78,
+ "rev": 79,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -177,7 +177,7 @@
     "court": 2,
     "aIds": [
      "p:t5tmwl5",
-     "p:6kn0dof"
+     "p:45sqltb"
     ],
     "bIds": [
      "p:g:yu8xyw",
@@ -319,5 +319,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-08T01:13:03.440Z"
+ "updatedAt": "2026-10-08T01:16:48.627Z"
 }
