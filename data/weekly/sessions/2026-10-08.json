@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 106,
+ "rev": 107,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -177,10 +177,10 @@
     "court": 2,
     "aIds": [
      "p:uzqomod",
-     "p:18qv5bz"
+     "p:g:yu8xyw"
     ],
     "bIds": [
-     "p:g:yu8xyw",
+     "p:18qv5bz",
      "p:328ljva"
     ]
    },
@@ -321,5 +321,5 @@
  },
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-08T10:59:10.786Z"
+ "updatedAt": "2026-10-08T10:59:36.714Z"
 }
