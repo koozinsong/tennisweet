@@ -3,7 +3,7 @@
  "id": "2026-10-08",
  "date": "2026-10-08",
  "status": "open",
- "rev": 103,
+ "rev": 104,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -194,7 +194,7 @@
     ],
     "bIds": [
      "p:g261xhp",
-     "p:6kn0dof"
+     "p:45sqltb"
     ]
    },
    {
@@ -321,5 +321,5 @@
  },
  "results": {},
  "createdAt": "2026-10-02T20:36:36.982Z",
- "updatedAt": "2026-10-08T10:58:08.953Z"
+ "updatedAt": "2026-10-08T10:58:23.663Z"
 }
