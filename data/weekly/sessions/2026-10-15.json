@@ -3,7 +3,7 @@
  "id": "2026-10-15",
  "date": "2026-10-15",
  "status": "open",
- "rev": 13,
+ "rev": 14,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -91,11 +91,18 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:kin42": {
+   "n": "collin99",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-09T00:12:22.657Z",
- "updatedAt": "2026-10-14T23:35:15.610Z"
+ "updatedAt": "2026-10-14T23:35:36.326Z"
 }
