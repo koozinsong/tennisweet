@@ -1574,7 +1574,7 @@
       else if (coll === 'attendance') {
         const v = op.value; if (!v || typeof v.n !== 'string' || !v.n.trim() || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from) || !TIME_RE.test(v.until) || v.from >= v.until) return { code: 'INVALID' };
         if (!doc.attendance[key] && Object.keys(doc.attendance).length >= 80) return { code: 'FULL' }; // 파일 무한 팽창 방지
-        doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}) }; // y = 양보 (경기 수를 1 적게)
+        doc.attendance[key] = { n: v.n.trim().slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}), ...(Number.isFinite(v.lv) && v.lv >= 1 && v.lv <= 7 && Math.round(v.lv * 2) === v.lv * 2 ? { lv: v.lv } : {}) }; // y = 양보 (경기 수를 1 적게), lv = 게스트 NTRP (1~7, 0.5 단위)
       } else if (coll === 'done') { if (op.value !== true || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.done[key] = true; }
       else { const v = op.value; if (!v || !Number.isInteger(v.a) || !Number.isInteger(v.b) || v.a < 0 || v.a > WK_SCORE_MAX || v.b < 0 || v.b > WK_SCORE_MAX || !doc.schedule || !(doc.schedule.matches || []).some((x) => x.id === key)) return { code: 'INVALID' }; doc.results[key] = { a: v.a, b: v.b }; doc.done = doc.done || {}; doc.done[key] = true; } // 점수(게임 수 0~6)를 넣으면 완료로도 표시
     } else if (op.op === 'generate') {
@@ -1608,7 +1608,7 @@
   /** 외부에서 온 세션 문서 검증·정리 (화면 속성에 들어가므로 형식을 강제) */
   function assertWeekly(doc) {
     if (!doc || typeof doc !== 'object' || !SESSION_RE.test(String(doc.id || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(doc.date || ''))) throw new Error('세션 형식 오류');
-    const att = {}; for (const [k, v] of Object.entries(doc.attendance || {})) { if (!ID_RE.test(k) || !v || typeof v.n !== 'string' || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from || '') || !TIME_RE.test(v.until || '')) continue; att[k] = { n: v.n.slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}) }; }
+    const att = {}; for (const [k, v] of Object.entries(doc.attendance || {})) { if (!ID_RE.test(k) || !v || typeof v.n !== 'string' || !['M', 'F'].includes(v.g) || !TIME_RE.test(v.from || '') || !TIME_RE.test(v.until || '')) continue; att[k] = { n: v.n.slice(0, 20), g: v.g, from: v.from, until: v.until, ...(v.guest ? { guest: true } : {}), ...(v.y ? { y: true } : {}), ...(Number.isFinite(v.lv) && v.lv >= 1 && v.lv <= 7 && Math.round(v.lv * 2) === v.lv * 2 ? { lv: v.lv } : {}) }; }
     doc.attendance = att;
     if (doc.schedule && typeof doc.schedule === 'object') {
       const ms = (Array.isArray(doc.schedule.matches) ? doc.schedule.matches : []).filter((m) => m && MID_RE.test(String(m.id)) && Number.isInteger(m.slot) && Number.isInteger(m.court) && [m.aIds, m.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every((x) => typeof x === 'string' && ID_RE.test(x)))).slice(0, 64).map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds }));
@@ -1649,7 +1649,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
-  const PROXY_VERSION_NEED = 6; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y)
+  const PROXY_VERSION_NEED = 7; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv)
   const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
   const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
@@ -1738,7 +1738,7 @@
     while (i < hours.length) { const v = cb[String(hours[i])] ?? s.courts; let j = i; while (j + 1 < hours.length && (cb[String(hours[j + 1])] ?? s.courts) === v) j++; parts.push(`${hours[i]}~${hours[j] + 1}시 ${v}면`); i = j + 1; }
     return parts.length === 1 ? `코트 ${parts[0].replace(/^\S+ /, '')}` : '코트 ' + parts.join(' · ');
   }
-  const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, yield: !!a.y, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
+  const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, yield: !!a.y, lv: Number.isFinite(a.lv) ? a.lv : null, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
   const wkName = (doc, id) => doc?.attendance?.[id]?.n || playerById(id)?.name || id;
   function wkStatus(msg, bad) { const el = $('#wk-status'); if (!el) return; el.textContent = msg || ''; el.classList.toggle('bad', !!bad); const rb = $('#wk-retry'); if (rb) rb.hidden = !W.failed.length; }
   function wkCoverMeta() { const s = wkSessions().find((x) => x.id === W.id); if (!s) return '예정된 모임 없음'; const st = W.doc ? wkSettings(W.doc) : null; const n = W.doc ? Object.keys(W.doc.attendance).length : null; return `${fmtDate(s.date)}${st ? ` ${st.startTime.slice(0, 2)}~${st.endTime.slice(0, 2)}시` : ''}${n != null ? ` · 참석 ${n}명` : ''}${W.doc?.schedule ? ' · 대진 있음' : ''}`; }
@@ -1841,13 +1841,14 @@
       <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" title="${isNew ? '' : '이름을 고치면 이 게스트의 참석·대진은 그대로 두고 이름만 바뀝니다'}"><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
       <div class="wk-hours"><span class="lbl">도착</span>${hb('from', wkArriveTimes(s))}</div>
       <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', wkLeaveTimes(s))}</div>
+      ${e.guest ? `<div class="wk-hours wk-lv"><span class="lbl">NTRP</span><button class="hbtn ${e.lv == null ? 'sel' : ''}" data-wk-lv="" type="button">모름</button>${[2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => `<button class="hbtn ${e.lv === v ? 'sel' : ''}" data-wk-lv="${v}" type="button">${v.toFixed(1)}</button>`).join('')}<span class="sub">대진 균형에만 쓰고 화면에는 표시하지 않습니다 (모름 = 3.5, 여성은 0.5 낮춰 계산)</span></div>` : ''}
       ${e.guest ? '' : `<div class="wk-hours"><span class="lbl">양보</span><button class="hbtn ${e.yield ? 'sel' : ''}" id="wk-yield" type="button">${e.yield ? '양보함 — 경기 수를 1 적게' : '양보 안 함'}</button><span class="sub">양보하면 기대 경기 수가 1 줄어 자리가 모자랄 때 먼저 빠지고, 다시 섞어도 유지됩니다</span></div>`}
       <div class="row"><button id="wk-save" class="primary">${esc(wkShort(e.from))}~${esc(wkShort(e.until))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
     </div>`;
   }
   function wkOpen(id) {
     const doc = W.doc; if (!doc) return; const s = wkSettings(doc); const a = doc.attendance[id]; const p = playerById(id); if (!a && !p) return;
-    W.edit = { id, guest: a ? !!a.guest : false, name: a?.n || p?.name || '', gender: a?.g || (p?.gender === 'F' ? 'F' : 'M'), from: a?.from || s.startTime, until: a?.until || s.endTime, attending: !!a, yield: !!a?.y };
+    W.edit = { id, guest: a ? !!a.guest : false, name: a?.n || p?.name || '', gender: a?.g || (p?.gender === 'F' ? 'F' : 'M'), from: a?.from || s.startTime, until: a?.until || s.endTime, attending: !!a, yield: !!a?.y, lv: Number.isFinite(a?.lv) ? a.lv : null };
     renderWeeklyView(); $('.wk-panel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
   async function wkSaveEdit() {
@@ -1861,8 +1862,9 @@
     }
     if (toMin(e.from) >= toMin(e.until)) { toast('퇴장 시각이 도착보다 뒤여야 합니다'); return; }
     W.edit = null;
-    const ok = await wkSend({ op: 'set', path: 'attendance.' + id, value: { n: name, g: e.gender === 'F' ? 'F' : 'M', from: e.from, until: e.until, ...(e.guest ? { guest: true } : {}), ...(e.yield && !e.guest ? { y: true } : {}) } });
+    const ok = await wkSend({ op: 'set', path: 'attendance.' + id, value: { n: name, g: e.gender === 'F' ? 'F' : 'M', from: e.from, until: e.until, ...(e.guest ? { guest: true } : {}), ...(e.yield && !e.guest ? { y: true } : {}), ...(e.guest && Number.isFinite(e.lv) ? { lv: e.lv } : {}) } });
     if (ok && e.yield && !e.guest && W.doc?.attendance?.[id] && !W.doc.attendance[id].y) toast('⚠ 양보 표시가 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전입니다. Apps Script 를 새 버전으로 배포해 주세요'); /* 옛 프록시는 모르는 필드를 버린다 */
+    if (ok && e.guest && Number.isFinite(e.lv) && W.doc?.attendance?.[id] && !Number.isFinite(W.doc.attendance[id].lv)) toast('⚠ 게스트 NTRP 가 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전(v7 미만)입니다. Apps Script 를 새 버전으로 배포해 주세요');
     if (ok && !e.guest && !W.me) { W.me = id; localStorage.setItem('tennisweet.me', id); renderWeeklyView(); }
   }
   $('#tab-weekly')?.addEventListener('click', async (e) => {
@@ -1876,6 +1878,7 @@
     const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; const st = wkSettings(W.doc); const step = (st.matchMinutes || 30) + (st.breakMinutes || 0); if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + step); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - step); renderWeeklyView(); return; }
     const gb = t.closest('[data-wk-gender]'); if (gb && W.edit) { W.edit.gender = gb.dataset.wkGender; renderWeeklyView(); return; }
     if (t.closest('#wk-yield') && W.edit) { W.edit.yield = !W.edit.yield; renderWeeklyView(); return; }
+    const lb = t.closest('[data-wk-lv]'); if (lb && W.edit) { const v = parseFloat(lb.dataset.wkLv); W.edit.lv = Number.isFinite(v) ? v : null; renderWeeklyView(); return; }
     if (t.closest('#wk-close')) { W.edit = null; renderWeeklyView(); return; }
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
     if (t.closest('#wk-absent') && W.edit) { const { id, name, guest } = W.edit; W.edit = null; if (confirm(guest ? `게스트 ${name} 님을 이 모임에서 삭제할까요?` : `${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
@@ -1890,7 +1893,7 @@
   $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
-  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}`).join(',')).toString(36);
+  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}${p.lv != null ? 'L' + p.lv : ''}`).join(',')).toString(36);
   function generateWeeklySchedule(doc, hist, fromSlot, gen) {
     const ps = wkAttendees(doc); const s = wkSettings(doc);
     const fixed = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
@@ -2015,7 +2018,7 @@
   const memFloorOf = (E, Eq, av, maxG, topEq) => Math.max(flE(E), hardFloorOf(Eq, av, maxG, topEq)); // 회원 하한 (판 점수·룰 체크·요약표 공통) = 기대의 내림 ∨ 위의 하한
   const topEqOf = (people, gOf, EqOf, maxG) => { const t = people.filter((p) => gOf(p) === maxG).map(EqOf); return t.length ? Math.min(...t) : 0; }; // 최다 경기인 사람들의 균등 기대 중 최소
   function wkRuleCheck(doc, s, ms) {
-    const att = doc.attendance || {}; const L = W.index?.levels || {}; const lv = (id) => { const a = att[id]; if (!a) return 0; return Number.isFinite(L[id]) ? L[id] : WK_GUEST_NTRP - (a.g === 'F' ? 0.5 : 0); };
+    const att = doc.attendance || {}; const L = W.index?.levels || {}; const lv = (id) => { const a = att[id]; if (!a) return 0; return Number.isFinite(L[id]) ? L[id] : (Number.isFinite(a.lv) ? a.lv : WK_GUEST_NTRP) - (a.g === 'F' ? 0.5 : 0); };
     const g = (id) => (att[id]?.g === 'F' ? 'F' : 'M'); const nm = (id) => wkName(doc, id); const bad = {}, soft = {}; const issues = [], notes = []; // bad[mid] = 위반, soft[mid] = 참고
     const n = maxSlots(s); const avOk = (id, i) => { const a = att[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; // 시간대 i 에 참석 중
     const flag = (m, why) => { (bad[m.id] ??= []).push(why); }; const note = (m, why) => { (soft[m.id] ??= []).push(why); };
@@ -2408,7 +2411,7 @@
   });
   /** 레벨 산출: NTRP(관리자 키로 복호화된 값), 여성은 −0.5 보정. 누구나 대진을 만들 수 있으려면 이 값이 공개 파일(index.json)에 있어야 한다 — 화면에는 표시하지 않는다 */
   const WK_GUEST_NTRP = 3.5; // 레벨을 모르는 참석자(게스트·NTRP 미입력)는 3.5 로 간주 (여성은 −0.5 → 3.0)
-  const wkLevelOf = (p) => { const v = W.index?.levels?.[p.id]; return Number.isFinite(v) ? v : WK_GUEST_NTRP - (p.gender === 'F' ? 0.5 : 0); };
+  const wkLevelOf = (p) => { const v = W.index?.levels?.[p.id]; if (Number.isFinite(v)) return v; const raw = Number.isFinite(p.lv) ? p.lv : WK_GUEST_NTRP; return raw - (p.gender === 'F' ? 0.5 : 0); }; // 회원: 레벨 갱신값(이미 여성 −0.5) · 게스트: 참석 입력 NTRP(없으면 3.5) 에서 여성 −0.5
   function wkLevelsFromPlayers() {
     const out = {};
     for (const p of state.players) { const v = parseFloat(ntrp.get(p.id)); if (!Number.isFinite(v) || v <= 0) continue; out[p.id] = Math.round((v - (p.gender === 'F' ? 0.5 : 0)) * 100) / 100; }
