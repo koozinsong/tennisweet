@@ -3,7 +3,7 @@
  "id": "2026-10-15",
  "date": "2026-10-15",
  "status": "open",
- "rev": 27,
+ "rev": 28,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -91,6 +91,13 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:jd6q9f": {
+   "n": "브릿팝",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": {
@@ -262,5 +269,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-09T00:12:22.657Z",
- "updatedAt": "2026-10-15T06:01:23.356Z"
+ "updatedAt": "2026-10-15T06:01:43.143Z"
 }
