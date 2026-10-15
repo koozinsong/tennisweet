@@ -60,18 +60,22 @@ function analyze(d, sch) {
   out.gap2 = mem.filter((k) => !unavoidable && games[k] < slotsOf(k) && games[k] < floorOf(k)).map((k) => `${att[k].n} ${games[k]} (최다 ${maxNy}, 기대 ${(X.E[k] || 0).toFixed(1)})`); // 양보 제외 회원 최다보다 2경기 이상 적음(하한 포함)
   for (const k of yl) { const ref = ny.filter((q) => slotsOf(q) >= slotsOf(k)).map((q) => games[q]); if (ref.length && games[k] > 0 && games[k] >= Math.min(...ref)) out.gap2.push(`${att[k].n}(양보) ${games[k]} ≥ 최소 ${Math.min(...ref)}`); } // 양보한 사람은 자기만큼 머문 회원 누구보다 적어야
   const canGive = mem.some((k) => games[k] >= 2 && games[k] - 1 >= floorOf(k)); /* 룰 체크(wkRuleCheck)와 같은 기준: 하한을 지키면서 자리를 내줄 수 있는 회원 */ out.guestBehind = ids.filter((k) => { if (!att[k].guest) return false; const tg = Math.min(slotsOf(k), maxG); return games[k] < tg && (canGive || games[k] < tg - 1); }).map((k) => `${att[k].n} ${games[k]}/${Math.min(slotsOf(k), maxG)}`); // 게스트 최대 경기 보장 — 회원이 자리를 내주면 하한 아래로 떨어지는 경우의 1경기 부족은 불가피
-  out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k], e: X.E[k] || 0 })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
+  const tcnt = {}; const tg = { F: new Set(), M: new Set() }; for (const m of sch.matches) { const g2 = (x) => (att[x.slice(2)]?.g === 'F' ? 'F' : 'M'); const ta = m.aIds.map(g2).sort().join(''), tb = m.bIds.map(g2).sort().join(''); const ct = ta === tb ? ta : 'MIX'; for (const x of [...m.aIds, ...m.bIds]) { const k = x.slice(2); (tcnt[k] ??= {})[ct] = (tcnt[k][ct] || 0) + 1; tg[g2(x)].add(ct); } }
+  out.typeVar = 0; for (const [k, c] of Object.entries(tcnt)) { const gsum = Object.values(c).reduce((a, v) => a + v, 0); const kk = tg[att[k].g === 'F' ? 'F' : 'M'].size || 1; out.typeVar += Math.max(0, Math.max(...Object.values(c)) - Math.ceil(gsum / kk)); } // 종류 편중 (판 점수 typeVar 와 같은 계산)
+  const tstr = (k) => { const c = tcnt[k] || {}; return ['FF', 'FM', 'MM', 'MIX'].filter((t) => c[t]).map((t) => ({ FF: '여', FM: '혼', MM: '남', MIX: '잡' })[t] + c[t]).join(''); };
+  out.table = ids.map((k) => ({ n: att[k].n + (att[k].guest ? '(G)' : ''), when: `${att[k].from.slice(0, 5)}~${att[k].until.slice(0, 5)}`, slots: slotsOf(k), games: games[k], e: X.E[k] || 0, t: tstr(k) })).sort((a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : 0));
   return out;
 }
 const att_y = (d, r) => Object.values(d.attendance).some((a) => a.n === r.n.replace(/\(G\)$/, '') && a.y);
 function report(name, d, levels, gens = [1]) {
+  if (process.env.NAME && !name.includes(process.env.NAME)) return true; // NAME=문자열 → 그 구성만
   T.W.index = { levels: levels || {} }; T.W.id = d.id; console.log(`\n##### ${name}`); let allOk = true;
   for (const g of gens) {
     let sch; const t0 = Date.now(); try { sch = T.generateWeeklySchedule(d, null, 0, g); } catch (e) { console.log(`gen${g} ERROR ${e.message}`); allOk = false; continue; }
     const a = analyze(d, sch); const rc = T.wkRuleCheck(d, T.wkSettings(d), sch.matches); const ffMiss = (d.settings.minWomenDoubles | 0) >= 1 && a.ffPossible && a.ff < 1; const bad = a.dup.length || a.bad.length || a.empty.length || a.gap2.length || a.guestBehind.length || a.lateRest.some((x) => !/불가피/.test(x)); if (bad) allOk = false; // 여복 미달(ffMiss)은 경기 수 균등이 더 먼저라 생길 수 있어 참고로만 표시
     console.log(`gen${g} ${bad ? '✗' : '✓'} (${Date.now() - t0}ms) 경기 ${sch.matches.length} | 중복 ${JSON.stringify(a.dup)} 구성오류 ${JSON.stringify(a.bad)} 빈코트 ${JSON.stringify(a.empty)} 도착휴식 ${JSON.stringify(a.lateRest)} 불균형 ${JSON.stringify(a.gap2)} 게스트 ${JSON.stringify(a.guestBehind)} 여복 ${a.ff}${ffMiss ? ' (가능한데 없음 — 경기 수 균등 우선)' : ''}`);
     console.log('   룰 체크:', rc.issues.length ? rc.issues.join(' | ') : '통과', '|', (rc.notes.find((x) => /상위 남복/.test(x)) || '').slice(0, 24), '| 팀 합 차이 합계', a.diffSum || 0, '| 1.0 이상(혼복 제외):', JSON.stringify(a.big || []));
-    console.log('   인당(이름 시간 경기/있는 시간대 (기대)):', a.table.map((r) => `${r.n}${att_y(d, r) ? '(양보)' : ''} ${r.when} ${r.games}/${r.slots} (${r.e.toFixed(1)})`).join(' · '));
+    console.log('   인당(이름 시간 경기/있는 시간대 (기대) 종류):', a.table.map((r) => `${r.n}${att_y(d, r) ? '(양보)' : ''} ${r.when} ${r.games}/${r.slots} (${r.e.toFixed(1)}) ${r.t}`).join(' · '), '| 종류 편중', a.typeVar);
     if (process.env.LINES || bad) console.log('   ' + a.lines.join('\n   '));
   }
   return allOk;

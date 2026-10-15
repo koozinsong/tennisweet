@@ -437,7 +437,7 @@
     const ta = pairType(a[0], a[1]), tb = pairType(b[0], b[1]);
     return { label: ta === tb ? TYPE_LABEL[ta] : `${TYPE_LABEL[ta]} vs ${TYPE_LABEL[tb]}`, mismatch: ta !== tb, code: ta === tb ? ta.toLowerCase() : '' };
   }
-  const toMin = (t) => { if (!t) return null; const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+  const toMinCache = new Map(); const toMin = (t) => { if (!t) return null; let v = toMinCache.get(t); if (v === undefined) { const [h, m] = String(t).split(':').map(Number); v = h * 60 + m; toMinCache.set(t, v); } return v; }; // 생성기가 수백만 번 부르므로 문자열 파싱 결과를 캐시
   const slotStartMin = (s, i) => toMin(s.startTime || '09:00') + i * (s.matchMinutes + s.breakMinutes);
   function maxSlots(s) { const end = toMin(s.endTime); if (end == null) return Infinity; const start = toMin(s.startTime || '09:00'); return Math.max(0, Math.floor((end - start + s.breakMinutes) / (s.matchMinutes + s.breakMinutes))); }
   /** 시간대별 코트 수: settings.courtsByHour = { "18": 2, "20": 3 } 이면 그 시각(정시)의 값, 없으면 courts (정기 모임 전용, 대회는 courts 고정) */
@@ -558,7 +558,9 @@
     if (!feasible) return null;
     return sch.matches.filter((m) => { const all = [...(m.aIds || []), ...(m.bIds || [])].map((x) => (x.startsWith('p:') ? x.slice(2) : x)); if (all.length !== 4 || !all.every((x) => lvOf[x] != null && lvOf[x] >= th)) return false; const lo = Math.min(...all.map((x) => lvOf[x])); return men.every((q) => q.lv <= lo || all.includes(q.id) || !playerAvailable(q.p, st, m.slot)); }).map((m) => m.id); // 그 시간대에 있는 더 높은 남자는 전원 포함 = 그 시간대의 최상위 4명
   }
-  function repairSchedule(sch, s) {
+  let SCORE_LIGHT = false; // 고치기 단계에서는 '종류 골고루'(typeVar)를 점수에서 뺀다 — 작은 개선을 끝없이 찾아 반복 상한까지 도는 것을 막는다 (종류는 초기 배치·최종 후보 선택·균형 조정에서 반영)
+  function repairSchedule(sch, s) { SCORE_LIGHT = true; try { repairScheduleInner(sch, s, 40); } finally { SCORE_LIGHT = false; } repairScheduleInner(sch, s, 12); } // 1차: 규칙·반복 (종류 항 없이, 반복 예산이 자잘한 종류 개선에 쓰이지 않게) → 2차: 종류 골고루까지 포함해 짧게
+  function repairScheduleInner(sch, s, maxIter) {
     const ps = activePlayers(); const n = maxSlots(s); if (!isFinite(n)) return;
     const from = GEN_HOOK ? GEN_HOOK.fromSlot | 0 : 0;
     let base = scheduleScore(sch), improved = true, guard = 0; let protect = new Set(); // 상위 남복 경기 자리 (1차 탐색에서 보호)
@@ -585,7 +587,7 @@
       return false;
     };
     let prot = true; // 1차: 상위 남복 경기 보호, 개선이 없으면 2차: 보호 없이
-    while (improved && guard++ < 40) {
+    while (improved && guard++ < maxIter) {
       improved = false; protect = prot ? new Set(topMenGames(sch) || []) : new Set();
       if (tryTwo()) { improved = true; prot = true; continue; }
       for (let slot = from; slot < n && !improved; slot++) {
@@ -613,13 +615,14 @@
     }
   }
   function scheduleScore(sch) {
-    const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const pc = {}, oc = {}, games = {};
+    const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const pc = {}, oc = {}, games = {}; const tcnt = {}; let tgF = 0, tgM = 0; // tcnt: 사람별 코트 종류 횟수, tgF/tgM: 그 성별이 이 판에서 하는 종류(비트)
     const ids = (side) => side.map((x) => (x.startsWith('p:') ? x.slice(2) : x));
     for (const m of sch.matches) {
       const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]);
       if (A.length === 2) pc[k2(A[0], A[1])] = (pc[k2(A[0], A[1])] || 0) + 1; if (B.length === 2) pc[k2(B[0], B[1])] = (pc[k2(B[0], B[1])] || 0) + 1;
       for (const x of A) for (const y of B) oc[k2(x, y)] = (oc[k2(x, y)] || 0) + 1;
       for (const x of [...A, ...B]) games[x] = (games[x] || 0) + 1;
+      if (GEN_HOOK && A.length === 2 && B.length === 2) { const fa = (gOf(A[0]) === 'F') + (gOf(A[1]) === 'F'), fb = (gOf(B[0]) === 'F') + (gOf(B[1]) === 'F'); const ct = fa !== fb ? 3 : fa === 2 ? 0 : fa === 1 ? 1 : 2; /* 0 여복 1 혼복 2 남복 3 잡복 */ for (const x of [...A, ...B]) { const r = tcnt[x] || (tcnt[x] = [0, 0, 0, 0]); r[ct]++; if (gOf(x) === 'F') tgF |= 1 << ct; else tgM |= 1 << ct; } }
     }
     const rep = (o) => Object.values(o).reduce((a, v) => a + Math.max(0, v - 1), 0);
     const rep3 = Object.values(oc).filter((v) => v >= 3).length; // 같은 상대 3회 이상은 별도 가중 (2회는 여성 구성상 불가피할 수 있음)
@@ -655,8 +658,9 @@
     let ntrpDiff = 0, sameBig = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); ntrpDiff += d; const all = [...A, ...B]; if (GEN_HOOK && d >= 1 && (all.every((x) => gOf(x) === 'F') || all.every((x) => gOf(x) !== 'F'))) sameBig++; } // 정기 모임: 여복·남복 팀 합 차이 1.0 이상
     const menBad = GEN_HOOK ? sch.matches.filter((m) => { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wA = A.filter((x) => gOf(x) === 'F'), wB = B.filter((x) => gOf(x) === 'F'); if (wA.length !== 1 || wB.length !== 1 || A.length !== 2 || B.length !== 2) return false; const mA = A.find((x) => gOf(x) !== 'F'), mB = B.find((x) => gOf(x) !== 'F'); return fmMixBad(ntrpOf(wA[0]), ntrpOf(mA), ntrpOf(wB[0]), ntrpOf(mB)); }).length : state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 대회: 특별 규칙 위반은 사실상 배제. 정기 모임: 혼복 원칙 위반 ×3000 ('경기 없음' 1e4 보다 가볍게)
     let mixBad = 0, mixSoft = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa + wb === 3) { mixSoft += 600; continue; } /* 여 3·남 1 코트는 다른 방법이 없을 때만: 혼복 남자 급 300·여 1 잡복 벌점보다 위, 게스트 우선 2000·공정성·빈 코트보다 아래 */ if (wa + wb !== 1) continue; const sumA = A.reduce((a, x) => a + ntrpOf(x), 0), sumB = B.reduce((a, x) => a + ntrpOf(x), 0); const short = (wa ? sumB : sumA) - (wa ? sumA : sumB); if (short >= 1.5) mixBad += 1; else if (short > 0) mixSoft += 60 + 40 * short; const side = wa ? A : B, other = wa ? B : A; const mate = side.find((x) => gOf(x) !== 'F'); if (mate && other.some((x) => ntrpOf(x) > ntrpOf(mate))) mixSoft += 150; } // 잡복 원칙: 여자 쪽(여자 −0.5 반영) 합 ≥ 남자 둘 합
+    let typeVar = 0; if (GEN_HOOK && !SCORE_LIGHT) { const bits = (b) => ((b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1) + ((b >> 3) & 1)) || 1; const kF = bits(tgF), kM = bits(tgM); for (const x in tcnt) { const r = tcnt[x]; const g = r[0] + r[1] + r[2] + r[3]; const k = gOf(x) === 'F' ? kF : kM; typeVar += Math.max(0, Math.max(r[0], r[1], r[2], r[3]) - Math.ceil(g / k)); } } // 종류 골고루: 한 사람이 한 종류(여복·혼복·남복·잡복)에 몰린 경기 수 — 그 성별이 이 판에서 실제로 하는 종류 수로 나눈 몫을 넘는 만큼 (소프트)
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + spread * spreadW + devL1 * 3000 + ntrpDiff * 60 + sameBig * 300 + topMiss * 1500 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * 150 + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + typeVar * 250 + spread * spreadW + devL1 * 3000 + ntrpDiff * 60 + sameBig * 300 + topMiss * 1500 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   function generateRotationOnce(s, seed) {
@@ -664,14 +668,16 @@
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('개인전은 종료 시각이 필요합니다 (대회 설정).');
     if (n < 1) throw new Error('시작~종료 사이에 경기 시간이 없습니다.');
-    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {}, isF = {}, fmWomen = {}; // fmWomen: 혼복에서 여성끼리 상대한 횟수
+    const played = {}, lastPlayed = {}, partner = {}, opp = {}, fmCnt = {}, mmCnt = {}, playedSlots = {}, NT = {}, isF = {}, fmWomen = {}, ctCnt = {}; // fmWomen: 혼복에서 여성끼리 상대한 횟수, ctCnt: 사람별 코트 종류(FF 여복·FM 혼복·MM 남복·MIX 잡복) 횟수 — 골고루
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     const fmWomenKey = (c) => { const wa = c.slice(0, 2).find((x) => isF[x]), wb = c.slice(2).find((x) => isF[x]); return wa && wb && c.filter((x) => isF[x]).length === 2 ? key(wa, wb) : null; }; // 혼복 코트의 여성 상대 쌍
-    ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); isF[p.id] = p.gender === 'F'; });
+    ps.forEach((p) => { played[p.id] = 0; lastPlayed[p.id] = -1; fmCnt[p.id] = 0; mmCnt[p.id] = 0; playedSlots[p.id] = new Set(); NT[p.id] = ntrpOf(p.id); isF[p.id] = p.gender === 'F'; ctCnt[p.id] = { FF: 0, FM: 0, MM: 0, MIX: 0 }; });
+    const courtTypeOf = (c) => { const ta = pairType(c[0], c[1]), tb = pairType(c[2], c[3]); return ta === tb ? ta : 'MIX'; }; // [a1, a2, b1, b2]
+    const typeBias = (x) => (isF[x] ? ctCnt[x].FF - ctCnt[x].FM - ctCnt[x].MIX : ctCnt[x].FM + ctCnt[x].MIX - ctCnt[x].MM); // 클수록 '기본 종류'(여복/남복 아닌 쪽)를 많이 한 사람 → 뒤에서 뽑는 순서상 먼저 뽑히지 않게 앞에 둔다
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
     if (GEN_HOOK) { // 정기 모임: 지난 모임 이력(가중)과 이미 시작한 시간대의 경기를 카운터에 미리 반영
       const H = GEN_HOOK.hist || {}; for (const [k, v] of Object.entries(H.partner || {})) partner[k] = (partner[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.opp || {})) opp[k] = (opp[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.fmWomen || {})) fmWomen[k] = (fmWomen[k] || 0) + v * 0.25;
-      for (const m of GEN_HOOK.fixed) { const [a1, a2] = m.aIds.map((x) => x.slice(2)), [b1, b2] = m.bIds.map((x) => x.slice(2)); partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1; for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1; const tp = pairType(a1, a2); if (tp === 'FF' && pairType(b1, b2) === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1; for (const x of [a1, a2, b1, b2]) { if (played[x] == null) continue; played[x]++; lastPlayed[x] = m.slot; playedSlots[x].add(m.slot); const tpx = pairType(...([a1, a2].includes(x) ? [a1, a2] : [b1, b2])); if (tpx === 'FM') fmCnt[x]++; else if (tpx === 'MM') mmCnt[x]++; } }
+      for (const m of GEN_HOOK.fixed) { const [a1, a2] = m.aIds.map((x) => x.slice(2)), [b1, b2] = m.bIds.map((x) => x.slice(2)); partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1; for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1; const tp = pairType(a1, a2); if (tp === 'FF' && pairType(b1, b2) === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1; const ctF = courtTypeOf([a1, a2, b1, b2]); for (const x of [a1, a2, b1, b2]) { if (played[x] == null) continue; played[x]++; lastPlayed[x] = m.slot; playedSlots[x].add(m.slot); ctCnt[x][ctF]++; const tpx = pairType(...([a1, a2].includes(x) ? [a1, a2] : [b1, b2])); if (tpx === 'FM') fmCnt[x]++; else if (tpx === 'MM') mmCnt[x]++; } }
     }
     let menEq = s.fmMenEqual !== false && !GEN_HOOK; // 특별 규칙: 혼복은 양쪽 남자 NTRP 동일 (대회, 기본 켬). 정기 모임은 대신 '혼복 원칙'(courtCost) 으로 유도. 어떤 시간대에서 도저히 못 지키면 그 시간대만 풀고 경기를 만든다 (아래 slot 루프)
     const AVOID = new Set(avoidPairIds(s.avoidPairs, ps).map(([x, y]) => key(x, y))); // 특별 규칙: 같은 조 금지 (파트너로 묶지 않음)
@@ -683,7 +689,7 @@
     const CARE = {}; if (!GEN_HOOK) ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; }); // 정기 모임은 개인 선호 없이 레벨 균형만
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
     const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = (GEN_HOOK ? 350 : 150) * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (GEN_HOOK) { if (isF[a1] !== isF[a2] && isF[b1] !== isF[b2]) { const w1 = isF[a1] ? a1 : a2, m1 = isF[a1] ? a2 : a1, w2 = isF[b1] ? b1 : b2, m2 = isF[b1] ? b2 : b1; if (fmMixBad(NT[w1], NT[m1], NT[w2], NT[m2])) cost += 300; } } // 정기 모임 혼복 원칙 (약한 여자에게 강한 남자, 여자 동급이면 남자 동급)
-      else if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; const short = mSide - wSide; if (short >= 1.5) cost += 2e4; else if (short > 0) cost += 60 + 40 * short; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 150; } const same = c.every((x) => isF[x]) || c.every((x) => !isF[x]); return cost + d * 60 + (d > 0.5 && !mixed ? 100 : 0) + (GEN_HOOK && same && d >= 1 ? 300 : 0); }; // 정기 모임: 여복·남복은 팀 합 차이 1.0 이상이면 상대 반복보다 무겁게 (NTRP 균형 > 다양성) // 잡복은 위의 부족분 벌점이 균형을 담당 // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
+      else if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; const short = mSide - wSide; if (short >= 1.5) cost += 2e4; else if (short > 0) cost += 60 + 40 * short; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 150; } if (GEN_HOOK) { const fa = (isF[a1] ? 1 : 0) + (isF[a2] ? 1 : 0), fb = (isF[b1] ? 1 : 0) + (isF[b2] ? 1 : 0); const ct = fa !== fb ? 'MIX' : fa === 2 ? 'FF' : fa === 1 ? 'FM' : 'MM'; cost += 90 * ((ctCnt[a1][ct] || 0) + (ctCnt[a2][ct] || 0) + (ctCnt[b1][ct] || 0) + (ctCnt[b2][ct] || 0)); } /* 종류 골고루: 이미 한 종류를 또 하면 1회당 90 (파트너 반복 350·상대 반복 120 사이) — 문자열 연산 없이 (수백만 번 호출) */ const same = c.every((x) => isF[x]) || c.every((x) => !isF[x]); return cost + d * 60 + (d > 0.5 && !mixed ? 100 : 0) + (GEN_HOOK && same && d >= 1 ? 300 : 0); }; // 정기 모임: 여복·남복은 팀 합 차이 1.0 이상이면 상대 반복보다 무겁게 (NTRP 균형 > 다양성) // 잡복은 위의 부족분 벌점이 균형을 담당 // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
     // 정기 모임 공정성: (a) 기대 경기 수(참석 시간대마다 자리/인원 비율 누적) 대비 부족한 사람 먼저, (b) 남은 시간대가 적은 사람(곧 가는 사람) 먼저
@@ -802,7 +808,7 @@
       let best = null, bestCost = Infinity;
       for (let t = 0; t < 40; t++) {
         // 무작위 초기 배치: 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치
-        const w = shuffle([...W]), m = shuffle([...M]).sort((a, b) => (fmCnt[b] - mmCnt[b]) - (fmCnt[a] - mmCnt[a]) + (rng() - 0.5) * 0.5); const courts = [];
+        const w = shuffle([...W]).sort((a, b) => typeBias(b) - typeBias(a) + (rng() - 0.5) * 0.5), m = shuffle([...M]).sort((a, b) => typeBias(b) - typeBias(a) + (rng() - 0.5) * 0.5); const courts = []; // 뒤에서부터 여복(여성)·혼복(남성) 코트에 뽑히므로, 그 종류를 덜 한 사람을 뒤에
         const ff0 = ffCount(W.length, kk, wantFF); const three = mixOk && ff0 * 4 > W.length; const ff = three ? ff0 - 1 : ff0; // three = 여성이 4kk−1 명: 여복 (kk−1)면 + 여 3·남 1 코트 1면
         for (let c = 0; c < ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
         const aside = [];
@@ -867,7 +873,7 @@
         partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1;
         for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1;
         const tp = pairType(a1, a2); if (tp === 'FF' && pairType(b1, b2) === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1; // 여복 = 양쪽 다 여자 둘 (여 3·남 1 잡복은 세지 않는다)
-        for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; playedSlots[x].add(slot); const tpx = GEN_HOOK ? pairType(...([a1, a2].includes(x) ? [a1, a2] : [b1, b2])) : tp; if (tpx === 'FM') fmCnt[x]++; else if (tpx === 'MM') mmCnt[x]++; } // 정기 모임: 자기 조의 종류로 센다 (대회는 기존대로 코트 단위)
+        const ctC = courtTypeOf([a1, a2, b1, b2]); for (const x of [a1, a2, b1, b2]) { played[x]++; lastPlayed[x] = slot; playedSlots[x].add(slot); ctCnt[x][ctC]++; const tpx = GEN_HOOK ? pairType(...([a1, a2].includes(x) ? [a1, a2] : [b1, b2])) : tp; if (tpx === 'FM') fmCnt[x]++; else if (tpx === 'MM') mmCnt[x]++; } // 정기 모임: 자기 조의 종류로 센다 (대회는 기존대로 코트 단위)
       });
       round++;
     }
