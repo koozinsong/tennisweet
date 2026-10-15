@@ -18,7 +18,7 @@
  * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB', rev?, doc? }
  */
 const CLUB = 'tennisweet';
-const WK_KEY_SHA = 'a740e9f8cff62c6e6a5e48757207fd538d2900ea52ebe100d54ca19c3991338a'; // 대진표 비밀번호 확인: 클라이언트가 보내는 열쇠 K = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회)의 hex, 여기에는 SHA-256(K) 만 둔다. 공개된 코드(app.js·이 파일)만으로는 K 를 만들 수 없다 (옛 방식은 공개 검증값을 그대로 비교해 우회가 가능했다)
+const WK_KEY_SHA = 'ff83ce9ab3243ef60ca56c1783ab4a0f909abae34203e9b699352e552107d9b6'; // 대진표 비밀번호 확인: 클라이언트가 보내는 열쇠 K = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회)의 hex, 여기에는 SHA-256(K) 만 둔다. 공개된 코드(app.js·이 파일)만으로는 K 를 만들 수 없다 (옛 방식은 공개 검증값을 그대로 비교해 우회가 가능했다)
 const DONE_GRACE_DAYS = 7; // 완료 표시 유예 (모임 후 7일)
 const SCORE_MAX = 6; // 점수(게임 수) 상한 — app.js WK_SCORE_MAX 와 동일
 const PROXY_VERSION = 7; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동), 4 = 코트 번호(set courtNames), 5 = 코트 예약(op courts → data/courts.json) + 인증을 열쇠(key) 해시 비교로 변경 + 시간대별 코트 번호(set courtNames 에 { 시: [번호] })

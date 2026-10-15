@@ -1650,7 +1650,7 @@
     return ok;
   }
   const PROXY_VERSION_NEED = 7; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv)
-  const WK_PW_HASH = '3b4facb575a1dc30b189b7c01b746e68e952b3a94a4b9776a6f261aba87e2bac'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
+  const WK_PW_HASH = '121986baa49d856d62d3d3b3596650f8b7bad4d0c66f3cdece9adeaa0597985b'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
   const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
   async function wkDeriveHex(pw, salt) { const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']); const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: 120000, hash: 'SHA-256' }, base, 256); return [...new Uint8Array(bits)].map((b) => b.toString(16).padStart(2, '0')).join(''); }
