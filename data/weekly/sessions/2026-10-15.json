@@ -3,7 +3,7 @@
  "id": "2026-10-15",
  "date": "2026-10-15",
  "status": "open",
- "rev": 43,
+ "rev": 44,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -199,7 +199,7 @@
     "court": 1,
     "aIds": [
      "p:243v8q3",
-     "p:g:aq4qw0"
+     "p:nba8nn1"
     ],
     "bIds": [
      "p:g:1cq247l",
@@ -216,7 +216,7 @@
     ],
     "bIds": [
      "p:rw9ebrx",
-     "p:nba8nn1"
+     "p:g:aq4qw0"
     ]
    },
    {
@@ -276,5 +276,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-09T00:12:22.657Z",
- "updatedAt": "2026-10-15T06:09:48.465Z"
+ "updatedAt": "2026-10-15T06:10:07.228Z"
 }
