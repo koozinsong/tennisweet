@@ -2641,7 +2641,7 @@
     if (isAdminPage && !editor) { location.replace('admin.html?t=' + Date.now()); return; }
     if (!editor) { // 일반 페이지는 항상 보기 전용
       if (published) state = normalize(published);
-      enterViewOnly(published ? `게시본 보기 (읽기 전용)${published.publishedAt ? ' · ' + new Date(published.publishedAt).toLocaleString('ko-KR') + ' 게시' : ''}` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
+      enterViewOnly(published ? `대회 게시본 보기 (읽기 전용)${published.publishedAt ? ' · 대회 자료 ' + new Date(published.publishedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }) + ' 게시' : ''} · 정기 모임·코트 예약은 저장 즉시 반영` : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
       render();
       const want = (location.hash || '').replace('#', '');
       if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
@@ -2654,7 +2654,7 @@
         const mf = state.meFilter; lastPub = p.publishedAt; state = normalize(p);
         if (mf && (state.schedule?.matches || []).some((m) => matchPeople(m).includes(mf))) state.meFilter = mf; // 방문자의 '내 경기' 필터 유지
         render();
-        $('#view-banner-text').textContent = `게시본 보기 (읽기 전용) · ${new Date(p.publishedAt).toLocaleString('ko-KR')} 게시`;
+        $('#view-banner-text').textContent = `대회 게시본 보기 (읽기 전용) · 대회 자료 ${new Date(p.publishedAt).toLocaleString('ko-KR', { dateStyle: 'medium', timeStyle: 'short' })} 게시 · 정기 모임·코트 예약은 저장 즉시 반영`;
         toast('일정이 갱신되었습니다');
       }, 45000);
       return;
