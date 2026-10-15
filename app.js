@@ -1832,7 +1832,7 @@
     const hb = (kind, list) => list.map((t) => `<button class="hbtn ${t.endsWith(':00') ? '' : 'half'} ${e[kind] === t ? 'sel' : ''}" data-wk-hour="${t}" data-wk-kind="${kind}">${wkShort(t)}</button>`).join('');
     const isNew = e.guest && !e.id;
     return `<div class="wk-panel">
-      <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" ${isNew ? '' : 'disabled'}><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
+      <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" title="${isNew ? '' : '이름을 고치면 이 게스트의 참석·대진은 그대로 두고 이름만 바뀝니다'}"><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
       <div class="wk-hours"><span class="lbl">도착</span>${hb('from', wkArriveTimes(s))}</div>
       <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', wkLeaveTimes(s))}</div>
       ${e.guest ? '' : `<div class="wk-hours"><span class="lbl">양보</span><button class="hbtn ${e.yield ? 'sel' : ''}" id="wk-yield" type="button">${e.yield ? '양보함 — 경기 수를 1 적게' : '양보 안 함'}</button><span class="sub">양보하면 기대 경기 수가 1 줄어 자리가 모자랄 때 먼저 빠지고, 다시 섞어도 유지됩니다</span></div>`}
@@ -1849,7 +1849,9 @@
     if (e.guest) {
       if (!name) { toast('게스트 이름을 입력하세요'); $('#wk-guest-name')?.focus(); return; }
       if (!['M', 'F'].includes(e.gender)) { toast('게스트의 남/여를 골라 주세요'); return; }
-      if (!id) { if (state.players.some((p) => p.name === name)) { toast(`${name} 님은 클럽 명단에 있습니다 · 명단에서 이름을 눌러 주세요`); return; } id = guestId(name); }
+      if (state.players.some((p) => p.name === name)) { toast(`${name} 님은 클럽 명단에 있습니다 · 명단에서 이름을 눌러 주세요`); return; }
+      const dup = Object.entries(W.doc?.attendance || {}).find(([k, a]) => k !== id && a.guest && a.n === name); if (dup) { toast(`같은 이름의 게스트(${name})가 이미 있습니다`); return; } // 기존 게스트 이름 고치기: id 는 그대로 두고 이름만 바꾼다 (대진의 참조가 끊기지 않음)
+      if (!id) { id = guestId(name); if (W.doc?.attendance?.[id] && W.doc.attendance[id].n !== name) id = guestId(name + '#' + Date.now().toString(36)); } /* 이름을 고친 게스트가 그 id 를 쓰고 있으면 새 id */
     }
     if (toMin(e.from) >= toMin(e.until)) { toast('퇴장 시각이 도착보다 뒤여야 합니다'); return; }
     W.edit = null;
