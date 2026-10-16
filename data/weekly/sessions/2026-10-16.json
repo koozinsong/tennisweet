@@ -3,7 +3,7 @@
  "id": "2026-10-16",
  "date": "2026-10-16",
  "status": "open",
- "rev": 7,
+ "rev": 8,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -72,11 +72,18 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:acjvjb": {
+   "n": "다운님 지인",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-16T01:40:34.742Z",
- "updatedAt": "2026-10-16T01:42:15.746Z"
+ "updatedAt": "2026-10-16T01:42:48.932Z"
 }
