@@ -3,7 +3,7 @@
  "id": "2026-10-16",
  "date": "2026-10-16",
  "status": "open",
- "rev": 9,
+ "rev": 10,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -86,11 +86,19 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:2wjdu9": {
+   "n": "티커",
+   "g": "M",
+   "from": "18:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-16T01:40:34.742Z",
- "updatedAt": "2026-10-16T01:43:18.159Z"
+ "updatedAt": "2026-10-16T01:43:35.031Z"
 }
