@@ -3,7 +3,7 @@
  "id": "2026-10-16",
  "date": "2026-10-16",
  "status": "open",
- "rev": 10,
+ "rev": 11,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -94,11 +94,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 3.5
+  },
+  "g:e97r1x": {
+   "n": "이겨이겨",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-16T01:40:34.742Z",
- "updatedAt": "2026-10-16T01:43:35.031Z"
+ "updatedAt": "2026-10-16T01:43:54.143Z"
 }
