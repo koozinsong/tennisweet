@@ -3,7 +3,7 @@
  "id": "2026-10-16",
  "date": "2026-10-16",
  "status": "open",
- "rev": 8,
+ "rev": 9,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -79,11 +79,18 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:ivqdga": {
+   "n": "테일러브릿지",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-16T01:40:34.742Z",
- "updatedAt": "2026-10-16T01:42:48.932Z"
+ "updatedAt": "2026-10-16T01:43:18.159Z"
 }
