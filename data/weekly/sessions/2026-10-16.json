@@ -3,7 +3,7 @@
  "id": "2026-10-16",
  "date": "2026-10-16",
  "status": "open",
- "rev": 11,
+ "rev": 12,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -102,11 +102,18 @@
    "until": "22:00",
    "guest": true,
    "lv": 3.5
+  },
+  "g:emliyd": {
+   "n": "홀꼬루네",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-16T01:40:34.742Z",
- "updatedAt": "2026-10-16T01:43:54.143Z"
+ "updatedAt": "2026-10-16T01:44:08.568Z"
 }
