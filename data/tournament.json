@@ -1,0 +1,699 @@
+{
+  "players": [
+    {
+      "id": "h0teikh",
+      "name": "송국진",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "q/Inhl0ExqolPJlm.6xzLqkVVf5snEik9Zm79lbw=",
+      "tag": "A"
+    },
+    {
+      "id": "t4lcpvt",
+      "name": "고서영",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "/7QVqmlKwJ6yD7pv.9N+hvqeTDJVQtVZ8zDuYKDo="
+    },
+    {
+      "id": "lvcpucm",
+      "name": "박상용",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "zQWgxyUmCi/v6wso.//X4ZwdVKD8WW2XyKUNtDVQ=",
+      "tag": "A"
+    },
+    {
+      "id": "ibws5ld",
+      "name": "박석환",
+      "gender": "M",
+      "from": "19:30",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "v75paDceEg4qpU4y.4Zh7uL1squxcwZDAaPg3ZQo="
+    },
+    {
+      "id": "nba8nn1",
+      "name": "윤성환",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "I23VQuVJv2iYNnN7.eoqpPVJ84wviq4a/DbUeS8DVvA=="
+    },
+    {
+      "id": "k45yesm",
+      "name": "이정선",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "GWOaOipowreiXCqH.NJtN1SYKaPyma+/Vfllk5QI="
+    },
+    {
+      "id": "243v8q3",
+      "name": "김지선",
+      "gender": "F",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "MmgGUgKedjy/0W+0.n2Lo/M+/M/WIwggq9YGU/94=",
+      "pref": "p"
+    },
+    {
+      "id": "rw9ebrx",
+      "name": "이석우",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "J52HVRZsY1g6MASw.mRov05cavCRCuHAAuG5/nHM="
+    },
+    {
+      "id": "smnajd5",
+      "name": "윤성민",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "bhWz1UbA72FJxjvW.B5Pbl5uYs5N7LP6ACW8MP50="
+    },
+    {
+      "id": "uzqomod",
+      "name": "이상학",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "I1wG8TM2/CmaqVWU.51brFvhGYXQKfCWGYwU0GFg="
+    },
+    {
+      "id": "t5tmwl5",
+      "name": "정다운",
+      "gender": "F",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "bknZRYYQqYV8Q0EG.xikqKoMMQmnIICo2xgL+QO7eQA=="
+    },
+    {
+      "id": "45sqltb",
+      "name": "정배근",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "lzae9CnxgNGASQWh.f5ct8/Z4zoMSpXjGhc8zXCE="
+    },
+    {
+      "id": "6kn0dof",
+      "name": "승철홍",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "S2kK7QciBSscRIuf.ZDj9TCktPwrUHxhL3zyX2vY="
+    },
+    {
+      "id": "fm3bdg7",
+      "name": "이원근",
+      "gender": "M",
+      "from": "19:00",
+      "until": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "aQM5m5TeGvlYMMb2.JwFIdR4HLH44xG5stm4q7tg="
+    },
+    {
+      "id": "18qv5bz",
+      "name": "신윤호",
+      "gender": "M",
+      "from": "20:00",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": true,
+      "ntrpEnc": "t/xK6NdmsjffRVnl.ODgYCQ0ld5GWMb7wsi0AJs0="
+    },
+    {
+      "id": "t136ug1",
+      "name": "김성모",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "6Lq8CMLnC7bnw3o6.zW/R/d1dvrs8ncqKbC6gl9B5zA=="
+    },
+    {
+      "id": "g261xhp",
+      "name": "김진모",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "kMzeJ6casb7adWcX.w1ffI3ZWWkx+Q8z0eML928+s+Q=="
+    },
+    {
+      "id": "uqb3sp3",
+      "name": "박종일",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "IiXNgXf0YPVV3EOX.fulkXYLUN7t7jvZoPfJ4OmU="
+    },
+    {
+      "id": "ev1tqiv",
+      "name": "이현용",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "QvUiBqd9DFEPc4p1.Yz0d1xGEzHVmB071G9kBMBue0A=="
+    },
+    {
+      "id": "328ljva",
+      "name": "이종민",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "cHvo7TuZ1Ta8FcJ3.QF7WIDOj4G4LjmLEP9lOdFY="
+    },
+    {
+      "id": "df9dtam",
+      "name": "성기호",
+      "gender": "M",
+      "from": "",
+      "until": "",
+      "tag": "",
+      "note": "",
+      "active": false,
+      "ntrpEnc": "lL0QrwFpoxXxpi8L.ie/UBhu5NM2gFWg3uZHvBv4="
+    }
+  ],
+  "settings": {
+    "name": "2026년 3분기 테니스윗 대회",
+    "date": "2026-09-11",
+    "mode": "rotation",
+    "discipline": "doubles",
+    "teamCount": 2,
+    "format": "groups",
+    "groupCount": 2,
+    "advance": 2,
+    "thirdPlace": true,
+    "courts": 3,
+    "startTime": "19:00",
+    "endTime": "22:00",
+    "matchMinutes": 30,
+    "breakMinutes": 0,
+    "minWomenDoubles": 1,
+    "maxGames": 6,
+    "venue": {
+      "name": "통속으로",
+      "time": "22:00부터 (경기 종료 직후)",
+      "addr": "",
+      "phone": "",
+      "menu": "",
+      "note": "경기 완료하신 분들은 미리 이동하셔도 됩니다."
+    },
+    "fmMenEqual": true,
+    "mustFace": "김지선, 고서영",
+    "sameNtrpGame": "4",
+    "avoidPairs": "김지선-이석우"
+  },
+  "units": [
+    {
+      "id": "p:h0teikh",
+      "name": "",
+      "playerIds": [
+        "h0teikh"
+      ]
+    },
+    {
+      "id": "p:t4lcpvt",
+      "name": "",
+      "playerIds": [
+        "t4lcpvt"
+      ]
+    },
+    {
+      "id": "p:lvcpucm",
+      "name": "",
+      "playerIds": [
+        "lvcpucm"
+      ]
+    },
+    {
+      "id": "p:ibws5ld",
+      "name": "",
+      "playerIds": [
+        "ibws5ld"
+      ]
+    },
+    {
+      "id": "p:nba8nn1",
+      "name": "",
+      "playerIds": [
+        "nba8nn1"
+      ]
+    },
+    {
+      "id": "p:k45yesm",
+      "name": "",
+      "playerIds": [
+        "k45yesm"
+      ]
+    },
+    {
+      "id": "p:243v8q3",
+      "name": "",
+      "playerIds": [
+        "243v8q3"
+      ]
+    },
+    {
+      "id": "p:smnajd5",
+      "name": "",
+      "playerIds": [
+        "smnajd5"
+      ]
+    },
+    {
+      "id": "p:uzqomod",
+      "name": "",
+      "playerIds": [
+        "uzqomod"
+      ]
+    },
+    {
+      "id": "p:t5tmwl5",
+      "name": "",
+      "playerIds": [
+        "t5tmwl5"
+      ]
+    },
+    {
+      "id": "p:45sqltb",
+      "name": "",
+      "playerIds": [
+        "45sqltb"
+      ]
+    },
+    {
+      "id": "p:6kn0dof",
+      "name": "",
+      "playerIds": [
+        "6kn0dof"
+      ]
+    },
+    {
+      "id": "p:fm3bdg7",
+      "name": "",
+      "playerIds": [
+        "fm3bdg7"
+      ]
+    },
+    {
+      "id": "p:18qv5bz",
+      "name": "",
+      "playerIds": [
+        "18qv5bz"
+      ]
+    }
+  ],
+  "schedule": {
+    "groups": [],
+    "advance": 0,
+    "matches": [
+      {
+        "id": "mnwrjqm",
+        "phase": "rot",
+        "round": 0,
+        "slot": 0,
+        "court": 1,
+        "aIds": [
+          "p:h0teikh",
+          "p:lvcpucm"
+        ],
+        "bIds": [
+          "p:fm3bdg7",
+          "p:45sqltb"
+        ]
+      },
+      {
+        "id": "1zraakh",
+        "phase": "rot",
+        "round": 1,
+        "slot": 1,
+        "court": 1,
+        "aIds": [
+          "p:243v8q3",
+          "p:fm3bdg7"
+        ],
+        "bIds": [
+          "p:k45yesm",
+          "p:45sqltb"
+        ]
+      },
+      {
+        "id": "q4iot7g",
+        "phase": "rot",
+        "round": 1,
+        "slot": 1,
+        "court": 2,
+        "aIds": [
+          "p:nba8nn1",
+          "p:h0teikh"
+        ],
+        "bIds": [
+          "p:ibws5ld",
+          "p:lvcpucm"
+        ]
+      },
+      {
+        "id": "3kuxhnu",
+        "phase": "rot",
+        "round": 2,
+        "slot": 2,
+        "court": 1,
+        "aIds": [
+          "p:243v8q3",
+          "p:smnajd5"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:18qv5bz"
+        ]
+      },
+      {
+        "id": "02ct8j0",
+        "phase": "rot",
+        "round": 2,
+        "slot": 2,
+        "court": 2,
+        "aIds": [
+          "p:t5tmwl5",
+          "p:45sqltb"
+        ],
+        "bIds": [
+          "p:k45yesm",
+          "p:h0teikh"
+        ]
+      },
+      {
+        "id": "8urnvlj",
+        "phase": "rot",
+        "round": 2,
+        "slot": 2,
+        "court": 3,
+        "aIds": [
+          "p:nba8nn1",
+          "p:ibws5ld"
+        ],
+        "bIds": [
+          "p:uzqomod",
+          "p:6kn0dof"
+        ]
+      },
+      {
+        "id": "a458nyg",
+        "phase": "rot",
+        "round": 3,
+        "slot": 3,
+        "court": 1,
+        "aIds": [
+          "p:t5tmwl5",
+          "p:t4lcpvt"
+        ],
+        "bIds": [
+          "p:k45yesm",
+          "p:243v8q3"
+        ]
+      },
+      {
+        "id": "eww8va3",
+        "phase": "rot",
+        "round": 3,
+        "slot": 3,
+        "court": 2,
+        "aIds": [
+          "p:fm3bdg7",
+          "p:smnajd5"
+        ],
+        "bIds": [
+          "p:6kn0dof",
+          "p:nba8nn1"
+        ]
+      },
+      {
+        "id": "jl87xyq",
+        "phase": "rot",
+        "round": 3,
+        "slot": 3,
+        "court": 3,
+        "aIds": [
+          "p:ibws5ld",
+          "p:uzqomod"
+        ],
+        "bIds": [
+          "p:18qv5bz",
+          "p:lvcpucm"
+        ]
+      },
+      {
+        "id": "peed4im",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 1,
+        "aIds": [
+          "p:243v8q3",
+          "p:lvcpucm"
+        ],
+        "bIds": [
+          "p:t5tmwl5",
+          "p:h0teikh"
+        ]
+      },
+      {
+        "id": "qzz3lmj",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 2,
+        "aIds": [
+          "p:k45yesm",
+          "p:18qv5bz"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:6kn0dof"
+        ]
+      },
+      {
+        "id": "xr4lfd9",
+        "phase": "rot",
+        "round": 4,
+        "slot": 4,
+        "court": 3,
+        "aIds": [
+          "p:uzqomod",
+          "p:fm3bdg7"
+        ],
+        "bIds": [
+          "p:smnajd5",
+          "p:45sqltb"
+        ]
+      },
+      {
+        "id": "d4egagz",
+        "phase": "rot",
+        "round": 5,
+        "slot": 5,
+        "court": 1,
+        "aIds": [
+          "p:t5tmwl5",
+          "p:ibws5ld"
+        ],
+        "bIds": [
+          "p:t4lcpvt",
+          "p:smnajd5"
+        ]
+      },
+      {
+        "id": "qb5k7g3",
+        "phase": "rot",
+        "round": 5,
+        "slot": 5,
+        "court": 2,
+        "aIds": [
+          "p:6kn0dof",
+          "p:fm3bdg7"
+        ],
+        "bIds": [
+          "p:uzqomod",
+          "p:h0teikh"
+        ]
+      },
+      {
+        "id": "ghxgpjx",
+        "phase": "rot",
+        "round": 5,
+        "slot": 5,
+        "court": 3,
+        "aIds": [
+          "p:45sqltb",
+          "p:18qv5bz"
+        ],
+        "bIds": [
+          "p:nba8nn1",
+          "p:lvcpucm"
+        ]
+      }
+    ],
+    "qualifiers": 0,
+    "extraSlots": 0,
+    "unitIds": [
+      "p:h0teikh",
+      "p:t4lcpvt",
+      "p:lvcpucm",
+      "p:ibws5ld",
+      "p:nba8nn1",
+      "p:k45yesm",
+      "p:243v8q3",
+      "p:smnajd5",
+      "p:uzqomod",
+      "p:t5tmwl5",
+      "p:45sqltb",
+      "p:6kn0dof",
+      "p:fm3bdg7",
+      "p:18qv5bz"
+    ],
+    "seed": 346948
+  },
+  "results": {
+    "mnwrjqm": [
+      {
+        "a": "",
+        "b": ""
+      }
+    ],
+    "1zraakh": [
+      {
+        "a": "4",
+        "b": "6"
+      }
+    ],
+    "q4iot7g": [
+      {
+        "a": "5",
+        "b": "1"
+      }
+    ],
+    "3kuxhnu": [
+      {
+        "a": "3",
+        "b": "4"
+      }
+    ],
+    "02ct8j0": [
+      {
+        "a": "4",
+        "b": "4"
+      }
+    ],
+    "8urnvlj": [
+      {
+        "a": "3",
+        "b": "4"
+      }
+    ],
+    "a458nyg": [
+      {
+        "a": "5",
+        "b": "4"
+      }
+    ],
+    "eww8va3": [
+      {
+        "a": "1",
+        "b": "6"
+      }
+    ],
+    "jl87xyq": [
+      {
+        "a": "2",
+        "b": "6"
+      }
+    ],
+    "peed4im": [
+      {
+        "a": "6",
+        "b": "2"
+      }
+    ],
+    "qzz3lmj": [
+      {
+        "a": "4",
+        "b": "6"
+      }
+    ],
+    "xr4lfd9": [
+      {
+        "a": "6",
+        "b": "3"
+      }
+    ],
+    "d4egagz": [
+      {
+        "a": "",
+        "b": ""
+      }
+    ],
+    "qb5k7g3": [
+      {
+        "a": "",
+        "b": ""
+      }
+    ],
+    "ghxgpjx": [
+      {
+        "a": "",
+        "b": ""
+      }
+    ]
+  },
+  "editMode": false,
+  "publishedAt": "2026-09-16T01:54:05.469Z",
+  "ghTokenEnc": "arm5gZOULRiHUTHw./LHKP14QMwG+64uD+3Mun5fsfg8Vpv7liHKK3alIpNnnyLkG6JSK+aJ1wcQ7bpyP5ZEcsBVuBjX0Myw5jncavpOCXj3im1D2mM8V2Z3mVsCDHsEG9iEkaJ6xb27KcyY3XxLBC2Cvc68UIbJTEA=="
+}
