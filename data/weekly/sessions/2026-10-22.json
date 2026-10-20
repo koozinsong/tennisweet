@@ -3,7 +3,7 @@
  "id": "2026-10-22",
  "date": "2026-10-22",
  "status": "open",
- "rev": 6,
+ "rev": 7,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -66,11 +66,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-19T08:59:14.193Z",
- "updatedAt": "2026-10-20T23:44:43.286Z"
+ "updatedAt": "2026-10-20T23:44:52.893Z"
 }
