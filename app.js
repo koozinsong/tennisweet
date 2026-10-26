@@ -1808,6 +1808,7 @@
     const box = $('#wk-view'); if (!box) return;
     const editor = document.body.classList.contains('editor'); const list = wkSessions(); const doc = W.doc;
     const ls = $('#wk-levels-status'); if (ls) { const n = Object.keys(W.index?.levels || {}).length; ls.textContent = !W.index ? '' : n ? `${n}명 반영${W.index.levelsAt ? ' · ' + new Date(W.index.levelsAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}` : '아직 반영 안 됨 — 대진에 NTRP 가 고려되지 않습니다'; }
+    const pi = $('#wk-form-proxy [name=proxy]'); if (pi && !pi.value && W.index?.proxy && document.activeElement !== pi) pi.value = W.index.proxy; // 현재 주소를 미리 채움 (빈 칸으로 저장돼 주소가 지워지는 사고 방지)
     const al = $('#wk-admin-list'); if (al) { al.innerHTML = list.length ? `<div class="wk-admin-rows">${list.map((s) => `<div class="wk-admin-row"><b>${esc(fmtDate(s.date))}</b><span class="sub">${esc(s.date)} · ${esc(s.courtsLabel || `코트 ${s.courts}면`)} · ${s.matchMinutes}분${W.id === s.id && W.doc ? ` · 참석 ${Object.keys(W.doc.attendance).length}명${W.doc.schedule ? ' · 대진 있음' : ''}` : ''}</span><button class="small wk-del" data-wk-del="${esc(s.id)}">🗑 삭제</button></div>`).join('')}</div>` : '<p class="hint">만든 모임이 없습니다.</p>'; const pi = $('#wk-form-proxy [name=proxy]'); if (pi && document.activeElement !== pi) pi.value = W.index?.proxy || ''; }
     if (!W.index) { box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
     if (W.indexErr && !list.length) { box.innerHTML = `<p class="hint">${esc(W.indexErr)}</p>`; return; }
@@ -2436,6 +2437,7 @@
   $('#wk-levels')?.addEventListener('click', () => wkSaveLevels());
   $('#wk-form-proxy')?.addEventListener('submit', async (e) => {
     e.preventDefault(); const url = String(new FormData(e.target).get('proxy') || '').trim();
+    if (!url && W.index?.proxy) { if (!confirm('저장 서버 주소를 지우면 멤버 폰에서 참석·대진표 저장이 막히고 보기 전용이 됩니다.\n정말 지울까요?')) { const pi = e.target.querySelector('[name=proxy]'); if (pi) pi.value = W.index.proxy; return; } }
     if (url && !PROXY_RE.test(url)) { alert('Apps Script 웹앱 주소 형식이 아닙니다 (https://script.google.com/macros/s/…/exec).'); return; }
     const st = $('#wk-proxy-status'); if (st) st.textContent = '저장 중…';
     if (await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.proxy = url; idx.updatedAt = new Date().toISOString(); return idx; }, '정기 모임 저장 서버 주소 설정')) { toast(url ? '저장 서버 주소를 저장했습니다' : '저장 서버 주소를 지웠습니다'); if (st) st.textContent = (url ? '✓ 저장됨 ' : '✓ 지움 ') + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); await weeklyRefresh(); } else if (st) st.textContent = '저장 실패';
