@@ -3,7 +3,7 @@
  "id": "2026-10-29",
  "date": "2026-10-29",
  "status": "open",
- "rev": 11,
+ "rev": 12,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -96,9 +96,148 @@
    "until": "22:00"
   }
  },
- "schedule": null,
+ "schedule": {
+  "seed": 82855,
+  "gen": 1,
+  "fromSlot": 0,
+  "inputHash": "u1k17h",
+  "at": "2026-10-28T01:03:13.978Z",
+  "by": "t136ug1",
+  "matches": [
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:t136ug1"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s4c1",
+    "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:243v8q3"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:t5tmwl5"
+    ]
+   },
+   {
+    "id": "s4c2",
+    "slot": 4,
+    "court": 2,
+    "aIds": [
+     "p:ev1tqiv",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:lvcpucm",
+     "p:t136ug1"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
+    "court": 1,
+    "aIds": [
+     "p:45sqltb",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:lvcpucm",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s5c2",
+    "slot": 5,
+    "court": 2,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:t136ug1"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:ev1tqiv"
+    ]
+   },
+   {
+    "id": "s6c1",
+    "slot": 6,
+    "court": 1,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s6c2",
+    "slot": 6,
+    "court": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s7c1",
+    "slot": 7,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s7c2",
+    "slot": 7,
+    "court": 2,
+    "aIds": [
+     "p:t136ug1",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:g261xhp",
+     "p:45sqltb"
+    ]
+   }
+  ]
+ },
  "done": {},
  "results": {},
  "createdAt": "2026-10-23T22:26:31.951Z",
- "updatedAt": "2026-10-28T01:02:42.768Z"
+ "updatedAt": "2026-10-28T01:03:15.995Z"
 }
