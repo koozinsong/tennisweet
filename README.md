@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/logo.jpg" width="200" alt="테니스윗 테니스 클럽 로고"></p>
+
 # 🎾 테니스윗 클럽 앱 (정기 모임 · 분기 대회)
 
 빌드 없는 정적 웹 앱 (HTML/CSS/JS). GitHub Pages 로 배포됩니다.

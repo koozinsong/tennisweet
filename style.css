@@ -58,9 +58,8 @@ a { color: var(--court); }
 .brand { grid-area: brand; } .actions { grid-area: actions; justify-content: flex-end; } .tabs { grid-area: tabs; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: -.01em; min-width: 0; white-space: nowrap; background: transparent; border: 0; color: #fff; padding: 0; font-family: inherit; cursor: pointer; text-align: left; }
 .brand:hover { border: 0; }
-.brand .ball { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #f3ff8a, var(--ball) 55%, var(--ball-deep)); position: relative; flex: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
-.brand .ball::after { content: ""; position: absolute; inset: 2px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,.85); border-color: rgba(255,255,255,.85) transparent rgba(255,255,255,.85) transparent; transform: rotate(35deg); }
-.brand > span:not(.ball) { font-weight: 500; font-size: 13px; opacity: .85; margin-left: 2px; }
+.brand .mark { width: 28px; height: 28px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.55); background: #faf9f0; }
+.brand > span { font-weight: 500; font-size: 13px; opacity: .85; margin-left: 2px; }
 .tabs { display: flex; gap: 2px; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; border-top: 1px solid rgba(255,255,255,.18); margin-top: 4px; } /* 서비스 라인 위에 탭 */
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button { background: transparent; color: rgba(255,255,255,.85); border: 0; border-bottom: 3px solid transparent; padding: 10px 14px 9px; font-weight: 600; font-size: 14px; white-space: nowrap; cursor: pointer; border-radius: 0; }
@@ -243,7 +242,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 18px
   .tab { padding: 12px; border-radius: 8px; }
   .topbar { padding: 10px 12px 0; gap: 6px 10px; grid-template-columns: 1fr; grid-template-areas: "brand" "actions" "tabs"; }
   .brand { font-size: 18px; flex-wrap: wrap; }
-  .brand > span:not(.ball) { flex-basis: 100%; margin: 0; }
+  .brand > span { flex-basis: 100%; margin: 0; }
   .actions { justify-content: flex-start; }
   .actions button { font-size: 12px; padding: 5px 9px; }
   .tabs { flex-wrap: wrap; overflow: visible; }
@@ -269,7 +268,9 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 18px
   .topbar, footer, .hint, .actions, .banner, .no-print, #tab-setup, #tab-players, #tab-units, button, #toast, .modal { display: none !important; }
   .tab { display: none; border: 0; padding: 0; box-shadow: none; }
   #tab-schedule, #tab-standings { display: block !important; page-break-after: always; }
-  .print-header { display: block; margin-bottom: 12px; }
+  .print-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+  .print-header .mark { width: 64px; height: 64px; border-radius: 50%; }
+  .print-header h1, .print-header p { margin: 0; }
   .slot-title { background: #eeede6 !important; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .slot-title .live { display: none; }
   .slot-title .sub, .slot-title .to { color: #000; opacity: 1; }
@@ -299,7 +300,9 @@ body.cover-on header.topbar, body.cover-on #view-banner, body.cover-on main, bod
 .cover-fallback .c { font-family: var(--display); font-size: 22px; letter-spacing: .6em; color: var(--ball); }
 .cover-fallback .t { font-size: 48px; font-weight: 800; letter-spacing: .2em; margin-top: 18px; }
 .cover-menu { padding: 16px 16px calc(20px + env(safe-area-inset-bottom)); display: grid; gap: 10px; max-width: 560px; width: 100%; margin: 0 auto; background: linear-gradient(180deg, transparent, rgba(0,0,0,.25)); }
-.cover-title { display: flex; flex-direction: column; gap: 2px; padding: 0 4px 2px; }
+.cover-title { display: flex; align-items: center; gap: 12px; padding: 0 4px 2px; }
+.cover-title .mark { width: 52px; height: 52px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(255,255,255,.55); background: #faf9f0; }
+.cover-title > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cover-title #cover-name { font-weight: 800; font-size: 18px; }
 .cover-title .sub { color: rgba(255,255,255,.75); }
 .cover-menu button { border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: #fff; padding: 14px 16px; font-size: 16px; font-weight: 700; border-radius: 10px; min-height: 52px; }

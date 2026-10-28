@@ -1367,8 +1367,11 @@
       const target = $('.tab.active') || $('main');
       const name = (state.settings.name || '테니스윗') + ' · ' + ($('.tabs button.active')?.textContent.trim() || '');
       // 캡처용 헤더를 임시로 붙임
-      const head = document.createElement('div'); head.className = 'capture-head'; head.style.cssText = 'padding:10px 14px;font-weight:800;font-size:18px;color:#07452a;'; head.textContent = name + (state.publishedAt ? `  (${new Date(state.publishedAt).toLocaleString('ko-KR')} 게시)` : '');
-      target.prepend(head); document.body.classList.add('capturing');
+      const head = document.createElement('div'); head.className = 'capture-head'; head.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px 14px;font-weight:800;font-size:18px;color:#07452a;';
+      const logo = new Image(36, 36); logo.src = 'assets/logo-mark.webp'; logo.alt = ''; logo.style.cssText = 'width:36px;height:36px;border-radius:50%;flex:none;';
+      const txt = document.createElement('span'); txt.textContent = name + (state.publishedAt ? `  (${new Date(state.publishedAt).toLocaleString('ko-KR')} 게시)` : '');
+      head.append(logo, txt); target.prepend(head); document.body.classList.add('capturing');
+      try { await logo.decode(); } catch {} // 로고가 그려진 뒤 캡처
       const canvas = await window.html2canvas(target, { scale: Math.min(2, window.devicePixelRatio || 1) * 1.5, backgroundColor: '#ffffff', useCORS: true, logging: false, windowWidth: Math.max(720, target.scrollWidth) });
       document.body.classList.remove('capturing'); head.remove();
       const blob = await new Promise((r) => canvas.toBlob(r, 'image/png')); lastImageBlob = blob;

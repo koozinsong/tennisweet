@@ -78,7 +78,7 @@
     <div class="cover-fallback"><span class="y">2026</span><span class="c">CLUB</span><span class="t">테니스윗</span></div>
   </div>
   <nav class="cover-menu" aria-label="메뉴">
-    <div class="cover-title"><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div>
+    <div class="cover-title"><img class="mark" src="assets/logo-mark.webp" alt="테니스윗 로고" width="52" height="52"><div><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div></div>
     <button data-go="weekly" class="menu-main" id="cover-main"><span class="mm-row"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</span><small id="cover-weekly" class="sub"></small></button>
     <div class="cover-grid">
       <button data-go="courts" class="span2"><svg class="ic"><use href="#i-court"/></svg>코트 예약</button>
@@ -89,7 +89,7 @@
   </nav>
 </section>
 <header class="topbar">
-  <button class="brand" id="btn-home" title="첫 화면으로"><span class="ball" aria-hidden="true"></span>테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
+  <button class="brand" id="btn-home" title="첫 화면으로"><img class="mark" src="assets/logo-mark.webp" alt="" aria-hidden="true" width="28" height="28">테니스윗 <span id="hdr-title">분기 대회 일정표</span></button>
   <nav class="tabs" aria-label="화면 선택">
     <button data-tab="weekly"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</button>
     <button data-tab="courts"><svg class="ic"><use href="#i-court"/></svg>코트 예약</button>
@@ -319,8 +319,8 @@
 <!-- ============ ④ 일정표 ============ -->
 <section id="tab-schedule" class="tab">
   <div class="print-header">
-    <h1 id="print-title"></h1>
-    <p id="print-meta"></p>
+    <img class="mark" src="assets/logo-mark.webp" alt="" width="64" height="64">
+    <div><h1 id="print-title"></h1><p id="print-meta"></p></div>
   </div>
   <h2>경기 일정표 <span class="mode-badge" id="mode-badge"></span></h2>
   <div class="row no-print"><select id="sel-me" class="me" aria-label="선수별 경기 보기"></select><button class="btn-regen only-editor" data-mode="rotation"><svg class="ic"><use href="#i-ball"/></svg>개인전 생성</button><button class="btn-regen only-editor" data-mode="team"><svg class="ic"><use href="#i-team"/></svg>팀전 생성</button><label class="inline only-editor">여복 최소 <input class="inp-minff" type="number" min="0" max="10" style="width:60px"> 회</label><label class="inline only-editor" title="비우면 매번 새 판. 요약표의 '생성 #번호'를 넣으면 같은 판을 재현"># <input class="inp-seed" type="number" min="0" max="999999" placeholder="생성 번호" style="width:110px"></label>
