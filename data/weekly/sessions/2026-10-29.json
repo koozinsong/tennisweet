@@ -3,7 +3,7 @@
  "id": "2026-10-29",
  "date": "2026-10-29",
  "status": "open",
- "rev": 21,
+ "rev": 22,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -92,11 +92,11 @@
   }
  },
  "schedule": {
-  "seed": 534976,
-  "gen": 3,
+  "seed": 256605,
+  "gen": 4,
   "fromSlot": 0,
   "inputHash": "1r4nhp7",
-  "at": "2026-10-29T09:15:40.208Z",
+  "at": "2026-10-29T09:15:48.979Z",
   "by": "lvcpucm",
   "matches": [
    {
@@ -104,12 +104,12 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:243v8q3",
-     "p:t136ug1"
-    ],
-    "bIds": [
      "p:k45yesm",
      "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:t136ug1"
     ]
    },
    {
@@ -118,11 +118,11 @@
     "court": 1,
     "aIds": [
      "p:243v8q3",
-     "p:lvcpucm"
+     "p:t136ug1"
     ],
     "bIds": [
      "p:t4lcpvt",
-     "p:t136ug1"
+     "p:lvcpucm"
     ]
    },
    {
@@ -130,12 +130,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:t4lcpvt",
-     "p:t5tmwl5"
+     "p:243v8q3",
+     "p:k45yesm"
     ],
     "bIds": [
-     "p:k45yesm",
-     "p:243v8q3"
+     "p:t4lcpvt",
+     "p:t5tmwl5"
     ]
    },
    {
@@ -143,12 +143,12 @@
     "slot": 4,
     "court": 2,
     "aIds": [
-     "p:45sqltb",
+     "p:g:yn04tw",
      "p:t136ug1"
     ],
     "bIds": [
-     "p:g:yn04tw",
-     "p:nba8nn1"
+     "p:nba8nn1",
+     "p:45sqltb"
     ]
    },
    {
@@ -156,11 +156,11 @@
     "slot": 5,
     "court": 1,
     "aIds": [
-     "p:243v8q3",
-     "p:g:yn04tw"
+     "p:k45yesm",
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:k45yesm",
+     "p:243v8q3",
      "p:nba8nn1"
     ]
    },
@@ -170,7 +170,7 @@
     "court": 2,
     "aIds": [
      "p:t4lcpvt",
-     "p:45sqltb"
+     "p:g:yn04tw"
     ],
     "bIds": [
      "p:t5tmwl5",
@@ -199,8 +199,8 @@
      "p:nba8nn1"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:k45yesm"
+     "p:243v8q3",
+     "p:t4lcpvt"
     ]
    },
    {
@@ -208,12 +208,12 @@
     "slot": 7,
     "court": 1,
     "aIds": [
-     "p:243v8q3",
+     "p:lvcpucm",
      "p:nba8nn1"
     ],
     "bIds": [
-     "p:t5tmwl5",
-     "p:t136ug1"
+     "p:243v8q3",
+     "p:45sqltb"
     ]
    },
    {
@@ -221,12 +221,12 @@
     "slot": 7,
     "court": 2,
     "aIds": [
-     "p:t4lcpvt",
+     "p:t5tmwl5",
      "p:g:yn04tw"
     ],
     "bIds": [
      "p:k45yesm",
-     "p:45sqltb"
+     "p:t136ug1"
     ]
    }
   ]
@@ -234,5 +234,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-23T22:26:31.951Z",
- "updatedAt": "2026-10-29T09:15:41.440Z"
+ "updatedAt": "2026-10-29T09:15:50.374Z"
 }
