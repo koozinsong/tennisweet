@@ -3,7 +3,7 @@
  "id": "2026-10-29",
  "date": "2026-10-29",
  "status": "open",
- "rev": 17,
+ "rev": 18,
  "settings": {
   "startTime": "18:00",
   "endTime": "22:00",
@@ -82,6 +82,13 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:yn04tw": {
+   "n": "남1ezra",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": {
@@ -227,5 +234,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-10-23T22:26:31.951Z",
- "updatedAt": "2026-10-29T09:05:24.213Z"
+ "updatedAt": "2026-10-29T09:14:42.218Z"
 }
