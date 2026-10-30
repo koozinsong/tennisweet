@@ -3,7 +3,7 @@
  "id": "2026-10-30",
  "date": "2026-10-30",
  "status": "open",
- "rev": 7,
+ "rev": 8,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -57,11 +57,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 3
+  },
+  "g:1nk81k1": {
+   "n": "솔데로카",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-10-30T09:25:55.534Z",
- "updatedAt": "2026-10-30T09:30:39.988Z"
+ "updatedAt": "2026-10-30T09:31:02.052Z"
 }
