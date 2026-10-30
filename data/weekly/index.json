@@ -1,8 +1,18 @@
 {
  "v": 1,
- "sessions": [],
+ "sessions": [
+  {
+   "id": "2026-10-30",
+   "date": "2026-10-30",
+   "courts": 3,
+   "matchMinutes": 30,
+   "startTime": "20:00",
+   "endTime": "22:00",
+   "courtsLabel": "코트 3면"
+  }
+ ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-10-30T09:25:37.933Z",
+ "updatedAt": "2026-10-30T09:25:55.538Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
