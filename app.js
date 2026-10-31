@@ -2234,38 +2234,90 @@
   const ctFocus = (sel) => { const el = $('#tab-courts')?.querySelector(sel); if (el) { try { el.focus({ preventScroll: true }); } catch { el.focus(); } } };
   function ctCloseCell({ refocus = true } = {}) { const k = C.sel; C.sel = null; const mdl = $('#ct-modal'); if (mdl) mdl.hidden = true; if (k && refocus) ctFocus(`[data-ct="${k}"]`); } // 닫으면 그 칸으로 포커스 복귀 (키보드 사용자)
   function ctSetDraft(k, name) { const [d, t, c] = k.split('|'); const v = String(name || '').trim().slice(0, 12); if (v === ctSaved(d, t, +c)) delete C.draft[k]; else C.draft[k] = v; ctCloseCell({ refocus: false }); renderCourts(); ctFocus(`[data-ct="${k}"]`); }
-  /** 이 달 코트 예약 현황을 엑셀(.xlsx)로 내려받기: 현황표(화면의 넓은 배치와 같은 주별 격자) · 목록(날짜·요일·시간·코트·예약자) · 집계(이름별 횟수). SheetJS 는 눌렀을 때만 CDN 에서 불러온다 (이미지 저장의 html2canvas 와 같은 방식) */
+  /** 서식 있는 엑셀(.xlsx)의 색·글꼴 — 화면과 같은 팔레트 (윔블던 그린·퍼플, 코트별 칸 색) */
+  const XL = { font: 'Arial', deep: 'FF07452A', court: 'FF0A5C35', accent: 'FF4B2A7B', ink: 'FF1D2320', muted: 'FF5C6360', faint: 'FFB9BDB6', rule: 'FFB7C4BA', grid: 'FFE6E8E3', dateBg: 'FFF3F1EA', lblBg: 'FFF7F6F1', zebra: 'FFFAF9F5', white: 'FFFFFFFF', sat: 'FF1D4A8F', sun: 'FFB03060', courts: ['FFDDE7F4', 'FFE1EED8', 'FFF7E1D4'] };
+  const xlFill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+  const xlFont = (o = {}) => ({ name: XL.font, family: 2, charset: 129, size: 10, color: { argb: XL.ink }, ...o }); // Arial(어느 기기에나 있음) + family 2(고딕) · charset 129(한글): 한글은 기기의 고딕(윈도 맑은 고딕, 아이폰·맥 Apple SD 고딕)으로 대체되고 숫자도 명조로 바뀌지 않는다
+  const xlLine = (argb = XL.grid, style = 'thin') => ({ style, color: { argb } });
+  const XL_CENTER = { horizontal: 'center', vertical: 'middle', shrinkToFit: true };
+  /** 엑셀 통합 문서 만들기 (화면·전역 상태를 읽지 않는다 — 넘겨받은 doc·month 만 쓴다). 반환 { wb, count } */
+  function ctBuildXlsx(EX, { doc, month, weekend, logo, stamp }) {
+    const saved = (d, t, c) => doc.res?.[d]?.[t]?.[c] || '';
+    const [y, m] = month.split('-').map(Number); const weeks = ctWeeks(month, weekend); const nC = doc.courts.length; const nD = weekend ? 7 : 5; const W = 1 + nD * nC;
+    const wb = new EX.Workbook(); wb.creator = '테니스윗'; wb.created = new Date();
+    // 1) 현황표 — 화면의 넓은 배치: 요일 머리(짙은 녹색) · 주마다 날짜 줄 · 코트 줄 · 시간 줄, 예약 칸은 코트 색. 가로 A4 한 장에 인쇄 (보통 달은 줄여지지 않고 100% 로 들어가는 높이)
+    const ws = wb.addWorksheet(`${m}월 현황표`, {
+      properties: { tabColor: { argb: XL.court } }, views: [{ state: 'frozen', xSplit: 1, ySplit: 5, showGridLines: false }],
+      pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 1, horizontalCentered: true, verticalCentered: false, printTitlesRow: '5:5', margins: { left: 0.3, right: 0.3, top: 0.45, bottom: 0.45, header: 0.2, footer: 0.2 } },
+    });
+    ws.headerFooter.oddFooter = '&L&8테니스윗 코트 예약 현황&R&8&P / &N';
+    ws.getColumn(1).width = 10; for (let c = 2; c <= W; c++) ws.getColumn(c).width = W - 1 > 15 ? 7.5 : 8.5; // 9 는 ExcelJS 기본값이라 파일에 안 써지므로 피한다 · 8.5 면 평일 3코트(15열)가 가로 A4 에 100% 로 들어간다
+    ws.getRow(1).height = 30; ws.getRow(2).height = 14; ws.getRow(3).height = 18; ws.getRow(4).height = 4;
+    if (logo) { try { ws.addImage(wb.addImage({ base64: logo, extension: 'png' }), { tl: { col: 0.25, row: 0.2 }, ext: { width: 46, height: 46 }, editAs: 'oneCell' }); } catch {} }
+    Object.assign(ws.getCell(1, 2), { value: `${y}년 ${m}월 코트 예약 현황`, font: xlFont({ size: 18, bold: true, color: { argb: XL.deep } }), alignment: { vertical: 'middle' } });
+    Object.assign(ws.getCell(2, 2), { value: `테니스윗 테니스 클럽 · ${stamp} 기준 · 칸의 이름 = 그 코트를 예약한 사람`, font: xlFont({ size: 9, color: { argb: XL.muted } }), alignment: { vertical: 'middle' } });
+    doc.courts.forEach((c, ci) => { const w = xlLine(XL.white, 'medium'); Object.assign(ws.getCell(3, 2 + ci), { value: `${c} 코트`, fill: xlFill(XL.courts[ci % 3]), font: xlFont({ size: 9, bold: true }), alignment: XL_CENTER, border: { top: w, bottom: w, left: w, right: w } }); });
+    ws.getRow(5).height = 20; Object.assign(ws.getCell(5, 1), { fill: xlFill(XL.deep) });
+    '월화수목금토일'.slice(0, nD).split('').forEach((d, i) => { const c0 = 2 + i * nC; Object.assign(ws.getCell(5, c0), { value: d, fill: xlFill(XL.deep), font: xlFont({ size: 11, bold: true, color: { argb: XL.white } }), alignment: XL_CENTER, border: { left: xlLine('FF2F6A4E') } }); if (nC > 1) ws.mergeCells(5, c0, 5, c0 + nC - 1); });
+    let r = 6, other = false; const lastCol = W;
+    const edge = (col, base, end = col) => ({ ...base, left: (col - 2) % nC === 0 ? xlLine(XL.rule, 'medium') : xlLine(), right: end === lastCol ? xlLine(XL.rule, 'medium') : xlLine() });
+    for (const days of weeks) {
+      ws.getRow(r).height = 18; Object.assign(ws.getCell(r, 1), { fill: xlFill(XL.dateBg), border: { top: xlLine(XL.rule), bottom: xlLine() } });
+      days.forEach((d, i) => { if (!d.inMonth) other = true; const c0 = 2 + i * nC; Object.assign(ws.getCell(r, c0), { value: `${d.md}(${d.dow})`, fill: xlFill(XL.dateBg), font: xlFont({ size: 11, bold: true, color: { argb: d.inMonth ? XL.deep : XL.faint } }), alignment: XL_CENTER, border: edge(c0, { top: xlLine(XL.rule), bottom: xlLine() }, c0 + nC - 1) }); if (nC > 1) ws.mergeCells(r, c0, r, c0 + nC - 1); });
+      r++; ws.getRow(r).height = 13; Object.assign(ws.getCell(r, 1), { value: '코트', font: xlFont({ size: 8, color: { argb: XL.muted } }), alignment: XL_CENTER, fill: xlFill(XL.lblBg), border: { bottom: xlLine() } });
+      days.forEach((d, i) => doc.courts.forEach((c, ci) => { const col = 2 + i * nC + ci; Object.assign(ws.getCell(r, col), { value: c, font: xlFont({ size: 8, color: { argb: d.inMonth ? XL.muted : XL.faint } }), alignment: XL_CENTER, border: edge(col, { bottom: xlLine() }) }); }));
+      r++;
+      for (const t of doc.times) {
+        ws.getRow(r).height = 22; Object.assign(ws.getCell(r, 1), { value: ctTime(t), font: xlFont({ size: 9, bold: true, color: { argb: XL.deep } }), alignment: XL_CENTER, fill: xlFill(XL.lblBg), border: { bottom: xlLine() } });
+        days.forEach((d, i) => doc.courts.forEach((_, ci) => { const col = 2 + i * nC + ci; const v = saved(d.ymd, t, ci); const cell = ws.getCell(r, col); if (v) { cell.value = v; cell.fill = xlFill(XL.courts[ci % 3]); } cell.font = xlFont({ bold: true, color: { argb: d.inMonth ? XL.ink : XL.faint } }); cell.alignment = XL_CENTER; cell.border = edge(col, { bottom: xlLine() }); }));
+        r++;
+      }
+      ws.getRow(r).height = 6; r++; // 주 사이 간격
+    }
+    if (other) ws.getRow(r).height = 13; if (other) Object.assign(ws.getCell(r, 2), { value: '흐린 날짜는 앞뒤 달입니다', font: xlFont({ size: 8, color: { argb: XL.muted } }) });
+    // 2) 목록 — 그 달의 예약만 (주말 포함), 날짜순 · 필터 · 줄무늬 · 코트 색
+    const head = (row) => { row.height = 22; row.eachCell((c) => { c.fill = xlFill(XL.deep); c.font = xlFont({ bold: true, color: { argb: XL.white } }); c.alignment = XL_CENTER; }); };
+    const wl = wb.addWorksheet('목록', { properties: { tabColor: { argb: XL.accent } }, views: [{ state: 'frozen', ySplit: 1, showGridLines: false }], pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' } });
+    wl.columns = [{ header: '날짜', key: 'd', width: 13 }, { header: '요일', key: 'w', width: 6 }, { header: '시간', key: 't', width: 11 }, { header: '코트', key: 'c', width: 8 }, { header: '예약자', key: 'n', width: 14 }]; head(wl.getRow(1));
+    const lastDay = new Date(y, m, 0).getDate(); const cnt = {}; let count = 0;
+    for (let dd = 1; dd <= lastDay; dd++) {
+      const ymd = `${month}-${String(dd).padStart(2, '0')}`; const g = new Date(ymd + 'T00:00:00').getDay();
+      for (const t of doc.times) doc.courts.forEach((c, ci) => {
+        const v = saved(ymd, t, ci); if (!v) return; cnt[v] = (cnt[v] || 0) + 1; count++;
+        const row = wl.addRow({ d: new Date(Date.UTC(y, m - 1, dd)), w: '일월화수목금토'[g], t: ctTime(t), c, n: v }); row.height = 19;
+        row.eachCell((cell, col) => { cell.font = xlFont(col === 5 ? { bold: true } : col === 2 && (g === 0 || g === 6) ? { bold: true, color: { argb: g === 6 ? XL.sat : XL.sun } } : {}); cell.alignment = XL_CENTER; cell.border = { bottom: xlLine() }; cell.fill = xlFill(col === 4 ? XL.courts[ci % 3] : count % 2 ? XL.white : XL.zebra); });
+        row.getCell(1).numFmt = 'yyyy-mm-dd';
+      });
+    }
+    if (count) wl.autoFilter = { from: 'A1', to: 'E1' }; else { wl.mergeCells(2, 1, 2, 5); Object.assign(wl.getCell(2, 1), { value: `${m}월에는 예약이 없습니다`, font: xlFont({ color: { argb: XL.muted } }), alignment: XL_CENTER }); }
+    // 3) 집계 — 이름별 예약 수 (화면 아래 집계와 같다) + 막대
+    const tally = Object.entries(cnt).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')); const top = tally.length ? tally[0][1] : 1;
+    const wt = wb.addWorksheet('집계', { properties: { tabColor: { argb: 'FFC9D81C' } }, views: [{ state: 'frozen', ySplit: 1, showGridLines: false }] });
+    wt.columns = [{ header: '이름', key: 'n', width: 14 }, { header: `${m}월 예약 수`, key: 'k', width: 12 }, { header: '비중', key: 'b', width: 34 }]; head(wt.getRow(1));
+    tally.forEach(([n, k], i) => { const row = wt.addRow({ n, k, b: '█'.repeat(Math.max(1, Math.round((k / top) * 20))) + `  ${Math.round((k / count) * 100)}%` }); row.height = 19; row.eachCell((cell, col) => { cell.font = xlFont(col === 1 ? { bold: true } : col === 3 ? { size: 9, color: { argb: XL.court } } : {}); cell.alignment = col === 3 ? { vertical: 'middle' } : XL_CENTER; cell.border = { bottom: xlLine() }; cell.fill = xlFill(i % 2 ? XL.zebra : XL.white); }); });
+    const tot = wt.addRow({ n: '합계', k: count, b: '' }); tot.height = 22; tot.eachCell({ includeEmpty: true }, (cell) => { cell.font = xlFont({ bold: true, color: { argb: XL.deep } }); cell.alignment = cell.col === 3 ? { vertical: 'middle' } : XL_CENTER; cell.fill = xlFill(XL.dateBg); cell.border = { top: xlLine(XL.deep, 'double') }; });
+    return { wb, count };
+  }
+  /** 엑셀에 넣을 로고: webp 는 엑셀이 못 읽으므로 128px PNG(data URL)로 바꿔 둔다. 실패하면 로고 없이 만든다 */
+  let ctLogoCache = null;
+  function ctLogoPng() {
+    if (!ctLogoCache) ctLogoCache = new Promise((res) => { const img = new Image(); const t = setTimeout(() => res(null), 2000); img.onload = () => { clearTimeout(t); try { const cv = document.createElement('canvas'); cv.width = cv.height = 128; cv.getContext('2d').drawImage(img, 0, 0, 128, 128); res(cv.toDataURL('image/png')); } catch { res(null); } }; img.onerror = () => { clearTimeout(t); res(null); }; img.src = 'assets/logo-mark.webp'; }).then((v) => { if (!v) ctLogoCache = null; return v; });
+    return ctLogoCache;
+  }
+  /** 이 달 코트 예약 현황을 서식 있는 엑셀(.xlsx)로 내려받기: 현황표 · 목록 · 집계. ExcelJS 는 눌렀을 때만 CDN 에서 불러온다 (이미지 저장의 html2canvas 와 같은 방식) */
   let ctXlsxBusy = false;
   async function courtsExportXlsx() {
     const doc = C.doc; if (!doc || C.busy) return; if (ctXlsxBusy) { toast('엑셀 파일을 만드는 중입니다'); return; } ctXlsxBusy = true;
-    const month = C.month; const saved = (d, t, c) => doc.res?.[d]?.[t]?.[c] || ''; // 누른 시점의 달·문서로 고정 (스크립트 로딩 중 월을 옮기거나 자동 갱신이 돌아도 그대로)
+    const month = C.month; const weekend = ctHasWeekend(month); // 누른 시점의 달·문서로 고정 (스크립트 로딩 중 월을 옮기거나 자동 갱신이 돌아도 그대로)
     const btn = $('#ct-xlsx'); const label = btn ? btn.innerHTML : ''; if (btn) { btn.disabled = true; btn.textContent = '만드는 중…'; }
     try {
-      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', () => !!window.XLSX);
-      const X = window.XLSX; if (!X) throw new Error('엑셀 라이브러리를 불러오지 못했습니다');
-      const [y, m] = month.split('-').map(Number); const weekend = ctHasWeekend(month); const weeks = ctWeeks(month, weekend); const nC = doc.courts.length; const nD = weekend ? 7 : 5;
-      // 1) 현황표 — 주마다 날짜 줄(코트 수만큼 가로 병합) · 코트 줄 · 시간 줄. 토·일은 주말 예약이 있을 때만 (화면과 같다)
-      const grid = [[`${y}년 ${m}월 코트 예약 현황`], []]; const merges = [{ s: { r: 0, c: 0 }, e: { r: 0, c: nD * nC } }]; let other = false;
-      for (const days of weeks) {
-        const r0 = grid.length; const dateRow = [''], courtRow = ['코트'];
-        days.forEach((d, i) => { if (!d.inMonth) other = true; dateRow.push(`${d.md}(${d.dow})${d.inMonth ? '' : ' *'}`); for (let k = 1; k < nC; k++) dateRow.push(''); if (nC > 1) merges.push({ s: { r: r0, c: 1 + i * nC }, e: { r: r0, c: i * nC + nC } }); doc.courts.forEach((c) => courtRow.push(c)); });
-        grid.push(dateRow, courtRow);
-        for (const t of doc.times) { const row = [ctTime(t)]; days.forEach((d) => doc.courts.forEach((_, ci) => row.push(saved(d.ymd, t, ci)))); grid.push(row); }
-        grid.push([]);
-      }
-      if (other) grid.push(['* 다른 달의 날짜']);
-      const ws1 = X.utils.aoa_to_sheet(grid); ws1['!merges'] = merges; ws1['!cols'] = [{ wch: 9 }, ...Array(nD * nC).fill({ wch: 8 })];
-      // 2) 목록 — 그 달의 예약만 (주말 포함), 날짜순
-      const list = [['날짜', '요일', '시간', '코트', '예약자']]; const lastDay = new Date(y, m, 0).getDate(); const cnt = {};
-      for (let dd = 1; dd <= lastDay; dd++) { const ymd = `${month}-${String(dd).padStart(2, '0')}`; for (const t of doc.times) doc.courts.forEach((c, ci) => { const v = saved(ymd, t, ci); if (!v) return; list.push([ymd, '일월화수목금토'[new Date(ymd + 'T00:00:00').getDay()], ctTime(t), c, v]); cnt[v] = (cnt[v] || 0) + 1; }); }
-      const ws2 = X.utils.aoa_to_sheet(list); ws2['!cols'] = [{ wch: 12 }, { wch: 5 }, { wch: 9 }, { wch: 7 }, { wch: 10 }];
-      // 3) 집계 — 이름별 예약 수 (화면 아래 집계와 같다)
-      const tally = Object.entries(cnt).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
-      const ws3 = X.utils.aoa_to_sheet([['이름', `${m}월 예약 수`], ...tally, [], ['합계', tally.reduce((a, x) => a + x[1], 0)]]); ws3['!cols'] = [{ wch: 10 }, { wch: 12 }];
-      const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws1, `${m}월 현황표`); X.utils.book_append_sheet(wb, ws2, '목록'); X.utils.book_append_sheet(wb, ws3, '집계');
-      const buf = X.write(wb, { bookType: 'xlsx', type: 'array' }); const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js', () => !!window.ExcelJS);
+      const EX = window.ExcelJS; if (!EX) throw new Error('엑셀 라이브러리를 불러오지 못했습니다');
+      const logo = await ctLogoPng(); const stamp = new Date().toLocaleString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      const { wb, count } = ctBuildXlsx(EX, { doc, month, weekend, logo, stamp });
+      const buf = await wb.xlsx.writeBuffer(); const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `테니스윗_코트예약_${month}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
-      toast(`엑셀 파일을 내려받습니다 · ${m}월 예약 ${list.length - 1}건`);
+      toast(`엑셀 파일을 내려받습니다 · ${+month.slice(5)}월 예약 ${count}건`);
     } catch (e) { toast('엑셀 파일을 만들지 못했습니다: ' + (e && e.message || e), 6000); }
     finally { ctXlsxBusy = false; const b = $('#ct-xlsx') || btn; if (b) { b.disabled = false; b.innerHTML = label || '엑셀 저장'; } } // 그 사이 다시 그려졌으면 새 버튼을 복원
   }
