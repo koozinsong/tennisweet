@@ -154,13 +154,13 @@
   </form>
 </div>
 <div id="ct-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="ct-modal-title" hidden>
-  <form class="modal-card" id="ct-form" autocomplete="off">
+  <div class="modal-card" id="ct-form">
     <h3 id="ct-modal-title">코트 예약</h3>
-    <label>예약한 사람 <input id="ct-name" maxlength="12" placeholder="이름을 누르거나 직접 입력 (비우면 예약 없음)"></label>
+    <p class="sub">예약한 사람을 누르세요</p>
     <div class="chips ct-names" id="ct-name-chips"></div>
-    <div class="row"><button type="submit" class="primary">적용</button><button type="button" id="ct-clear">비우기</button><button type="button" id="ct-close">닫기</button></div>
-    <p class="hint">적용한 칸은 표에 점선으로 표시되고, 위의 [저장]을 눌러야 모두에게 반영됩니다.</p>
-  </form>
+    <div class="row"><button type="button" id="ct-clear">비우기</button><button type="button" id="ct-close">닫기</button></div>
+    <p class="hint">누르면 바로 칸에 들어갑니다 (표에 점선 표시). 위의 [저장]을 눌러야 모두에게 반영됩니다.</p>
+  </div>
 </div>
 
 <main>

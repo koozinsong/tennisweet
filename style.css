@@ -329,6 +329,11 @@ body.view-only .cover-grid button.only-view { display: block; grid-column: span 
 .image-wrap img { display: block; width: 100%; height: auto; }
 a.btn-like { display: inline-block; border: 1px solid var(--court-deep); background: var(--court); color: #fff; padding: 7px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; }
 .capturing .no-print, .capturing .actions, .capturing .banner { display: none !important; }
+/* 코트 예약 이미지 저장: 월 전체 표만 (넓은 배치 고정, 폰 배치·설정 숨김) */
+body.capturing #ct-view .ct-wide { display: block !important; } body.capturing #ct-view .ct-narrow, body.capturing #ct-view .ct-settings { display: none !important; }
+body.capturing #ct-view .capture-legend { margin: 0 0 8px 14px; }
+body.capturing #ct-view .ct-cell.me { box-shadow: none; font-weight: 600; } /* '내 예약' 강조는 보는 사람마다 달라 공유 이미지에는 뺀다 */
+body.capturing #ct-view .ct-cell.on { opacity: 1 !important; } body.capturing #ct-view .sel { background: transparent !important; color: inherit !important; } /* 고른 날짜 강조·'내 예약만' 흐림도 뺀다 */
 
 /* ---- 방문자 순위 포디움 (3위까지) ---- */
 .podium { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 8px; }
@@ -537,8 +542,15 @@ tr.rec-row { cursor: pointer; } tr.rec-row:hover td { background: color-mix(in s
 .ct-cell.on.c0, .ct-swatch.c0 { background: #dde7f4; } .ct-cell.on.c1, .ct-swatch.c1 { background: #e1eed8; } .ct-cell.on.c2, .ct-swatch.c2 { background: #f7e1d4; }
 .ct-cell.out { opacity: .45; } .ct-cell.today:not(.on) { background: color-mix(in srgb, var(--accent) 5%, #fff); }
 .ct-cell.me { box-shadow: inset 0 0 0 2px var(--accent); font-weight: 800; }
+/* 내 예약만 보기: 다른 사람 칸은 흐리게 */
+#tab-courts.ct-mine .ct-cell.on:not(.me) { opacity: .22; } #tab-courts.ct-mine .ct-cell.me { opacity: 1; }
+.ct-mine-box { margin: 0 0 10px; padding: 10px 12px; border: 1px solid #dfe3dc; border-left: 4px solid var(--accent); border-radius: 10px; background: #fff; }
+.ct-mine-box .sub { margin: 0 0 6px; } .ct-mine-box .chips { margin-top: 4px; } .ct-mine-box .chip small { margin-left: 2px; }
 #tab-courts.ct-editing .ct-cell { cursor: pointer; } #tab-courts.ct-editing .ct-cell:hover, #tab-courts.ct-editing .ct-cell:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ct-cell .plus { color: #c6cbc3; font-weight: 400; }
+.ct-palette { margin: 6px 0 10px; padding: 10px 12px; border: 1px dashed var(--court); border-radius: 10px; background: #fff; }
+.ct-palette .hint { margin: 8px 0 0; }
+.chip.eraser { border: 1px dashed var(--muted); background: #fff; color: var(--muted); } .chip.eraser.on { background: var(--muted); color: #fff; }
 .ct-cell.chg { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .ct-cell.chg:not(.on) { background: repeating-linear-gradient(135deg, #fff, #fff 5px, var(--accent-tint) 5px, var(--accent-tint) 10px); }
 .ct-wide { display: none; } .ct-narrow { display: grid; gap: 10px; }
