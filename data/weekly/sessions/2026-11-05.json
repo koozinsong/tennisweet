@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 18,
+ "rev": 19,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -83,7 +83,8 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00",
-   "guest": true
+   "guest": true,
+   "lv": 3
   },
   "g:regr5t": {
    "n": "96년생",
@@ -276,5 +277,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T05:21:59.893Z"
+ "updatedAt": "2026-11-05T05:29:53.137Z"
 }
