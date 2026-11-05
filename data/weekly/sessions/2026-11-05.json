@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 44,
+ "rev": 45,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -193,7 +193,7 @@
      "p:g:regr5t"
     ],
     "bIds": [
-     "p:t4lcpvt",
+     "p:ev1tqiv",
      "p:nba8nn1"
     ]
    },
@@ -280,5 +280,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T09:00:25.007Z"
+ "updatedAt": "2026-11-05T09:02:19.740Z"
 }
