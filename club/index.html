@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>테니스윗 테니스 클럽 — 해가 지면, 코트에 불이 켜집니다</title>
+<meta name="description" content="테니스윗은 매주 목·금 밤 8시, 코트에 모여 파트너를 바꿔 가며 복식을 치는 클럽입니다.">
+<meta name="theme-color" content="#1b1f52">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/icon-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="테니스윗">
+<meta property="og:title" content="해가 지면, 코트에 불이 켜집니다 — 테니스윗">
+<meta property="og:description" content="매주 목·금 밤 8시, 파트너를 바꿔 가며 복식을 치는 테니스 클럽.">
+<meta property="og:url" content="https://koozinsong.github.io/tennisweet/club/">
+<meta property="og:image" content="https://koozinsong.github.io/tennisweet/assets/logo.jpg">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Noto+Sans+KR:wght@400;500&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet">
+<style>
+html,body{background:#1b1f52;color:#fff7ec}
+:root{
+  --fg:#fff7ec;--fg80:rgba(255,247,236,.82);--fg60:rgba(255,247,236,.66);--line:rgba(255,247,236,.16);
+  --ink:#141a2e;--ball:#f1e3c4;
+  --serif:"Noto Serif KR","Apple SD Gothic Neo",serif;
+  --sans:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --latin:"Instrument Serif",Georgia,serif;
+  --gut:clamp(20px,5vw,72px);
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:clip;-webkit-text-size-adjust:100%}
+body{margin:0;font:400 16px/1.7 var(--sans);overflow-x:clip;-webkit-font-smoothing:antialiased;word-break:keep-all}
+::selection{background:rgba(241,227,196,.3)}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ball);outline-offset:3px;border-radius:8px}
+#scene{position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:0;display:block}
+main,.nav,.clock{position:relative;z-index:10}
+
+/* nav */
+.nav{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:max(14px,env(safe-area-inset-top)) var(--gut) 14px;border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
+.nav.solid{background:rgba(7,12,30,.78);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom-color:var(--line)}
+.mark{display:flex;align-items:center;gap:10px;min-height:44px;font:italic 400 25px/1 var(--latin);letter-spacing:-.01em;text-shadow:0 2px 16px rgba(0,0,0,.3)}
+.mark img{width:38px;height:38px;border-radius:50%;display:block}
+.nav-links{display:flex;gap:28px;font-size:14px;color:var(--fg80);text-shadow:0 2px 16px rgba(0,0,0,.35)}
+.nav-links a{position:relative;padding:8px 0}
+.nav-links a::after{content:"";position:absolute;left:0;right:0;bottom:4px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .3s var(--ease)}
+.nav-links a:hover::after{transform:scaleX(1)}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 26px;border-radius:999px;font-size:15px;font-weight:500;transition:transform .2s var(--ease),background .2s,border-color .2s}
+.btn:hover{transform:translateY(-2px)}.btn:active{transform:scale(.97)}
+.btn svg{width:16px;height:16px;flex:none;transition:transform .25s var(--ease)}.btn:hover svg{transform:translateX(3px)}
+.btn-solid{background:#f6efe0;color:var(--ink)}
+.btn-ghost{position:relative;background:rgba(13,23,51,.42);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.btn-ghost:hover{background:rgba(13,23,51,.62)}
+.nav .btn{min-height:44px;padding:9px 20px;font-size:14px}
+
+/* hero */
+.hero{min-height:100vh;min-height:100svh;padding:clamp(104px,16vh,168px) var(--gut) 40px;display:flex;flex-direction:column}
+.eyebrow{font:italic 400 clamp(20px,2vw,26px)/1.2 var(--latin);color:var(--fg80);margin:0 0 18px}
+h1,h2{font-family:var(--serif);font-weight:600;letter-spacing:-.035em;margin:0}
+h1{font-size:clamp(38px,5.6vw,92px);line-height:1.14;filter:drop-shadow(0 10px 26px rgba(14,12,50,.45))}
+h1 span{white-space:nowrap}
+.sub{max-width:29rem;margin:26px 0 0;font-size:clamp(16px,1.3vw,18px);color:var(--fg);text-shadow:0 2px 18px rgba(14,12,50,.6)}
+.cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.next{margin-top:auto;align-self:flex-start;display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:10px 20px;border-radius:999px;font-size:14px;background:rgba(9,15,38,.62);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);position:relative}
+.next i{width:6px;height:6px;border-radius:50%;background:var(--ball);flex:none}
+.next b{font-weight:500;white-space:nowrap}
+.next span{color:var(--fg80)}
+.appear{animation:in-soft 1.5s cubic-bezier(.16,1,.3,1) var(--d,.08s) both}
+.appear.is-in{animation:none;opacity:1;transform:none}
+@keyframes in-soft{from{opacity:0;transform:translateY(14px)}}
+/* 제목 줄: 틀 안에서 올라온다. 글자 아래가 잘리지 않게 틀에 여유를 둔다 */
+.ml{display:block;overflow:hidden;padding:.06em .15em .14em;margin:-.06em -.15em -.14em}
+.ml>span{display:block;animation:ml-up 1.5s cubic-bezier(.16,1,.3,1) both;animation-delay:calc(.45s + var(--i)*.22s)}
+@keyframes ml-up{from{transform:translateY(110%)}}
+.dim{color:rgba(255,247,236,.82)}
+
+/* sections */
+section.sec{padding:clamp(96px,16vh,176px) var(--gut);max-width:1320px;margin:0 auto}
+.label{display:flex;align-items:center;gap:12px;font:italic 400 22px/1 var(--latin);color:var(--fg80);margin:0 0 20px}
+.label::before{content:"";width:32px;height:1px;background:var(--fg60)}
+h2{font-size:clamp(34px,4.6vw,68px);line-height:1.2;text-shadow:0 8px 34px rgba(4,8,24,.75)}
+.panel{position:relative;overflow:hidden;background:rgba(7,12,30,.66);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-radius:28px;box-shadow:inset 0 1px 1px rgba(255,255,255,.08)}
+.panel::before,.next::before,.btn-ghost::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.4px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.12) 20%,rgba(255,255,255,0) 40%,rgba(255,255,255,0) 60%,rgba(255,255,255,.12) 80%,rgba(255,255,255,.34) 100%);
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+.grain{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.4;background-size:200px 200px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")}
+
+/* evening */
+/* 위 여백 = 조명이 켜지는 빈 하늘 구간. 메뉴로 이동할 때는 여백을 건너뛴다 */
+section.sec.evening{padding-top:clamp(200px,48vh,520px);scroll-margin-top:calc(-48vh + 110px)}
+.evening{display:grid;grid-template-columns:5fr 7fr;gap:clamp(32px,6vw,96px);align-items:start}
+.evening .head{position:sticky;top:22vh}
+.times{list-style:none;margin:0;padding:clamp(8px,1.4vw,16px) clamp(22px,3vw,40px)}
+.times li{display:grid;grid-template-columns:clamp(86px,9vw,124px) 1fr;gap:16px;padding:clamp(22px,2.6vw,32px) 0;border-top:1px solid var(--line)}
+.times li:first-child{border-top:0}
+.times time{font:italic 400 clamp(32px,3.2vw,46px)/1 var(--latin);color:var(--ball);font-variant-numeric:tabular-nums}
+.times h3,.rules h3{margin:0 0 4px;font-size:18px;font-weight:500;line-height:1.45}
+.times p,.rules p{margin:0;font-size:15px;color:var(--fg80)}
+
+/* fair */
+.fair-head{max-width:46rem}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);margin-top:clamp(36px,5vw,64px)}
+.rules>div{padding:clamp(24px,2.8vw,36px)}
+.rules>div+div{border-left:1px solid var(--line)}
+.stats-wrap{margin-top:16px;padding:clamp(26px,3vw,40px)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin:0}
+.stats div{margin:0}
+.stats dd{margin:0;font:italic 400 clamp(56px,6.4vw,96px)/.95 var(--latin);color:var(--ball);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stats dt{font-size:14px;color:var(--fg);margin-top:8px}
+.basis{margin:22px 0 0;padding-top:16px;border-top:1px solid var(--line);font-size:13px;color:var(--fg80)}
+
+/* cup */
+.cup{display:grid;grid-template-columns:7fr 5fr;gap:clamp(28px,5vw,72px);align-items:end}
+.cup .label{margin:0 0 20px;color:var(--fg80);max-width:none;text-shadow:none}
+.cup p{max-width:32rem;color:var(--fg);margin:22px 0 0;text-shadow:0 2px 16px rgba(4,8,24,.9)}
+.ticket{padding:clamp(24px,3vw,36px)}
+.ticket small{display:block;font:italic 400 20px/1.2 var(--latin);color:var(--fg80)}
+.ticket strong{display:block;font:600 clamp(22px,2.2vw,28px)/1.35 var(--serif);letter-spacing:-.02em;margin:10px 0 18px}
+.ticket ul{list-style:none;display:flex;gap:28px;margin:0 0 24px;padding:18px 0 0;border-top:1px solid var(--line)}
+.ticket li{font-size:13px;color:var(--fg80)}
+.ticket li b{display:block;font:italic 400 40px/1 var(--latin);color:var(--ball);margin-bottom:4px}
+.link{display:inline-flex;align-items:center;min-height:44px;gap:8px;font-size:15px;font-weight:500}
+.link svg{width:16px;height:16px;transition:transform .25s var(--ease)}.link:hover svg{transform:translateX(3px)}
+
+/* close */
+.close{min-height:92vh;display:flex;flex-direction:column;align-items:center;text-align:center;padding-top:clamp(72px,12vh,140px)}
+.crest{width:clamp(168px,19vw,232px);height:auto;aspect-ratio:1;border-radius:50%;display:block;box-shadow:0 0 0 1px var(--line),0 24px 70px rgba(255,190,120,.2)}
+.close h2{margin-top:32px}
+.close .cta{justify-content:center}
+footer{position:relative;z-index:10;padding:0 var(--gut) max(52px,calc(env(safe-area-inset-bottom) + 40px));text-align:center;font-size:13px;color:var(--fg80);text-shadow:0 2px 12px rgba(4,8,24,.9)}
+
+/* clock */
+.clock{position:fixed;right:var(--gut);bottom:max(24px,env(safe-area-inset-bottom));z-index:20;font:italic 400 30px/1 var(--latin);font-variant-numeric:tabular-nums;color:var(--fg);padding:8px 16px;border-radius:999px;background:rgba(9,15,38,.5);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--line)}
+
+/* reveal: 스크립트가 켜졌을 때만 숨긴다 */
+.js .rv{opacity:0;transform:translateY(28px);transition:opacity .8s var(--ease),transform .8s var(--ease);transition-delay:calc(var(--i,0)*80ms)}
+.js .rv.in{opacity:1;transform:none}
+
+@media (max-width:980px){
+  .evening,.cup{grid-template-columns:1fr}
+  .evening .head{position:static}
+  .rules{grid-template-columns:1fr}
+  .rules>div+div{border-left:0;border-top:1px solid var(--line)}
+}
+@media (max-width:760px){
+  .nav-links{display:none}
+  .mark{font-size:22px}
+  .mark img{width:34px;height:34px}
+  h1 span{white-space:normal}
+  .hero{padding-top:88px;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  .hero .btn-ghost{display:none}
+  .cta .btn{flex:1 1 100%}
+  .stats{grid-template-columns:1fr 1fr;gap:28px 16px}
+  .stats dd{font-size:clamp(56px,17vw,76px)}
+  /* 시계는 상단 바 가운데: 본문을 가리지 않는다 */
+  .clock{top:max(16px,calc(env(safe-area-inset-top) + 2px));right:0;left:0;bottom:auto;width:fit-content;margin:auto;font-size:22px;padding:6px 12px;z-index:31;background:none;border-color:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .next{width:100%;justify-content:center;font-size:13px;padding:9px 14px;gap:8px}
+  .times li{grid-template-columns:78px 1fr;gap:12px}
+  .times time{font-size:29px}
+  .ticket ul{gap:22px}
+  section.sec{padding-top:88px;padding-bottom:88px}
+  section.sec.close{min-height:auto;padding-top:96px;padding-bottom:44vh}
+}
+@media (max-width:359px){.clock{display:none}.mark{font-size:20px}.ticket ul{gap:16px}.next b{display:none}.times li{grid-template-columns:68px 1fr}.times time{font-size:25px}}
+@media (max-width:760px) and (max-height:640px){
+  .hero{padding-top:70px;padding-bottom:12px}
+  .eyebrow{display:none}
+  h1{font-size:32px}
+  .sub{margin-top:12px;font-size:14px;line-height:1.55}
+  .cta{margin-top:14px}
+  section.sec.close{padding-bottom:38vh}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .hero{padding-top:76px;padding-bottom:20px}
+  h1{font-size:clamp(30px,5vw,44px);line-height:1.18}
+  h1 span{white-space:nowrap}
+  .eyebrow{display:none}
+  .sub{margin-top:10px;max-width:26rem;font-size:14px;line-height:1.55}
+  .cta{margin-top:12px}.cta .btn{flex:0 0 auto;min-height:44px;padding:8px 20px}
+  .next{display:none}
+  .hero .btn-ghost{display:none}
+  section.sec.close{padding-top:72px;padding-bottom:12vh}
+}
+@media (max-height:640px) and (min-width:761px){
+  .hero{padding-top:88px}
+  h1{font-size:clamp(40px,5vw,72px)}
+  .sub{margin-top:14px}.cta{margin-top:18px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .js .rv{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js')</script>
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<header class="nav appear" style="--d:.05s">
+  <a class="mark" href="#top" aria-label="테니스윗 소개 맨 위로"><img src="../assets/logo-mark.webp" alt="" width="38" height="38">Tennisweet</a>
+  <nav class="nav-links" aria-label="페이지 안내">
+    <a href="#evening">하루 저녁</a>
+    <a href="#fair">대진 원칙</a>
+    <a href="#cup">분기 대회</a>
+  </nav>
+  <a class="btn btn-ghost" href="../">앱 열기</a>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <p class="eyebrow appear" style="--d:.2s">Tennisweet Tennis Club</p>
+    <h1><span class="ml"><span class="dim" style="--i:0">해가 지면,</span></span><span class="ml"><span style="--i:1">코트에 불이 켜집니다.</span></span></h1>
+    <p class="sub appear" style="--d:1s">테니스윗은 매주 목·금 밤 8시, 코트에 모여 파트너를 바꿔 가며 복식을 치는 클럽입니다.</p>
+    <div class="cta appear" style="--d:1.2s">
+      <a class="btn btn-solid" href="../#weekly">이번 주 모임 보기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      <a class="btn btn-ghost" href="#evening">하루 저녁 살펴보기</a>
+    </div>
+    <p class="next appear" id="next" style="--d:1s"><i></i><b>정기 모임</b> <span>매주 목·금 밤 8시</span></p>
+  </section>
+
+  <section class="sec evening" id="evening">
+    <div class="head rv">
+      <p class="label">One evening</p>
+      <h2><span class="dim">두 시간,</span><br>네 번의 경기.</h2>
+    </div>
+    <ol class="times panel rv">
+      <li><time>20:00</time><div><h3>첫 경기</h3><p>참석을 체크한 사람들로 대진을 짭니다. 코트 번호와 내 경기는 휴대폰에서 바로 확인합니다.</p></div></li>
+      <li><time>20:30</time><div><h3>짝이 바뀝니다</h3><p>한 경기는 30분. 시간이 끝나면 파트너도 상대도 새로 만납니다.</p></div></li>
+      <li><time>21:00</time><div><h3>늦어도 괜찮습니다</h3><p>중간에 도착해도 바로 코트로 들어갑니다. 막 온 사람을 벤치에 두지 않는 것이 규칙입니다.</p></div></li>
+      <li><time>21:30</time><div><h3>마지막 경기</h3><p>끝난 경기는 완료를 누르고, 원하면 점수도 남깁니다. 22시에 마칩니다.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="sec" id="fair">
+    <div class="fair-head rv">
+      <p class="label">Fair play</p>
+      <h2><span class="dim">누구나 비슷하게,</span><br>충분히 칩니다.</h2>
+    </div>
+    <div class="rules panel rv">
+      <div><h3>경기 수는 고르게</h3><p>한 사람이 몰아 치지 않도록 경기 수 차이를 한 경기 안으로 맞춥니다. 더 친다면 오래 머문 사람부터.</p></div>
+      <div><h3>파트너는 다양하게</h3><p>최근 모임 기록을 보고, 같은 짝과 같은 상대를 덜 만나도록 섞습니다.</p></div>
+      <div><h3>경기 종류도 골고루</h3><p>남복, 여복, 혼복이 한 사람에게 몰리지 않도록 나눕니다.</p></div>
+    </div>
+    <div class="stats-wrap panel rv">
+      <dl class="stats">
+        <div><dd data-count="21">21</dd><dt>명의 회원</dt></div>
+        <div><dd data-count="12">12</dd><dt>번의 정기 모임</dt></div>
+        <div><dd data-count="118">118</dd><dt>경기 편성</dt></div>
+        <div><dd data-count="36">36</dd><dt>번의 게스트 참석</dt></div>
+      </dl>
+      <p class="basis">2026년 9월 17일부터 10월 30일까지의 모임 기록 기준</p>
+    </div>
+  </section>
+
+  <section class="sec cup" id="cup">
+    <div class="rv">
+      <p class="label">The cup</p>
+      <h2><span class="dim">분기마다 한 번은,</span><br>순위를 겁니다.</h2>
+      <p>파트너를 바꿔 가며 치고 개인 순위를 매기는 클럽 대회입니다. 지난 대회는 경기 뒤 회식까지 함께했습니다.</p>
+    </div>
+    <div class="ticket panel rv">
+      <small>Latest</small>
+      <strong>2026년 3분기 테니스윗 대회</strong>
+      <ul>
+        <li><b>9.11</b>금요일 저녁</li>
+        <li><b>14</b>명 참가</li>
+        <li><b>15</b>경기</li>
+      </ul>
+      <a class="link" href="../#tournament">지난 대회 기록 보기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </section>
+
+  <section class="sec close">
+    <img class="crest rv" src="../assets/logo.jpg" alt="테니스윗 테니스 클럽 로고. 일몰의 코트에서 복식을 치는 두 사람." width="640" height="640" loading="lazy">
+    <h2 class="rv">코트에서 만나요.</h2>
+    <div class="cta rv">
+      <a class="btn btn-solid" href="../#weekly">앱에서 참석 체크하기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+  </section>
+</main>
+<footer>Tennisweet Tennis Club · 매주 목·금 밤 8시</footer>
+<div class="grain" aria-hidden="true"></div>
+<div class="clock appear" style="--d:1.1s" id="clock" aria-hidden="true">19:30</div>
+
+<script>
+(function(){
+  'use strict';
+  /* ---------- 다음 모임 (읽기 전용, 실패하면 기본 문구 유지) ---------- */
+  fetch('../data/weekly/index.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():null}).then(function(d){
+    if(!d||!Array.isArray(d.sessions))return;
+    var today=new Date(Date.now()+9*36e5).toISOString().slice(0,10);
+    var s=d.sessions.filter(function(x){return x&&x.date>=today}).sort(function(a,b){return a.date<b.date?-1:1})[0];
+    if(!s)return;
+    var p=s.date.split('-').map(Number),wd='일월화수목금토'[new Date(Date.UTC(p[0],p[1]-1,p[2])).getUTCDay()];
+    var el=document.querySelector('#next');
+    el.querySelector('b').textContent='다음 모임';
+    el.querySelector('span').textContent=p[1]+'월 '+p[2]+'일 ('+wd+') '+s.startTime+'~'+s.endTime+(s.courts?' · 코트 '+s.courts+'면':'');
+  }).catch(function(){});
+
+  /* ---------- 섹션 등장 ---------- */
+  var rv=[].slice.call(document.querySelectorAll('.rv'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.12,rootMargin:'0px 0px -6% 0px'});
+    rv.forEach(function(e){io.observe(e)});
+  }else rv.forEach(function(e){e.classList.add('in')});
+
+  /* ---------- 등장 정리: 끝나면 transform 을 풀어 hover 가 듣게 한다 ---------- */
+  var ap=[].slice.call(document.querySelectorAll('.appear'));
+  ap.forEach(function(e){e.addEventListener('animationend',function(){e.classList.add('is-in')},{once:true})});
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    if(!document.getAnimations||!document.getAnimations().length)ap.forEach(function(e){e.classList.add('is-in')});
+  })});
+
+  /* ---------- 수치 카운트업: 최종값은 HTML 에 있다 ---------- */
+  var counts=[].slice.call(document.querySelectorAll('[data-count]'));
+  if('IntersectionObserver' in window&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&counts.length){
+    var cio=new IntersectionObserver(function(es){
+      if(!es[0].isIntersecting)return;cio.disconnect();
+      counts.forEach(function(el,i){
+        var to=+el.dataset.count,dur=1500+i*80,start=null;
+        el.textContent='0';
+        setTimeout(function(){requestAnimationFrame(function f(now){
+          if(start===null)start=now;
+          var t=Math.min(1,(now-start)/dur);
+          el.textContent=String(Math.round(to*(1-Math.pow(1-t,3))));
+          if(t<1)requestAnimationFrame(f);
+        })},280+i*90);
+      });
+    },{threshold:.25});
+    cio.observe(counts[0].closest('.stats'));
+  }
+
+  /* ---------- 장면 ---------- */
+  var cv=document.getElementById('scene'),c=cv.getContext('2d'),clock=document.getElementById('clock');
+  if(!c)return;
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W,H,DPR,hz,A,B,cx,hz0,A0,B0,cx0,NARROW,LAMPS=[],evTop=1,maxS=1,stars=[],ridge=[],trees=[],clouds=null,lastW=0,lastH=0;
+  var lampStart=[],lampV=[],lastT=0,mxT=0,mxCur=0,motes=[];
+  var scrollCur=0, sceneEpoch=null;
+  var painting=new Image();painting.src='./assets/jamwon-painted-afterglow.png';
+  painting.onload=function(){if(reduce)draw(0,scrollY)};
+  var paper=document.createElement('canvas');paper.width=512;paper.height=512;
+  var pc=paper.getContext('2d');
+  for(var grain=0;grain<22000;grain++){
+    pc.fillStyle=grain%3?'rgba(255,229,185,.07)':'rgba(20,16,24,.10)';
+    pc.fillRect(rnd(grain+20000)*512,rnd(grain+50000)*512,.5+rnd(grain+70000)*1.4,.6);
+  }
+  var paperPattern=c.createPattern(paper,'repeat');
+
+  function rnd(n){var x=Math.sin(n*127.1+11.7)*43758.5453;return x-Math.floor(x)}
+  function clamp(x,a,b){return x<a?a:x>b?b:x}
+  function mix(a,b,t){return a+(b-a)*t}
+  function sm(a,b,x){x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x)}
+  function hex(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]}
+  function mc(a,b,t){return [mix(a[0],b[0],t),mix(a[1],b[1],t),mix(a[2],b[2],t)]}
+  function css(v,al){return 'rgba('+(v[0]|0)+','+(v[1]|0)+','+(v[2]|0)+','+(al==null?1:al)+')'}
+
+  var SKY=[
+    {t:0,   c:['#263346','#706071','#d18d79','#ffd29a'].map(hex)},
+    {t:.5,  c:['#202b42','#65546b','#be7c78','#f5b57f'].map(hex)},
+    {t:.85, c:['#0a1030','#141c48','#2a2a58','#4a3a60'].map(hex)},
+    {t:1.25,c:['#050a1c','#081128','#0d1834','#16233f'].map(hex)}
+  ];
+  function skyAt(t){
+    for(var i=0;i<SKY.length-1;i++){
+      if(t<=SKY[i+1].t){var k=sm(SKY[i].t,SKY[i+1].t,t);return SKY[i].c.map(function(v,j){return mc(v,SKY[i+1].c[j],k)})}
+    }
+    return SKY[SKY.length-1].c;
+  }
+
+  function P(x,z,h){var s=1/(1+(1-z)*2.4);return {x:cx+x*B*s,y:hz+A*s-(h||0)/5.485*B*s,s:s}}
+
+  function resize(){
+    DPR=Math.min(window.devicePixelRatio||1,1.5);
+    lastW=cv.clientWidth;lastH=cv.clientHeight;
+    W=cv.clientWidth;H=cv.clientHeight;
+    cv.width=W*DPR;cv.height=H*DPR;
+    NARROW=W<=760;
+    var SHORT=NARROW&&H<=660;
+    hz0=H*(SHORT?.76:NARROW?.66:.62);A0=H*(SHORT?.22:NARROW?.30:.34);B0=Math.max(W,H*1.1)*.40;cx0=W*.5;
+    hz=hz0;A=A0;B=B0;cx=cx0;
+    /* 넓은 화면: 왼쪽 조명은 화면 밖에 두어 제목과 겹치지 않게 한다. 빛만 들어온다 */
+    LAMPS=NARROW
+      ?[{x:-1.42,z:.06,th:.55,px:-.8,pz:.28},{x:1.42,z:.06,th:.65,px:.8,pz:.28},{x:-3.2,z:.56,th:.75,px:-.7,pz:.74,off:1},{x:3.2,z:.56,th:.85,px:.7,pz:.74,off:1}]
+      :[{x:-3.4,z:.56,th:.55,px:-.8,pz:.3,off:1},{x:1.42,z:.06,th:.65,px:.75,pz:.28},{x:-3.4,z:.8,th:.75,px:-.7,pz:.78,off:1},{x:1.62,z:.56,th:.85,px:.7,pz:.74}];
+    var ev=document.getElementById('evening');
+    evTop=Math.max(1,ev.getBoundingClientRect().top+scrollY-H*.35);
+    maxS=Math.max(evTop+1,document.documentElement.scrollHeight-H);
+    stars=[];for(var i=0;i<(NARROW?70:130);i++)stars.push([rnd(i)*W,rnd(i+500)*hz0*.92,.5+rnd(i+900)*1.1,rnd(i+1300)]);
+    ridge=[];var n=Math.ceil(W/14)+6;
+    for(var j=0;j<n;j++){var u=(j-2)/(n-5)*W;ridge.push([u,Math.sin(u*.006+1.4)*.5+Math.sin(u*.017+.3)*.28+Math.sin(u*.041)*.1])}
+    trees=[];var tn=Math.ceil(W/(NARROW?10:13))+6;
+    for(var tj=0;tj<tn;tj++){var e2=Math.abs(tj/(tn-1)-.5)*2;trees.push([(tj-3)/(tn-7)*W+(rnd(tj+200)-.5)*16,H*(.006+e2*e2*.025+rnd(tj+210)*.008),H*(.009+rnd(tj+220)*.009)])}
+    motes=[];for(var mj=0;mj<(NARROW?34:70);mj++)motes.push([rnd(mj+700),rnd(mj+800),.05+rnd(mj+900)*.3,4+rnd(mj+1000)*9,.5+rnd(mj+1100)]);
+    makeClouds();
+  }
+
+  function poly(pts){c.beginPath();pts.forEach(function(p,i){i?c.lineTo(p.x,p.y):c.moveTo(p.x,p.y)});c.closePath()}
+  function seg(x1,z1,x2,z2,w){var a=P(x1,z1),b=P(x2,z2);c.lineWidth=Math.max(.8,w*(a.s+b.s)*.5);c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke()}
+
+  /* 구름은 한 번만 그려 두고 천천히 흘린다. 좌우가 이어지도록 세 번 찍는다 */
+  function makeClouds(){
+    clouds=document.createElement('canvas');
+    clouds.width=Math.ceil(W);clouds.height=Math.ceil(hz0);
+    var q=clouds.getContext('2d'),N=NARROW?12:22;
+    for(var i=0;i<N;i++){
+      var yy=hz0*(.2+rnd(i+60)*.62),len=W*(.1+rnd(i+70)*.24)*(NARROW?1.5:1),xx=rnd(i+80)*W,th=H*(.006+rnd(i+90)*.012);
+      var warm=yy/hz0,a=.09+warm*.15;
+      [-W,0,W].forEach(function(off){
+        for(var k=0;k<7;k++){
+          var dx=(k-3)*len*.26+(rnd(i*7+k)-.5)*len*.2,dy=(rnd(i*11+k)-.5)*th*2,rx=len*(.34+rnd(i*13+k)*.3);
+          q.save();q.translate(xx+off+dx,yy+dy);q.scale(1,th/rx*2.1);
+          var gg=q.createRadialGradient(0,0,0,0,0,rx);
+          gg.addColorStop(0,'rgba(255,'+(150+warm*50|0)+','+(150-warm*30|0)+','+a+')');gg.addColorStop(1,'rgba(255,170,150,0)');
+          q.fillStyle=gg;q.beginPath();q.arc(0,0,rx,0,7);q.fill();q.restore();
+        }
+      });
+    }
+  }
+
+  function strike(age){ /* 한 번 살짝 떨린 뒤 천천히 밝아진다 */
+    if(age<.14)return .3;if(age<.26)return .06;
+    return .12+.88*sm(.26,2.4,age);
+  }
+
+  function draw(time,sc){
+    var dt=clamp(time-lastT,0,.1);lastT=time;
+    var t=clamp(sc/evTop,0,1.25);
+    var night=sm(.6,1.1,t);
+    /* 카메라: 불러올 때 살짝 물러나며 자리 잡고, 스크롤하면 천천히 다가간다 */
+    var settle=reduce?0:1-clamp(time/3.2,0,1);settle=settle*settle*settle;
+    var zoom=1+.045*sm(0,1,t)+.018*settle+(reduce?0:.002*Math.sin(time*.12));
+    mxCur+=(mxT-mxCur)*.035;
+    B=B0*zoom;A=A0*zoom;hz=hz0-A0*(zoom-1)*.86;cx=cx0+mxCur*5;
+    c.setTransform(DPR,0,0,DPR,0,0);c.lineCap='butt';
+
+    /* 하늘 */
+    var s=skyAt(t),g=c.createLinearGradient(0,0,0,hz);
+    g.addColorStop(0,css(s[0]));g.addColorStop(.45,css(s[1]));g.addColorStop(.8,css(s[2]));g.addColorStop(1,css(s[3]));
+    c.fillStyle=g;c.fillRect(0,0,W,hz+2);
+
+    if(!painting.complete||!painting.naturalWidth){
+    /* 별 */
+    if(night>.02){c.fillStyle='#fff';for(var i=0;i<stars.length;i++){var st=stars[i];c.globalAlpha=night*(.25+st[3]*.6);c.fillRect(st[0]-mxCur*4,st[1],st[2],st[2])}c.globalAlpha=1}
+
+    /* 구름: 천천히 흐르다가 해가 지면 사라진다 */
+    var ca=1-sm(.3,.92,t);
+    if(ca>.01&&clouds){
+      var drift=reduce?0:((time*.65-mxCur*4)%W+W)%W;
+      c.globalAlpha=ca;c.drawImage(clouds,drift-W,-t*18,W,hz0);c.drawImage(clouds,drift,-t*18,W,hz0);c.globalAlpha=1;
+    }
+
+    /* 태양은 시야 밖 서쪽에 두고 넓은 잔광만 남긴다. */
+    if(t<.85){
+      var fade=1-sm(.6,.85,t);
+      var gl=c.createRadialGradient(-W*.18,hz*.86,0,-W*.18,hz*.86,W*1.1);
+      gl.addColorStop(0,'rgba(255,194,133,'+.32*fade+')');gl.addColorStop(.5,'rgba(245,153,126,'+.13*fade+')');gl.addColorStop(1,'rgba(255,140,110,0)');
+      c.fillStyle=gl;c.fillRect(0,0,W,hz);
+    }
+
+    /* 산 */
+    var mt=mc(hex('#55516a'),hex('#0a1228'),sm(0,1,t));
+    c.fillStyle=css(mt);c.beginPath();c.moveTo(-40,hz+2);
+    ridge.forEach(function(r){c.lineTo(r[0]-mxCur*9,hz-H*.036-r[1]*H*.04)});
+    c.lineTo(W+40,hz+2);c.closePath();c.fill();
+
+    }
+    var sunX=-W*.18-mxCur*6;
+    /* 지면 */
+    var lit=sm(.55,1,t);
+    var gT=mc(mc(hex('#3b3560'),hex('#070d1e'),sm(0,.8,t)),hex('#0f2230'),lit*.6);
+    var gB=mc(mc(hex('#2a2f58'),hex('#050914'),sm(0,.8,t)),hex('#0a1a24'),lit*.6);
+    g=c.createLinearGradient(0,hz,0,H);g.addColorStop(0,css(gT));g.addColorStop(1,css(gB));
+    c.fillStyle=g;c.fillRect(0,hz,W,H-hz);
+    if(t<.8){
+      var ref=c.createRadialGradient(sunX,hz,0,sunX,hz,H*.42);
+      ref.addColorStop(0,'rgba(255,176,112,'+.18*(1-sm(.2,.8,t))+')');ref.addColorStop(1,'rgba(255,176,112,0)');
+      c.save();c.translate(sunX,hz);c.scale(1.9,.5);c.translate(-sunX,-hz);c.fillStyle=ref;c.fillRect(sunX-H*.42,hz,H*.84,H*.42);c.restore();
+    }
+
+    /* 배경 미술: 고해상도 페인팅, 극미한 패닝과 호흡 */
+    if(painting.complete&&painting.naturalWidth){
+      var breathe=reduce?0:Math.sin(time*.09)*1.8, artH=hz+H*.047;
+      c.save();c.beginPath();c.rect(0,0,W,artH);c.clip();
+      c.drawImage(painting,-6-mxCur*3,-4+breathe,W+12,artH+8);
+      // 따뜻한 미술을 서서히 푸른 야간 팔레트로 옮긴다.
+      if(night>0){c.globalCompositeOperation='multiply';c.fillStyle=css(mc([255,255,255],[35,54,86],night*.94));c.fillRect(0,0,W,artH);c.globalCompositeOperation='source-over';c.fillStyle='rgba(9,19,39,'+night*.32+')';c.fillRect(0,0,W,artH)}
+      c.restore();
+      // 빛은 수면 위에서만 작게 부서진다.
+      if(!reduce&&night<.9){
+        c.save();c.beginPath();c.rect(0,artH*.89,W,artH*.10);c.clip();
+        for(var ripple=0;ripple<28;ripple++){
+          var ry=artH*(.895+rnd(ripple+950)*.075),rx=W*(.02+rnd(ripple+1660)*.46)+Math.sin(time*.24+ripple*2.3)*W*.012;
+          c.strokeStyle='rgba(255,221,160,'+((1-night)*(.012+.012*Math.sin(time*.9+ripple)))+')';c.lineWidth=.8;
+          c.beginPath();c.moveTo(rx-W*.025,ry);c.lineTo(rx+W*.025,ry);c.stroke();
+        }c.restore();
+      }
+      var scrim=c.createLinearGradient(0,0,0,artH);
+      scrim.addColorStop(0,'rgba(10,23,37,.62)');scrim.addColorStop(.57,'rgba(16,24,37,.22)');scrim.addColorStop(1,'rgba(16,24,37,0)');
+      c.fillStyle=scrim;c.fillRect(0,0,W,artH);
+    }
+
+    /* 조명 상태: 문턱을 넘는 순간부터는 시간으로 켜진다 */
+    var warmth=[];
+    var on=LAMPS.map(function(l,idx){
+      var want=t>=l.th;
+      if(reduce){warmth[idx]=1;return want?1:0}
+      if(want){
+        if(lampStart[idx]==null)lampStart[idx]=time;
+        var age=time-lampStart[idx];
+        lampV[idx]=strike(age);warmth[idx]=sm(.4,3,age);
+      }else{
+        lampStart[idx]=null;lampV[idx]=Math.max(0,(lampV[idx]||0)-dt*1.2);warmth[idx]=1;
+      }
+      return lampV[idx];
+    });
+    function lampRGB(idx){var w=warmth[idx];return [mix(255,232,w)|0,mix(190,226,w)|0,mix(130,214,w)|0]}
+    var L=(on[0]+on[1]+on[2]+on[3])/4;
+
+    /* 코트 */
+    var dusk=mc(hex('#a96144'),hex('#302830'),sm(0,.85,t));
+    var cc=mc(dusk,hex('#92644e'),L);
+    c.fillStyle=css(mc(cc,hex('#55584e'),.42));
+    poly([P(-1.34,-.08),P(1.34,-.08),P(1.34,1.08),P(-1.34,1.08)]);c.fill();
+    c.fillStyle=css(cc);
+    poly([P(-1,0),P(1,0),P(1,1),P(-1,1)]);c.fill();
+    /* 클레이 표면: 고정된 미세 입자, 매 프레임 흔들리지 않는다 */
+    c.save();poly([P(-1,0),P(1,0),P(1,1),P(-1,1)]);c.clip();
+    for(var ci=0;ci<(NARROW?900:1800);ci++){
+      var cp=P(rnd(ci+4000)*2-1,rnd(ci+6000));
+      c.fillStyle=ci%2?'rgba(255,210,162,.085)':'rgba(47,26,24,.10)';
+      c.fillRect(cp.x,cp.y,Math.max(.65,cp.s*1.5),.7);
+    }
+    if(!night){var wash=c.createLinearGradient(sunX,hz,W*.3,H);wash.addColorStop(0,'rgba(255,198,122,.18)');wash.addColorStop(1,'rgba(255,181,109,0)');c.fillStyle=wash;c.fillRect(0,hz,W,H-hz)}
+    c.restore();
+    /* 앞쪽으로 갈수록 어두워지는 깊이 */
+    var depth=c.createLinearGradient(0,P(0,.5).y,0,P(0,1.08).y);
+    depth.addColorStop(0,'rgba(4,8,20,0)');depth.addColorStop(1,'rgba(4,8,20,'+mix(.34,.5,sm(.3,1,t))+')');
+    poly([P(-1.34,.5),P(1.34,.5),P(1.34,1.08),P(-1.34,1.08)]);c.fillStyle=depth;c.fill();
+
+    /* 마른 클레이의 붓결과 길게 누운 네트 그림자 */
+    c.save();poly([P(-1.34,-.08),P(1.34,-.08),P(1.34,1.08),P(-1.34,1.08)]);c.clip();
+    c.fillStyle=paperPattern;c.fillRect(0,hz,W,H-hz);
+    c.strokeStyle='rgba(247,190,139,.06)';c.lineWidth=.7;
+    for(var brush=0;brush<100;brush++){
+      var bz=rnd(brush+400)*1.15,bx=rnd(brush+500)*2.5-1.25;
+      var bp=P(bx,bz),be=P(bx+.04+rnd(brush+600)*.16,bz+.002);
+      c.beginPath();c.moveTo(bp.x,bp.y);c.lineTo(be.x,be.y);c.stroke();
+    }
+    var shadowAlpha=(1-night)*.075;
+    c.fillStyle='rgba(43,36,41,'+shadowAlpha+')';poly([P(-1.08,.5),P(1.08,.5),P(1.36,.81),P(-.8,.81)]);c.fill();
+    c.restore();
+
+    /* 뒤쪽 펜스 */
+    var fa=P(0,-.09),fh=3.2/5.485*B*fa.s,fstep=B*fa.s*.2;
+    c.fillStyle=css(mc(hex('#1c1a42'),hex('#0a1420'),sm(0,1,t)),.34);c.fillRect(0,fa.y-fh,W,fh);
+    c.strokeStyle='rgba(255,255,255,'+mix(.025,.065,L)+')';c.lineWidth=1;c.beginPath();
+    for(var fx=cx%fstep;fx<=W;fx+=fstep){c.moveTo(fx,fa.y-fh);c.lineTo(fx,fa.y)}
+    c.moveTo(0,fa.y-fh);c.lineTo(W,fa.y-fh);c.stroke();
+
+    /* 조명 웅덩이 */
+    c.globalCompositeOperation='lighter';
+    LAMPS.forEach(function(l,idx){
+      if(on[idx]<=.01)return;
+      var q=P(l.px,l.pz),r=B*q.s*1.5,rgb=lampRGB(idx);
+      var pool=c.createRadialGradient(q.x,q.y,0,q.x,q.y,r);
+      pool.addColorStop(0,'rgba('+rgb+','+.1*on[idx]+')');pool.addColorStop(.55,'rgba('+rgb+','+.035*on[idx]+')');pool.addColorStop(1,'rgba('+rgb+',0)');
+      c.save();c.translate(q.x,q.y);c.scale(1,.42);c.translate(-q.x,-q.y);
+      c.fillStyle=pool;c.fillRect(q.x-r,q.y-r,r*2,r*2);c.restore();
+    });
+    c.globalCompositeOperation='source-over';
+
+    /* 라인 */
+    c.strokeStyle='rgba(244,240,228,'+mix(.46,.8,L)+')';
+    var sv=6.4/23.77,lw=B*.0055;
+    seg(-1,0,1,0,lw);seg(-1,1,1,1,lw);seg(-1,0,-1,1,lw);seg(1,0,1,1,lw);
+    seg(-.75,0,-.75,1,lw);seg(.75,0,.75,1,lw);
+    seg(-.75,.5-sv,.75,.5-sv,lw);seg(-.75,.5+sv,.75,.5+sv,lw);seg(0,.5-sv,0,.5+sv,lw);
+    seg(0,0,0,.018,lw);seg(0,.982,0,1,lw);
+
+    /* 조명탑 */
+    function pole(l,idx){
+      if(l.off)return;
+      var a=P(l.x,l.z),b=P(l.x,l.z,8.4),hw=Math.max(4,B*b.s*.058);
+      c.strokeStyle=css(mc(hex('#1a1b3f'),hex('#1d2438'),L));c.lineWidth=Math.max(1,B*a.s*.0065);
+      c.beginPath();c.moveTo(a.x,a.y);c.lineTo(b.x,b.y);c.stroke();
+      c.fillStyle='#10122a';c.fillRect(b.x-hw,b.y-hw*.62,hw*2,hw*1.24);
+      var v=on[idx];
+      if(v>.01){
+        var cw=hw*.52,ch=hw*.44;
+        c.fillStyle='rgba(255,246,226,'+v+')';
+        for(var ci=-1;ci<=1;ci++)for(var cj=0;cj<2;cj++)c.fillRect(b.x+ci*hw*.64-cw/2,b.y-hw*.5+cj*hw*.56,cw,ch);
+      }
+    }
+    pole(LAMPS[0],0);pole(LAMPS[1],1);
+
+    /* 공: 긴 휴지 뒤 낮아지는 두 번의 바운드, 바닥 그림자와 회전 */
+    var phase=reduce?8:time%15, flight=0;
+    if(phase<1.5)flight=.52*4*(phase/1.5)*(1-phase/1.5);
+    else if(phase<2.35)flight=.19*4*((phase-1.5)/.85)*(1-(phase-1.5)/.85);
+    var ballX=(NARROW?.30:.46)+(reduce?0:.09*(1-sm(0,3,phase)));
+    var ground=P(ballX,.9),rb=P(ballX,.9,flight),rr=Math.max(3,B*rb.s*.017);
+    c.fillStyle='rgba(25,14,18,'+(.30-flight*.25)+')';c.beginPath();c.ellipse(ground.x+rr,ground.y+rr*.65,rr*(1.7+flight),rr*.32,0,0,7);c.fill();
+    var rg=c.createRadialGradient(rb.x-rr*.4,rb.y-rr*.5,0,rb.x,rb.y,rr);
+    rg.addColorStop(0,'#f1e8ad');rg.addColorStop(.55,'#c6ca77');rg.addColorStop(1,'#6c7546');
+    c.fillStyle=rg;c.beginPath();c.arc(rb.x,rb.y,rr,0,7);c.fill();
+    c.save();c.translate(rb.x,rb.y);c.rotate(reduce?0:sm(0,3,phase)*3);
+    c.strokeStyle='rgba(255,249,212,.65)';c.lineWidth=Math.max(.6,rr*.12);c.beginPath();c.ellipse(-rr*.7,0,rr*.7,rr*.92,0,-1.45,1.45);c.stroke();c.restore();
+
+    /* 네트: 중앙 처짐, 고정된 포스트와 바람에 반응하는 가는 메쉬 */
+    var a0=P(-1.08,.5),a1=P(1.08,.5),nh=1.07/5.485*B*a0.s,span=a1.x-a0.x;
+    function netTop(u){return a0.y-nh+Math.sin(Math.PI*u)*nh*.14+(reduce?0:Math.sin(time*.75+u*5)*Math.sin(Math.PI*u)*nh*.018)}
+    c.beginPath();c.moveTo(a0.x,a0.y);
+    for(var ni=0;ni<=64;ni++)c.lineTo(a0.x+span*ni/64,netTop(ni/64));
+    c.lineTo(a1.x,a1.y);c.closePath();c.fillStyle='rgba(9,16,22,.40)';c.fill();
+    c.lineWidth=.65;c.strokeStyle='rgba(224,214,196,'+mix(.16,.25,L)+')';c.beginPath();
+    var cols=Math.ceil(span/Math.max(5,nh/8));
+    for(var ni=0;ni<=cols;ni++){var u=ni/cols;c.moveTo(a0.x+span*u,netTop(u));c.lineTo(a0.x+span*u,a0.y)}
+    for(var row=1;row<9;row++){for(var ni=0;ni<=48;ni++){var u=ni/48,yy=mix(netTop(u),a0.y,row/9);if(!ni)c.moveTo(a0.x,yy);else c.lineTo(a0.x+span*u,yy)}}c.stroke();
+    c.beginPath();for(var ni=0;ni<=64;ni++){var u=ni/64;if(!ni)c.moveTo(a0.x,netTop(0));else c.lineTo(a0.x+span*u,netTop(u))}
+    c.strokeStyle='rgba(248,230,200,.87)';c.lineWidth=Math.max(1.5,nh*.065);c.stroke();
+    c.strokeStyle='#252b30';c.lineWidth=Math.max(3,nh*.085);c.beginPath();c.moveTo(a0.x,a0.y);c.lineTo(a0.x,a0.y-nh*1.06);c.moveTo(a1.x,a1.y);c.lineTo(a1.x,a1.y-nh*1.06);c.stroke();
+
+    /* 네트 옆 조명탑 */
+    pole(LAMPS[2],2);pole(LAMPS[3],3);
+
+    /* 빛: 등 주변 번짐 + 공기 중 빛줄기 */
+    c.globalCompositeOperation='lighter';
+    LAMPS.forEach(function(l,idx){
+      var v=on[idx];if(v<=.01)return;
+      var rgb=lampRGB(idx),hd=P(l.x,l.z,8.4),q=P(l.px,l.pz),spread=B*q.s*.95,hw=Math.max(4,B*hd.s*.058);
+      var bm=c.createLinearGradient(hd.x,hd.y,q.x,q.y);
+      bm.addColorStop(0,'rgba('+rgb+','+.13*v+')');bm.addColorStop(.5,'rgba('+rgb+','+.04*v+')');bm.addColorStop(1,'rgba('+rgb+',0)');
+      c.fillStyle=bm;c.beginPath();c.moveTo(hd.x-hw*.8,hd.y);c.lineTo(hd.x+hw*.8,hd.y);c.lineTo(q.x+spread,q.y);c.lineTo(q.x-spread,q.y);c.closePath();c.fill();
+      if(!l.off){
+        var R=hw*11,gr=c.createRadialGradient(hd.x,hd.y,0,hd.x,hd.y,R);
+        gr.addColorStop(0,'rgba('+rgb+','+.85*v+')');gr.addColorStop(.07,'rgba('+rgb+','+.42*v+')');gr.addColorStop(.25,'rgba('+rgb+','+.1*v+')');gr.addColorStop(.6,'rgba('+rgb+','+.02*v+')');gr.addColorStop(1,'rgba('+rgb+',0)');
+        c.fillStyle=gr;c.fillRect(hd.x-R,hd.y-R,R*2,R*2);
+      }
+    });
+    /* 빛 속을 떠다니는 먼지 */
+    if(L>.04&&!reduce){
+      c.fillStyle='rgb(255,244,222)';
+      for(var mi=0;mi<motes.length;mi++){
+        var mo=motes[mi],range=H*.62,my=hz-H*.26+((mo[1]*range+time*mo[3]*.25)%range),mxx=cx+(mo[0]-.5)*B*1.9+Math.sin(time*.22*mo[4]+mi)*26;
+        c.globalAlpha=L*mo[2]*(.55+.45*Math.sin(time*.7*mo[4]+mi*2));
+        var ms=.7+mo[2]*2;c.fillRect(mxx,my,ms,ms);
+      }
+      c.globalAlpha=1;
+    }
+    c.globalCompositeOperation='source-over';
+
+    /* 지평선 안개: 산·나무와 코트를 공기로 잇는다 */
+    var hzf=c.createLinearGradient(0,hz-H*.09,0,hz+H*.05),fc=mc(hex('#c76f78'),hex('#101c36'),sm(.1,.9,t)),fa2=mix(.26,.3,t>1?1:t);
+    hzf.addColorStop(0,css(fc,0));hzf.addColorStop(.6,css(fc,fa2));hzf.addColorStop(1,css(fc,0));
+    c.fillStyle=hzf;c.fillRect(0,hz-H*.09,W,H*.14);
+    /* 가장자리 비네트 */
+    var vg=c.createRadialGradient(cx0,H*.55,Math.min(W,H)*.45,cx0,H*.55,Math.max(W,H)*.82);
+    vg.addColorStop(0,'rgba(3,5,16,0)');vg.addColorStop(.65,'rgba(18,22,31,.08)');vg.addColorStop(1,'rgba(9,17,27,.55)');
+    c.fillStyle=vg;c.fillRect(0,0,W,H);
+
+    c.save();c.globalAlpha=.28;c.fillStyle=paperPattern;c.fillRect(0,0,W,H);c.restore();
+
+    /* 본문을 읽는 동안은 장면을 낮추고, 마지막 화면에서 다시 밝힌다 */
+    var veil=(NARROW?.62:.48)*sm(1.02,1.3,sc/evTop)*(1-sm(maxS-H*.95,maxS-H*.3,sc));
+    if(veil>.005){c.fillStyle='rgba(5,9,24,'+veil+')';c.fillRect(0,0,W,H)}
+
+    /* 시계 */
+    var mins;
+    if(sc<=evTop)mins=19.5*60+30*(sc/evTop);
+    else mins=20*60+120*clamp((sc-evTop)/Math.max(1,maxS-evTop),0,1);
+    mins=Math.round(mins);
+    var txt=(Math.floor(mins/60))+':'+String(mins%60).padStart(2,'0');
+    if(clock.textContent!==txt)clock.textContent=txt;
+  }
+
+  resize();
+  /* 휴대폰 주소창이 접힐 때의 resize 는 무시한다 (캔버스가 깜빡이지 않도록) */
+  addEventListener('resize',function(){
+    if(cv.clientWidth===lastW&&Math.abs(cv.clientHeight-lastH)<2)return;
+    resize();if(reduce)draw(0,scrollY);
+  });
+  if(matchMedia('(hover:hover)').matches&&!reduce)addEventListener('pointermove',function(e){mxT=e.clientX/W-.5},{passive:true});
+  var navEl=document.querySelector('.nav');
+  function navState(){navEl.classList.toggle('solid',scrollY>30)}
+  addEventListener('scroll',navState,{passive:true});navState();
+  addEventListener('load',function(){resize();if(reduce)draw(0,scrollY)});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(resize);
+
+  if(reduce){
+    draw(0,scrollY);
+    addEventListener('scroll',function(){draw(0,scrollY)},{passive:true});
+  }else{
+    scrollCur=scrollY;
+    var tick=function(ms){
+      scrollCur+=(scrollY-scrollCur)*.075;
+      if(Math.abs(scrollY-scrollCur)<.3)scrollCur=scrollY;
+      if(sceneEpoch===null)sceneEpoch=ms;
+      draw((ms-sceneEpoch)/1000,scrollCur);
+      if(!document.hidden)requestAnimationFrame(tick);
+    };
+    document.addEventListener('visibilitychange',function(){if(!document.hidden)requestAnimationFrame(tick)});
+    requestAnimationFrame(tick);
+  }
+})();
+</script>
+</body>
+</html>
