@@ -2235,7 +2235,7 @@
   function ctCloseCell({ refocus = true } = {}) { const k = C.sel; C.sel = null; const mdl = $('#ct-modal'); if (mdl) mdl.hidden = true; if (k && refocus) ctFocus(`[data-ct="${k}"]`); } // 닫으면 그 칸으로 포커스 복귀 (키보드 사용자)
   function ctSetDraft(k, name) { const [d, t, c] = k.split('|'); const v = String(name || '').trim().slice(0, 12); if (v === ctSaved(d, t, +c)) delete C.draft[k]; else C.draft[k] = v; ctCloseCell({ refocus: false }); renderCourts(); ctFocus(`[data-ct="${k}"]`); }
   /** 서식 있는 엑셀(.xlsx)의 색·글꼴 — 화면과 같은 팔레트 (윔블던 그린·퍼플, 코트별 칸 색) */
-  const XL = { font: 'Arial', deep: 'FF07452A', court: 'FF0A5C35', accent: 'FF4B2A7B', ink: 'FF1D2320', muted: 'FF5C6360', faint: 'FFB9BDB6', rule: 'FFB7C4BA', grid: 'FFE6E8E3', dateBg: 'FFF3F1EA', lblBg: 'FFF7F6F1', zebra: 'FFFAF9F5', white: 'FFFFFFFF', sat: 'FF1D4A8F', sun: 'FFB03060', courts: ['FFDDE7F4', 'FFE1EED8', 'FFF7E1D4'] };
+  const XL = { font: 'Arial', deep: 'FF7D3A25', court: 'FF9C4B30', accent: 'FF3D4468', ink: 'FF2A211D', muted: 'FF6B5F58', faint: 'FFB9BDB6', rule: 'FFCDBFB0', grid: 'FFE6DFD5', dateBg: 'FFF6F0E7', lblBg: 'FFF7F6F1', zebra: 'FFFAF9F5', white: 'FFFFFFFF', sat: 'FF1D4A8F', sun: 'FFB03060', courts: ['FFDDE7F4', 'FFE8E0F0', 'FFF7E1D4'] };
   const xlFill = (argb) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
   const xlFont = (o = {}) => ({ name: XL.font, family: 2, charset: 129, size: 10, color: { argb: XL.ink }, ...o }); // Arial(어느 기기에나 있음) + family 2(고딕) · charset 129(한글): 한글은 기기의 고딕(윈도 맑은 고딕, 아이폰·맥 Apple SD 고딕)으로 대체되고 숫자도 명조로 바뀌지 않는다
   const xlLine = (argb = XL.grid, style = 'thin') => ({ style, color: { argb } });
