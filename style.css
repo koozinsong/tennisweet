@@ -418,6 +418,11 @@ button.chip.sel { outline: 3px solid var(--ball); outline-offset: 1px; }
 .wk-chip small { margin-left: 4px; font-size: 12px; color: inherit; opacity: .85; font-family: var(--display); font-weight: 600; letter-spacing: .02em; }
 .wk-sessions { margin: 0 0 12px; }
 .wk-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 2px 0 6px; }
+.wk-weather { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 6px; padding: 9px 12px; border-radius: 10px; background: var(--accent-tint); color: var(--ink); font-size: 14px; line-height: 1.4; }
+.wk-weather:empty { display: none; }
+.wx-ic { margin-right: 5px; }
+.wx-src { font-size: 12px; color: var(--muted); }
+.wx-src a { color: inherit; }
 .wk-date { font-family: var(--display); font-size: 30px; font-weight: 700; color: var(--court-deep); line-height: 1; }
 .wk-panel { border: 1px solid var(--rule); border-radius: 10px; background: #fbfaf6; padding: 12px; margin: 12px 0; }
 .wk-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; font-size: 17px; }

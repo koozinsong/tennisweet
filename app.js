@@ -1813,6 +1813,75 @@
     const n = W.failed.length; wkStatus(n > 1 ? `${msg} (미저장 ${n}건)` : msg, true); toast(msg); renderWeeklyView(); return false;
   }
   // ---- 화면 ----
+  /* ---- 정기 모임 날씨: 잠원 테니스 코트, 그 모임의 시간대 (표시 전용, 실패하면 줄만 숨김) ---- */
+  const WX = { lat: 37.52, lon: 127.01, label: '잠원 테니스 코트', days: 8, ttl: 30 * 60e3, retry: 5 * 60e3 };
+  const wxState = { hourly: null, at: 0, tried: 0, loading: false };
+  function wxKind(code) { // WMO 날씨 코드 → 아이콘·이름 (모임이 저녁이라 맑음은 달)
+    if (code === 0) return ['🌙', '맑음'];
+    if (code === 1) return ['🌙', '대체로 맑음'];
+    if (code === 2) return ['⛅', '구름 조금'];
+    if (code === 3) return ['☁️', '흐림'];
+    if (code === 45 || code === 48) return ['🌫️', '안개'];
+    if (code >= 51 && code <= 57) return ['🌦️', '이슬비'];
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return ['🌧️', '비'];
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return ['❄️', '눈'];
+    if (code >= 95) return ['⛈️', '뇌우'];
+    return null;
+  }
+  /** 모임 시각 → 예보를 볼 시간 범위. 19:30 시작이면 19시, 21:30 종료면 22시까지 포함 */
+  function wxRange(startTime, endTime) {
+    const a = /^(\d{1,2}):(\d{2})$/.exec(startTime || ''), b = /^(\d{1,2}):(\d{2})$/.exec(endTime || ''); if (!a || !b) return null;
+    const from = Math.floor((+a[1] * 60 + +a[2]) / 60), until = Math.ceil((+b[1] * 60 + +b[2]) / 60);
+    return until > from ? { from, until } : null;
+  }
+  /** 그 날짜의 from~until 시 요약. 기온·체감은 until 시까지, 날씨·강수·바람은 경기 시간대(until 직전까지) */
+  function wxSummary(hourly, date, from, until) {
+    if (!hourly?.time) return null;
+    const at = (h) => hourly.time.indexOf(`${date}T${String(h).padStart(2, '0')}:00`);
+    const span = []; for (let h = from; h < until; h++) span.push(at(h));
+    if (span.some((i) => i < 0)) return null;
+    const ends = [...span, at(until)].filter((i) => i >= 0);
+    const nums = (k, idx) => idx.map((i) => hourly[k]?.[i]).filter((v) => typeof v === 'number');
+    const temp = nums('temperature_2m', ends), feel = nums('apparent_temperature', ends), rain = nums('precipitation_probability', span), wind = nums('wind_speed_10m', span), codes = nums('weather_code', span);
+    if (!temp.length || !codes.length) return null;
+    return { kind: wxKind(Math.max(...codes)), tMin: Math.round(Math.min(...temp)), tMax: Math.round(Math.max(...temp)), feel: feel.length ? Math.round(Math.min(...feel)) : null, rain: rain.length ? Math.max(...rain) : null, wind: wind.length ? Math.round(Math.max(...wind)) : null };
+  }
+  function wxHtml(date, startTime, endTime) {
+    const r = wxRange(startTime, endTime); if (!r) return '';
+    const w = wxSummary(wxState.hourly, date, r.from, r.until); if (!w || !w.kind) return '';
+    const parts = [`${w.tMin === w.tMax ? w.tMin : `${w.tMin}~${w.tMax}`}℃`];
+    if (w.feel !== null) parts.push(`체감 ${w.feel}℃`);
+    if (w.rain !== null) parts.push(`비 ${w.rain}%`);
+    if (w.wind !== null) parts.push(`바람 ${w.wind}m/s`);
+    return `<span class="wx-main"><span class="wx-ic" aria-hidden="true">${w.kind[0]}</span><b>${esc(w.kind[1])}</b> ${esc(parts.join(' · '))}</span><span class="wx-src">${esc(startTime)}~${esc(endTime)} ${esc(WX.label)} 예보 · <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a></span>`;
+  }
+  function wxInRange(date) { // 오늘부터 예보를 믿을 수 있는 범위 안의 모임만
+    const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+    const last = new Date(Date.parse(today + 'T00:00:00Z') + (WX.days - 1) * 864e5).toISOString().slice(0, 10);
+    return !!date && date >= today && date <= last;
+  }
+  async function wxLoad() {
+    const now = Date.now();
+    if (wxState.loading || (wxState.hourly && now - wxState.at < WX.ttl) || now - wxState.tried < WX.retry) return;
+    wxState.loading = true; wxState.tried = now;
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${WX.lat}&longitude=${WX.lon}&hourly=temperature_2m,apparent_temperature,precipitation_probability,weather_code,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=${WX.days}`;
+      const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 8000);
+      const r = await fetch(url, { signal: ctl.signal }); clearTimeout(timer);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+      if (!Array.isArray(d?.hourly?.time)) throw new Error('형식');
+      wxState.hourly = d.hourly; wxState.at = Date.now();
+    } catch { /* 날씨는 부가 정보: 조용히 숨기고 나중에 다시 시도 */ }
+    wxState.loading = false;
+    const el = $('#wk-weather'); if (el) el.innerHTML = wxInRange(el.dataset.date) ? wxHtml(el.dataset.date, el.dataset.start, el.dataset.end) : '';
+  }
+  function wxSlot(date, startTime, endTime) { // 모임 화면을 다시 그릴 때마다 저장된 값으로 채우고, 오래됐으면 새로 받는다
+    if (!wxInRange(date) || !wxRange(startTime, endTime)) return '';
+    wxLoad();
+    return `<div class="wk-weather" id="wk-weather" data-date="${esc(date)}" data-start="${esc(startTime)}" data-end="${esc(endTime)}">${wxHtml(date, startTime, endTime)}</div>`;
+  }
+
   function renderWeeklyView() {
     const box = $('#wk-view'); if (!box) return;
     const editor = document.body.classList.contains('editor'); const list = wkSessions(); const doc = W.doc;
@@ -1830,6 +1899,7 @@
     const namesAt = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || String(i + 1)); // 그 시각의 코트 라벨 (없으면 1, 2, …)
     let cnText = ''; if (hasCn) { if (!perHour) cnText = `코트 번호 ${namesAt(hoursAll[0] ?? 0).join('·')}`; else { const parts = []; let i = 0; while (i < hoursAll.length) { const lab = namesAt(hoursAll[i]).join('·'); let j = i; while (j + 1 < hoursAll.length && namesAt(hoursAll[j + 1]).join('·') === lab) j++; if (lab) parts.push(`${hoursAll[i]}~${hoursAll[j] + 1}시 ${lab}`); i = j + 1; } cnText = `코트 번호 ${parts.join(' · ')}`; } }
     html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${hasCn ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
+    html += wxSlot(doc.date, s.startTime, s.endTime);
     if (!closed && W.cnEdit) { const cur = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || '').join(', ').replace(/(, )+$/, '');
       html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호를 쉼표로 (대진표의 1·2·… 코트 순서대로, 예: 5, 7). ${perHour ? '시간대마다 코트가 다르면 줄마다 따로 적으세요.' : '시간대마다 다르면 [시간대별로]를 누르세요.'}</span>${perHour || W.cnByHour ? wkCourtBlocks(s, (h) => cntAt(h) + '|' + cur(h)).filter((b) => cntAt(b.from) > 0).map((b) => `<label class="inline">${b.from}~${b.to}시 <small>(${cntAt(b.from)}면)</small> <input name="cnh_${b.key}" maxlength="80" value="${esc(cur(b.from))}" placeholder="${Array.from({ length: cntAt(b.from) }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(84, cntAt(b.from) * 44)}px"></label>`).join('') : `<label class="inline">코트 <input name="cn_all" maxlength="80" value="${esc((s.courtNames || []).join(', '))}" placeholder="${Array.from({ length: s.courts }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(96, s.courts * 44)}px"></label><button type="button" class="small" id="wk-cn-byhour">시간대별로</button>`}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`; }
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
