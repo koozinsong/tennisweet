@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 37,
+ "rev": 38,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -206,7 +206,7 @@
      "p:g:1keqt8n"
     ],
     "bIds": [
-     "p:t5tmwl5",
+     "p:243v8q3",
      "p:lvcpucm"
     ]
    },
@@ -280,5 +280,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T08:57:04.853Z"
+ "updatedAt": "2026-11-05T08:57:09.443Z"
 }
