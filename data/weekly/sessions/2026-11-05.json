@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 33,
+ "rev": 34,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -245,7 +245,7 @@
      "p:g:1ivgvil"
     ],
     "bIds": [
-     "p:243v8q3",
+     "p:t4lcpvt",
      "p:nba8nn1"
     ]
    },
@@ -268,7 +268,7 @@
     "court": 3,
     "aIds": [
      "p:g:regr5t",
-     "p:t4lcpvt"
+     "p:243v8q3"
     ],
     "bIds": [
      "p:45sqltb",
@@ -280,5 +280,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T08:52:10.203Z"
+ "updatedAt": "2026-11-05T08:54:27.734Z"
 }
