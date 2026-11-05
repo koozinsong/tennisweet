@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 27,
+ "rev": 28,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -271,7 +271,7 @@
      "p:g:1ivgvil"
     ],
     "bIds": [
-     "p:nba8nn1",
+     "p:45sqltb",
      "p:g:19zvip1"
     ]
    }
@@ -280,5 +280,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T08:49:29.317Z"
+ "updatedAt": "2026-11-05T08:49:41.025Z"
 }
