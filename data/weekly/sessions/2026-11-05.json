@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 13,
+ "rev": 14,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -77,11 +77,18 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:19zvip1": {
+   "n": "티빈",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T04:57:19.334Z"
+ "updatedAt": "2026-11-05T04:57:38.158Z"
 }
