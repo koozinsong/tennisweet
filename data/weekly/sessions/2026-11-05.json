@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 41,
+ "rev": 42,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -259,7 +259,7 @@
     ],
     "bIds": [
      "p:k45yesm",
-     "p:nba8nn1"
+     "p:lvcpucm"
     ]
    },
    {
@@ -280,5 +280,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T08:58:34.376Z"
+ "updatedAt": "2026-11-05T08:59:21.764Z"
 }
