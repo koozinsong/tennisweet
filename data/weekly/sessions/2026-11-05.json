@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 3,
+ "rev": 4,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -17,10 +17,17 @@
    "3"
   ]
  },
- "attendance": {},
+ "attendance": {
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  }
+ },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-02T12:48:54.126Z"
+ "updatedAt": "2026-11-05T04:56:28.539Z"
 }
