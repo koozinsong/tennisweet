@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 16,
+ "rev": 17,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -98,11 +98,18 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:1ivgvil": {
+   "n": "민곤",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T04:58:30.100Z"
+ "updatedAt": "2026-11-05T05:21:53.589Z"
 }
