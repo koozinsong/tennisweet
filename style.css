@@ -51,7 +51,7 @@ a { color: var(--court); }
 
 /* ---- 헤더: 잔디 코트 (포스터를 배경으로 은은하게) ---- */
 .topbar {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "brand actions" "tabs tabs"; align-items: center; gap: 8px 18px; padding: 14px 20px 0;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "brand actions" "tabs tabs"; align-items: center; gap: 8px 18px; padding: calc(14px + env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 0 max(20px, env(safe-area-inset-left));
   background: linear-gradient(180deg, rgba(156,75,48,.88) 0%, rgba(125,58,37,.94) 100%), url("assets/cover.webp") center 62% / cover no-repeat, var(--court-deep);
   color: var(--line);
 }
@@ -240,7 +240,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 18px
 @media (max-width: 720px) {
   main { padding: 10px 8px 32px; }
   .tab { padding: 12px; border-radius: 8px; }
-  .topbar { padding: 10px 12px 0; gap: 6px 10px; grid-template-columns: 1fr; grid-template-areas: "brand" "actions" "tabs"; }
+  .topbar { padding: calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 0 max(12px, env(safe-area-inset-left)); gap: 6px 10px; grid-template-columns: 1fr; grid-template-areas: "brand" "actions" "tabs"; }
   .brand { font-size: 18px; flex-wrap: wrap; }
   .brand > span { flex-basis: 100%; margin: 0; }
   .actions { justify-content: flex-start; }
