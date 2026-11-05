@@ -3,7 +3,7 @@
  "id": "2026-11-05",
  "date": "2026-11-05",
  "status": "open",
- "rev": 20,
+ "rev": 21,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -91,7 +91,8 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00",
-   "guest": true
+   "guest": true,
+   "lv": 3.5
   },
   "g:1keqt8n": {
    "n": "zenuh",
@@ -278,5 +279,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:15:42.471Z",
- "updatedAt": "2026-11-05T05:30:06.187Z"
+ "updatedAt": "2026-11-05T05:30:14.674Z"
 }
