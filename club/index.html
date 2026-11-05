@@ -56,6 +56,9 @@ main,.nav,.clock{position:relative;z-index:10}
 .btn-ghost{position:relative;background:rgba(13,23,51,.42);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .btn-ghost:hover{background:rgba(13,23,51,.62)}
 .nav .btn{min-height:44px;padding:9px 20px;font-size:14px}
+.nav .btn-home{width:44px;height:44px;padding:0}
+.nav .btn-home svg{width:21px;height:21px}
+.nav .btn-home:hover svg{transform:none}
 
 /* hero */
 .hero{min-height:100vh;min-height:100svh;padding:clamp(104px,16vh,168px) var(--gut) 40px;display:flex;flex-direction:column}
@@ -210,7 +213,7 @@ footer{position:relative;z-index:10;padding:0 var(--gut) max(52px,calc(env(safe-
     <a href="#fair">대진 원칙</a>
     <a href="#cup">분기 대회</a>
   </nav>
-  <a class="btn btn-ghost" href="../">앱 열기</a>
+  <a class="btn btn-ghost btn-home" href="../" aria-label="홈" title="홈"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6.5 9.5V20h4v-5.5h3V20h4V9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
 </header>
 
 <main id="top">
