@@ -3,7 +3,7 @@
  "id": "2026-11-06",
  "date": "2026-11-06",
  "status": "open",
- "rev": 36,
+ "rev": 37,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -149,10 +149,10 @@
     "court": 1,
     "aIds": [
      "p:k45yesm",
-     "p:g:mte978"
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:45sqltb",
+     "p:g:mte978",
      "p:243v8q3"
     ]
    },
@@ -200,5 +200,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:19:14.719Z",
- "updatedAt": "2026-11-06T05:32:40.465Z"
+ "updatedAt": "2026-11-06T05:32:58.428Z"
 }
