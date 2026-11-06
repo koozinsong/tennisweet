@@ -3,7 +3,7 @@
  "id": "2026-11-06",
  "date": "2026-11-06",
  "status": "open",
- "rev": 11,
+ "rev": 12,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -67,11 +67,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 3
+  },
+  "g:mte978": {
+   "n": "700bang",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:19:14.719Z",
- "updatedAt": "2026-11-06T04:57:34.010Z"
+ "updatedAt": "2026-11-06T04:58:03.299Z"
 }
