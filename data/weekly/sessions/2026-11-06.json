@@ -3,7 +3,7 @@
  "id": "2026-11-06",
  "date": "2026-11-06",
  "status": "open",
- "rev": 24,
+ "rev": 25,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -127,7 +127,7 @@
     ],
     "bIds": [
      "p:g:18xeq3p",
-     "p:uzqomod"
+     "p:k45yesm"
     ]
    },
    {
@@ -135,7 +135,7 @@
     "slot": 1,
     "court": 2,
     "aIds": [
-     "p:k45yesm",
+     "p:uzqomod",
      "p:ev1tqiv"
     ],
     "bIds": [
@@ -200,5 +200,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:19:14.719Z",
- "updatedAt": "2026-11-06T05:29:59.727Z"
+ "updatedAt": "2026-11-06T05:30:04.103Z"
 }
