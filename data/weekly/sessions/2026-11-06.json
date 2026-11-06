@@ -3,7 +3,7 @@
  "id": "2026-11-06",
  "date": "2026-11-06",
  "status": "open",
- "rev": 13,
+ "rev": 14,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -83,9 +83,122 @@
    "until": "22:00"
   }
  },
- "schedule": null,
+ "schedule": {
+  "seed": 500640,
+  "gen": 1,
+  "fromSlot": 0,
+  "inputHash": "t9na02",
+  "at": "2026-11-06T04:58:55.686Z",
+  "by": "lvcpucm",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:45sqltb",
+     "p:g:18xeq3p"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:g:mte978"
+    ]
+   },
+   {
+    "id": "s0c2",
+    "slot": 0,
+    "court": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:df9dtam"
+    ],
+    "bIds": [
+     "p:g:18xeq3p",
+     "p:uzqomod"
+    ]
+   },
+   {
+    "id": "s1c2",
+    "slot": 1,
+    "court": 2,
+    "aIds": [
+     "p:k45yesm",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:6kn0dof",
+     "p:g:mte978"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:g:18xeq3p",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:g:mte978"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:uzqomod",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:g:mte978",
+     "p:g:18xeq3p"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:nba8nn1",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:df9dtam",
+     "p:45sqltb"
+    ]
+   }
+  ]
+ },
  "done": {},
  "results": {},
  "createdAt": "2026-11-01T05:19:14.719Z",
- "updatedAt": "2026-11-06T04:58:45.679Z"
+ "updatedAt": "2026-11-06T04:58:57.505Z"
 }
