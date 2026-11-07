@@ -1,0 +1,292 @@
+{
+ "v": 1,
+ "id": "2026-11-05",
+ "date": "2026-11-05",
+ "status": "open",
+ "rev": 51,
+ "settings": {
+  "startTime": "20:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtNames": [
+   "1",
+   "2",
+   "3"
+  ]
+ },
+ "attendance": {
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "45sqltb": {
+   "n": "정배근",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "18qv5bz": {
+   "n": "신윤호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ev1tqiv": {
+   "n": "이현용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:19zvip1": {
+   "n": "티빈",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
+  },
+  "g:regr5t": {
+   "n": "알카럽",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
+  },
+  "g:1keqt8n": {
+   "n": "zenuh",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 4
+  },
+  "g:1ivgvil": {
+   "n": "민곤",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
+  }
+ },
+ "schedule": {
+  "seed": 364733,
+  "gen": 3,
+  "fromSlot": 0,
+  "inputHash": "6wsjtz",
+  "at": "2026-11-05T08:52:08.836Z",
+  "by": "g261xhp",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:k45yesm"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:243v8q3"
+    ]
+   },
+   {
+    "id": "s0c2",
+    "slot": 0,
+    "court": 2,
+    "aIds": [
+     "p:g:1keqt8n",
+     "p:g:19zvip1"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s0c3",
+    "slot": 0,
+    "court": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:g:regr5t"
+    ],
+    "bIds": [
+     "p:18qv5bz",
+     "p:g:1ivgvil"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:g:1ivgvil",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:45sqltb",
+     "p:g:1keqt8n"
+    ]
+   },
+   {
+    "id": "s1c2",
+    "slot": 1,
+    "court": 2,
+    "aIds": [
+     "p:k45yesm",
+     "p:18qv5bz"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:g:19zvip1"
+    ]
+   },
+   {
+    "id": "s1c3",
+    "slot": 1,
+    "court": 3,
+    "aIds": [
+     "p:243v8q3",
+     "p:g:regr5t"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:g:1keqt8n"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:18qv5bz",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:g:1ivgvil",
+     "p:ev1tqiv"
+    ]
+   },
+   {
+    "id": "s2c3",
+    "slot": 2,
+    "court": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:g:regr5t"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:g:19zvip1"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g:1ivgvil"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:g:1keqt8n"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:ev1tqiv",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s3c3",
+    "slot": 3,
+    "court": 3,
+    "aIds": [
+     "p:g:regr5t",
+     "p:t4lcpvt"
+    ],
+    "bIds": [
+     "p:45sqltb",
+     "p:g:19zvip1"
+    ]
+   }
+  ]
+ },
+ "done": {
+  "s1c2": true,
+  "s0c1": true
+ },
+ "results": {
+  "s0c1": {
+   "a": 3,
+   "b": 6
+  }
+ },
+ "createdAt": "2026-11-01T05:15:42.471Z",
+ "updatedAt": "2026-11-06T03:47:43.952Z"
+}

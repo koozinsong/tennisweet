@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>테니스윗 테니스 클럽 — 해가 지면, 코트에 불이 켜집니다</title>
+<meta name="description" content="테니스윗은 매주 목·금 밤 8시, 코트에 모여 파트너를 바꿔 가며 복식을 치는 클럽입니다.">
+<meta name="theme-color" content="#141a33">
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/icon-64.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="테니스윗">
+<meta property="og:title" content="해가 지면, 코트에 불이 켜집니다 — 테니스윗">
+<meta property="og:description" content="매주 목·금 밤 8시, 파트너를 바꿔 가며 복식을 치는 테니스 클럽.">
+<meta property="og:url" content="https://koozinsong.github.io/tennisweet/club/">
+<meta property="og:image" content="https://koozinsong.github.io/tennisweet/assets/logo.jpg">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&family=Noto+Sans+KR:wght@400;500&family=Noto+Serif+KR:wght@600&display=swap" rel="stylesheet">
+<style>
+html,body{background:#141a33;color:#fff7ec}
+:root{
+  --fg:#fff7ec;--fg80:rgba(255,247,236,.84);--fg60:rgba(255,247,236,.68);--hair:rgba(255,247,236,.24);
+  --night:#141a33;--clay:#a4532f;--paper:#f6f0e7;--ink:#241b17;--ink70:#5d4f47;--inkhair:rgba(36,27,23,.18);--clayink:#8f4426;
+  --serif:"Noto Serif KR","Apple SD Gothic Neo",serif;
+  --sans:"Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;
+  --latin:"Instrument Serif",Georgia,serif;
+  --gut:clamp(20px,4.4vw,72px);
+  --expo:cubic-bezier(.16,1,.3,1);
+  --p:0;--lit:1;--draw:1;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:clip;-webkit-text-size-adjust:100%}
+body{margin:0;font:400 16px/1.7 var(--sans);overflow-x:clip;-webkit-font-smoothing:antialiased;word-break:keep-all}
+::selection{background:rgba(164,83,47,.4)}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid currentColor;outline-offset:3px;border-radius:6px}
+h1,h2,h3,p,ol,ul,dl,dd{margin:0;padding:0}
+ol,ul{list-style:none}
+.grain{position:fixed;inset:0;z-index:100;pointer-events:none;opacity:.4;background-size:200px 200px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E")}
+
+/* 등장 */
+.appear{animation:in-soft 1.5s var(--expo) var(--d,.08s) both}
+.appear.is-in{animation:none;opacity:1;transform:none}
+@keyframes in-soft{from{opacity:0;transform:translateY(14px)}}
+.ml{display:block;overflow:hidden;padding:.06em .15em .14em;margin:-.06em -.15em -.14em}
+.ml>span{display:block;animation:ml-up 1.6s var(--expo) both;animation-delay:calc(.35s + var(--i)*.2s)}
+@keyframes ml-up{from{transform:translateY(112%)}}
+.js .rv{opacity:0;transform:translateY(26px);transition:opacity 1s var(--expo),transform 1s var(--expo);transition-delay:calc(var(--i,0)*90ms)}
+.js .rv.in{opacity:1;transform:none}
+
+/* 상단 */
+.nav{position:fixed;top:0;left:0;right:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:max(14px,env(safe-area-inset-top)) var(--gut) 14px;border-bottom:1px solid transparent;transition:background .35s,border-color .35s}
+.nav.solid{background:rgba(16,20,42,.95);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-bottom-color:var(--hair)}
+.mark{display:flex;align-items:center;gap:10px;min-height:44px;font:italic 400 26px/1 var(--latin)}
+.mark img{width:36px;height:36px;border-radius:50%;display:block}
+.nav-links{display:flex;gap:30px;font-size:14px;color:var(--fg80)}
+.nav-links a{position:relative;padding:8px 0}
+.nav-links a::after{content:"";position:absolute;left:0;right:0;bottom:4px;height:1px;background:currentColor;transform:scaleX(0);transform-origin:left;transition:transform .4s var(--expo)}
+.nav-links a:hover::after{transform:scaleX(1)}
+.ico{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--hair);transition:background .25s}
+.ico:hover{background:rgba(255,247,236,.14)}
+.ico svg{width:21px;height:21px}
+.home-fab{display:none;position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(20px,calc(env(safe-area-inset-bottom) + 10px));z-index:40;width:56px;height:56px;border-radius:50%;align-items:center;justify-content:center;color:var(--fg);background:rgba(16,20,42,.88);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);box-shadow:0 6px 22px rgba(0,0,0,.32),inset 0 0 0 1px rgba(255,255,255,.22)}
+.home-fab svg{width:24px;height:24px}
+.clock{position:fixed;right:calc(var(--gut) + 58px);top:max(24px,calc(env(safe-area-inset-top) + 10px));z-index:31;font:italic 400 24px/1 var(--latin);font-variant-numeric:tabular-nums;color:var(--fg)}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:52px;padding:13px 28px;border-radius:999px;font-size:15px;font-weight:500;transition:background .25s,color .25s,box-shadow .25s}
+.btn svg{width:16px;height:16px;flex:none;transition:transform .4s var(--expo)}
+.btn:hover svg{transform:translateX(4px)}
+.btn-solid{background:var(--paper);color:var(--ink)}
+.btn-solid:hover{background:#fff}
+.btn-line{box-shadow:inset 0 0 0 1px rgba(255,247,236,.55);color:var(--fg)}
+.btn-line:hover{background:rgba(255,247,236,.14)}
+
+/* 1. 노을에서 밤으로: 화면을 붙잡아 두고 그림이 바뀐다 */
+.stage{position:relative;height:190vh;height:190svh}
+.hero{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(92px,14vh,132px) var(--gut) clamp(76px,10vh,104px)}
+.sky{position:absolute;inset:-2%;width:104%;height:104%;object-fit:cover;object-position:60% 100%;transform:scale(calc(1.05 - var(--p)*.05));will-change:transform}
+.dark{position:absolute;inset:0;background:linear-gradient(180deg,#0c1130 0%,#111838 58%,rgba(17,24,56,.62) 80%,#0c1130 100%);opacity:clamp(0,calc((var(--p) - .06)*1.3),.88)}
+.scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,18,44,.78) 0%,rgba(14,18,44,.5) 30%,rgba(14,18,44,.12) 54%,rgba(14,18,44,.3) 72%,rgba(14,18,44,.82) 100%)}
+.hero-top,.hero-foot{position:relative;z-index:2;opacity:clamp(0,calc(1 - (var(--p) - .34)*4.5),1);transform:translateY(calc(var(--p)*-34px))}
+.eyebrow{font:italic 400 clamp(21px,2.1vw,30px)/1.2 var(--latin);color:var(--fg);margin-bottom:clamp(10px,2vh,20px)}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(46px,7.9vw,136px);line-height:1.1;letter-spacing:-.045em;filter:drop-shadow(0 6px 26px rgba(12,12,40,.5))}
+h1 span{white-space:nowrap}
+.dim{color:rgba(255,247,236,.9)}
+.hero-foot{display:grid;grid-template-columns:minmax(0,27rem) auto 1fr;align-items:end;gap:clamp(20px,3.4vw,56px)}
+.sub{font-size:clamp(16px,1.25vw,18px);line-height:1.65;text-shadow:0 1px 14px rgba(10,12,34,.7)}
+.cta{display:flex;flex-wrap:wrap;gap:12px}
+.next{justify-self:end;display:flex;align-items:center;gap:10px;padding-bottom:13px;font-size:14px;text-align:right;text-shadow:0 1px 12px rgba(10,12,34,.8)}
+.next i{width:6px;height:6px;border-radius:50%;background:#f3d250;flex:none}
+.next b{font-weight:500;white-space:nowrap}
+.next span{color:var(--fg80)}
+
+/* 2. 위에서 본 클레이 코트: 조명이 켜지면 라인이 그려진다 */
+.court{position:relative;background:var(--clay);overflow:hidden;padding:clamp(96px,15vh,160px) var(--gut) clamp(84px,12vh,132px);scroll-margin-top:0;isolation:isolate}
+.court::before{content:"";position:absolute;inset:0;z-index:-2;background:radial-gradient(90% 70% at 50% 42%,#a4532d 0%,#964827 55%,#773820 100%)}
+.court::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:#0c1130;opacity:calc((1 - var(--lit))*.93)}
+.lamps{position:absolute;top:0;left:0;right:0;z-index:4;height:0;pointer-events:none}
+.lamps i{position:absolute;top:-46vh;width:96vw;height:92vh;margin-left:-48vw;border-radius:50%;background:radial-gradient(closest-side,rgba(255,232,196,.17),rgba(255,226,180,.07) 50%,rgba(255,226,180,0) 100%);mix-blend-mode:screen;opacity:var(--o,1);transition:opacity .9s var(--expo)}
+.court-in{position:relative;z-index:4;max-width:1320px;margin:0 auto}
+.label{display:flex;align-items:center;gap:12px;font:italic 400 clamp(21px,1.9vw,27px)/1 var(--latin);margin-bottom:18px}
+.label::before{content:"";width:34px;height:1px;background:currentColor;opacity:.7}
+h2{font-family:var(--serif);font-weight:600;font-size:clamp(36px,5.2vw,84px);line-height:1.14;letter-spacing:-.04em}
+.court .dim{color:#fbeee0}
+.plan{--alley:clamp(30px,5vw,68px);position:relative;margin-top:clamp(36px,6vh,64px);display:grid;grid-template-columns:21fr 29fr 29fr 21fr;grid-template-rows:var(--alley) auto auto var(--alley)}
+.lines{position:absolute;inset:0;pointer-events:none}
+.lines i{position:absolute;background:#fff8ee;will-change:transform}
+.lines .h{left:0;right:0;height:3px;margin-top:-1px;transform:scaleX(var(--draw));transform-origin:left}
+.lines .h.r{transform-origin:right;margin-top:0;margin-bottom:-1px}
+.lines .h.c{transform-origin:left}
+.lines .v{top:0;bottom:0;width:3px;margin-left:-1px;transform:scaleY(var(--draw));transform-origin:top}
+.lines .v.b{transform-origin:bottom;margin-left:0;margin-right:-1px}
+.lines .net{width:5px;margin-left:-2px;background:#fffdf7;box-shadow:0 0 18px rgba(255,248,230,.5)}
+.times{display:contents}
+.times li{position:relative;padding:clamp(22px,2.5vw,40px) clamp(20px,2.4vw,38px);min-height:clamp(210px,20vw,290px)}
+.times li:nth-child(1){grid-area:2/2}.times li:nth-child(2){grid-area:2/3}.times li:nth-child(3){grid-area:3/2}.times li:nth-child(4){grid-area:3/3}
+.times time{display:block;font:italic 400 clamp(46px,5.2vw,84px)/1 var(--latin);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.times h3{margin:clamp(10px,1.2vw,18px) 0 6px;font-size:clamp(17px,1.35vw,20px);font-weight:500;line-height:1.4}
+.times p{font-size:15px;line-height:1.65;color:#fffaf2}
+
+/* 3. 종이 위의 원칙과 숫자 */
+.paper{background:var(--paper);color:var(--ink);padding:clamp(96px,15vh,176px) var(--gut)}
+.wrap{max-width:1320px;margin:0 auto}
+.paper h2 .dim{color:var(--clayink)}
+.rules{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,3.6vw,64px);margin-top:clamp(48px,8vh,96px)}
+.rules>div{border-top:2px solid var(--ink);padding-top:18px}
+.rules h3{font-family:var(--serif);font-weight:600;font-size:clamp(20px,1.85vw,27px);line-height:1.3;letter-spacing:-.025em;margin-bottom:12px}
+.rules p{font-size:16px;line-height:1.7;color:var(--ink70)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:clamp(64px,11vh,136px);border-top:1px solid var(--inkhair)}
+.stats>div{padding:clamp(20px,2.4vw,36px) clamp(10px,1.4vw,24px) 0 0}
+.stats>div+div{border-left:1px solid var(--inkhair);padding-left:clamp(14px,1.8vw,30px)}
+.stats dd{font:italic 400 clamp(68px,11vw,190px)/.92 var(--latin);letter-spacing:-.035em;color:var(--clayink);font-variant-numeric:tabular-nums}
+.stats dt{font-size:15px;margin-top:12px;color:var(--ink)}
+.basis{margin-top:clamp(22px,3vh,36px);font-size:13px;color:var(--ink70)}
+
+/* 4. 대회: 스코어보드 */
+.cup{background:var(--night);padding:clamp(96px,15vh,176px) var(--gut)}
+.cup-in{max-width:1320px;margin:0 auto;display:grid;grid-template-columns:1fr minmax(0,1fr);gap:clamp(40px,6vw,104px);align-items:end}
+.cup .dim{color:rgba(255,247,236,.72)}
+.cup-copy p:last-child{max-width:31rem;margin-top:24px;color:var(--fg80);font-size:clamp(16px,1.25vw,18px)}
+.board small{display:block;font:italic 400 clamp(21px,1.9vw,27px)/1.1 var(--latin);color:var(--fg80)}
+.board strong{display:block;font:600 clamp(24px,2.5vw,38px)/1.28 var(--serif);letter-spacing:-.03em;margin:10px 0 clamp(22px,3vw,40px)}
+.board ul{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.board li{padding:clamp(16px,2vw,28px) 10px clamp(14px,1.6vw,22px) 0;font-size:14px;color:var(--fg80)}
+.board li+li{border-left:1px solid var(--hair);padding-left:clamp(12px,1.6vw,24px)}
+.board li b{display:block;font:italic 400 clamp(46px,5.4vw,88px)/1 var(--latin);letter-spacing:-.02em;color:var(--fg);margin-bottom:8px}
+.link{display:inline-flex;align-items:center;min-height:48px;gap:10px;margin-top:clamp(14px,2vw,22px);font-size:15px;font-weight:500}
+.link svg{width:16px;height:16px;transition:transform .4s var(--expo)}.link:hover svg{transform:translateX(4px)}
+
+/* 5. 마무리: 다시 그림 */
+.close{position:relative;min-height:100vh;min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;padding:clamp(100px,14vh,150px) var(--gut) clamp(120px,16vh,170px)}
+.close img.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 100%}
+.close::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#141a33 0%,rgba(20,26,51,.5) 34%,rgba(20,26,51,.34) 62%,rgba(12,17,48,.86) 100%)}
+.close>*:not(.bg):not(footer){position:relative;z-index:2}
+.crest{width:clamp(148px,15vw,204px);height:auto;aspect-ratio:1;border-radius:50%;display:block;box-shadow:0 18px 60px rgba(8,10,30,.45)}
+.close h2{margin-top:clamp(22px,3.4vh,36px);font-size:clamp(40px,6.6vw,108px)}
+.close .cta{justify-content:center;margin-top:clamp(20px,3.2vh,32px)}
+footer{position:absolute;left:0;right:0;bottom:max(24px,env(safe-area-inset-bottom));z-index:2;text-align:center;font-size:13px;color:var(--fg80)}
+
+@media (max-width:980px){
+  .cup-in{grid-template-columns:1fr}
+  .rules{grid-template-columns:1fr}
+  .hero-foot{grid-template-columns:1fr auto}
+  .next{grid-column:1/-1;justify-self:start;padding-bottom:0;text-align:left}
+}
+@media (max-width:760px){
+  .nav-links{display:none}
+  .nav .ico{display:none}
+  .home-fab{display:flex}
+  .mark{font-size:23px}.mark img{width:34px;height:34px}
+  .clock{left:0;right:0;width:fit-content;margin:auto;top:max(24px,calc(env(safe-area-inset-top) + 12px));font-size:22px}
+  h1 span{white-space:normal}
+  .hero{padding-top:calc(84px + env(safe-area-inset-top));padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .sky{object-position:72% 100%}
+  .scrim{background:linear-gradient(180deg,rgba(14,18,44,.78) 0%,rgba(14,18,44,.46) 30%,rgba(14,18,44,.1) 50%,rgba(14,18,44,.46) 66%,rgba(14,18,44,.84) 100%)}
+  .hero-foot{grid-template-columns:1fr;gap:16px}
+  .hero .btn-line{display:none}
+  .cta .btn{flex:1 1 100%}
+  .next{font-size:13px;padding-right:0;flex-wrap:wrap}
+  /* 폰: 코트를 세로로 세운다 */
+  .plan{display:block;margin-top:32px;padding:0}
+  .lines{display:none}
+  .times{display:block;border:2.5px solid #fff8ee}
+  .times li{min-height:0;padding:24px 22px 26px}
+  .times li+li{border-top:2.5px solid #fff8ee}
+  .times li:nth-child(3){border-top-width:5px}
+  .rules{gap:32px}
+  .stats{grid-template-columns:1fr 1fr}
+  .stats>div{padding:20px 12px 22px 0;border-bottom:1px solid var(--inkhair)}
+  .stats>div:nth-child(odd){border-left:0;padding-left:0}
+  .stats dd{font-size:clamp(68px,22vw,104px)}
+  .close{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
+  footer{bottom:max(40px,calc(env(safe-area-inset-bottom) + 28px));left:20px;right:84px;text-align:left}
+}
+@media (max-width:359px){.clock{display:none}.mark{font-size:20px}h1{font-size:40px}.board li b{font-size:40px}}
+@media (max-height:640px) and (max-width:760px){
+  .eyebrow{display:none}
+  .hero{padding-top:calc(68px + env(safe-area-inset-top));padding-bottom:84px}
+  .sub{font-size:14px;line-height:1.55}
+  .btn{min-height:46px;padding:9px 20px}
+}
+@media (max-height:520px) and (orientation:landscape){
+  .nav .ico{display:none}.home-fab{display:flex}
+  .hero{padding-top:68px;padding-bottom:18px}
+  h1{font-size:clamp(30px,5.2vw,46px);line-height:1.14}
+  h1 span{white-space:nowrap}
+  .eyebrow,.next{display:none}
+  .hero-foot{grid-template-columns:minmax(0,24rem) auto;gap:18px}
+  .sub{font-size:14px;line-height:1.5}
+  .hero .btn-line{display:none}
+  .btn{min-height:44px;padding:8px 20px}
+  .clock{display:none}
+  .close{padding-top:76px;padding-bottom:24px}
+  .crest{width:84px}
+  .close h2{margin-top:10px;font-size:34px}
+  .close .cta{margin-top:10px}
+  footer{position:static;margin-top:14px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .js .rv{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js')</script>
+
+<header class="nav appear" style="--d:.05s">
+  <a class="mark" href="#top" aria-label="테니스윗 소개 맨 위로"><img src="../assets/logo-mark.webp" alt="" width="36" height="36">Tennisweet</a>
+  <nav class="nav-links" aria-label="페이지 안내">
+    <a href="#evening">하루 저녁</a>
+    <a href="#fair">대진 원칙</a>
+    <a href="#cup">분기 대회</a>
+  </nav>
+  <a class="ico" href="../" aria-label="홈" title="홈"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6.5 9.5V20h4v-5.5h3V20h4V9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+</header>
+
+<main id="top">
+  <div class="stage" id="stage">
+    <section class="hero">
+      <img class="sky" src="../assets/cover.webp" alt="" width="1536" height="1024" fetchpriority="high">
+      <div class="dark" aria-hidden="true"></div>
+      <div class="scrim" aria-hidden="true"></div>
+      <div class="hero-top">
+        <p class="eyebrow appear" style="--d:.2s">Tennisweet Tennis Club</p>
+        <h1><span class="ml"><span class="dim" style="--i:0">해가 지면,</span></span><span class="ml"><span style="--i:1">코트에 불이 켜집니다.</span></span></h1>
+      </div>
+      <div class="hero-foot">
+        <p class="sub appear" style="--d:1s">테니스윗은 매주 목·금 밤 8시, 코트에 모여 파트너를 바꿔 가며 복식을 치는 클럽입니다.</p>
+        <div class="cta appear" style="--d:1.15s">
+          <a class="btn btn-solid" href="../#weekly">이번 주 모임 보기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+          <a class="btn btn-line" href="#evening">하루 저녁 살펴보기</a>
+        </div>
+        <p class="next appear" id="next" style="--d:1.3s"><i></i><b>정기 모임</b> <span>매주 목·금 밤 8시</span></p>
+      </div>
+    </section>
+  </div>
+
+  <section class="court" id="evening">
+    <div class="lamps" aria-hidden="true"><i style="left:14%" data-th=".18"></i><i style="left:38%" data-th=".32"></i><i style="left:62%" data-th=".46"></i><i style="left:86%" data-th=".6"></i></div>
+    <div class="court-in">
+      <div class="head rv">
+        <p class="label">One evening</p>
+        <h2><span class="dim">두 시간,</span><br>네 번의 경기.</h2>
+      </div>
+      <div class="plan">
+        <div class="lines" aria-hidden="true">
+          <i class="h" style="top:0"></i><i class="h r" style="bottom:0"></i><i class="v" style="left:0"></i><i class="v b" style="right:0"></i>
+          <i class="h" style="top:var(--alley)"></i><i class="h r" style="bottom:var(--alley)"></i>
+          <i class="v" style="left:21%;top:var(--alley);bottom:var(--alley)"></i><i class="v b" style="right:21%;top:var(--alley);bottom:var(--alley)"></i>
+          <i class="h c" style="top:50%;left:21%;right:21%"></i>
+          <i class="v net" style="left:50%;top:-14px;bottom:-14px"></i>
+        </div>
+        <ol class="times">
+          <li class="rv"><time>20:00</time><div><h3>첫 경기</h3><p>참석을 체크한 사람들로 대진을 짭니다. 코트 번호와 내 경기는 휴대폰에서 바로 확인합니다.</p></div></li>
+          <li class="rv" style="--i:1"><time>20:30</time><div><h3>짝이 바뀝니다</h3><p>한 경기는 30분. 시간이 끝나면 파트너도 상대도 새로 만납니다.</p></div></li>
+          <li class="rv" style="--i:2"><time>21:00</time><div><h3>늦어도 괜찮습니다</h3><p>중간에 도착해도 바로 코트로 들어갑니다. 막 온 사람을 벤치에 두지 않는 것이 규칙입니다.</p></div></li>
+          <li class="rv" style="--i:3"><time>21:30</time><div><h3>마지막 경기</h3><p>끝난 경기는 완료를 누르고, 원하면 점수도 남깁니다. 22시에 마칩니다.</p></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="paper" id="fair">
+    <div class="wrap">
+      <div class="rv">
+        <p class="label">Fair play</p>
+        <h2><span class="dim">누구나 비슷하게,</span><br>충분히 칩니다.</h2>
+      </div>
+      <div class="rules">
+        <div class="rv"><h3>경기 수는 고르게</h3><p>한 사람이 몰아 치지 않도록 경기 수 차이를 한 경기 안으로 맞춥니다. 더 친다면 오래 머문 사람부터.</p></div>
+        <div class="rv" style="--i:1"><h3>파트너는 다양하게</h3><p>최근 모임 기록을 보고, 같은 짝과 같은 상대를 덜 만나도록 섞습니다.</p></div>
+        <div class="rv" style="--i:2"><h3>경기 종류도 골고루</h3><p>남복, 여복, 혼복이 한 사람에게 몰리지 않도록 나눕니다.</p></div>
+      </div>
+      <dl class="stats rv">
+        <div><dd data-count="21">21</dd><dt>명의 회원</dt></div>
+        <div><dd data-count="12">12</dd><dt>번의 정기 모임</dt></div>
+        <div><dd data-count="118">118</dd><dt>경기 편성</dt></div>
+        <div><dd data-count="36">36</dd><dt>번의 게스트 참석</dt></div>
+      </dl>
+      <p class="basis rv">2026년 9월 17일부터 10월 30일까지의 모임 기록 기준</p>
+    </div>
+  </section>
+
+  <section class="cup" id="cup">
+    <div class="cup-in">
+      <div class="cup-copy rv">
+        <p class="label">The cup</p>
+        <h2><span class="dim">분기마다 한 번은,</span><br>순위를 겁니다.</h2>
+        <p>파트너를 바꿔 가며 치고 개인 순위를 매기는 클럽 대회입니다. 지난 대회는 경기 뒤 회식까지 함께했습니다.</p>
+      </div>
+      <div class="board rv" style="--i:1">
+        <small>Latest</small>
+        <strong>2026년 3분기 테니스윗 대회</strong>
+        <ul>
+          <li><b>9.11</b>금요일 저녁</li>
+          <li><b>14</b>명 참가</li>
+          <li><b>15</b>경기</li>
+        </ul>
+        <a class="link" href="../#tournament">지난 대회 기록 보기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="close">
+    <img class="bg" src="../assets/cover.webp" alt="" width="1536" height="1024" loading="lazy">
+    <img class="crest rv" src="../assets/logo.jpg" alt="테니스윗 테니스 클럽 로고. 일몰의 코트에서 복식을 치는 두 사람." width="640" height="640" loading="lazy">
+    <h2 class="rv">코트에서 만나요.</h2>
+    <div class="cta rv">
+      <a class="btn btn-solid" href="../#weekly">앱에서 참석 체크하기<svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h9M8.5 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
+    <footer>Tennisweet Tennis Club · 매주 목·금 밤 8시</footer>
+  </section>
+</main>
+<a class="home-fab" href="../" aria-label="홈" title="홈"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 11l8-7 8 7M6.5 9.5V20h4v-5.5h3V20h4V9.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+<div class="grain" aria-hidden="true"></div>
+<div class="clock appear" style="--d:1.2s" id="clock" aria-hidden="true">19:30</div>
+
+<script>
+(function(){
+  'use strict';
+  /* 다음 모임 (읽기 전용, 실패하면 기본 문구 유지) */
+  fetch('../data/weekly/index.json',{cache:'no-cache'}).then(function(r){return r.ok?r.json():null}).then(function(d){
+    if(!d||!Array.isArray(d.sessions))return;
+    var today=new Date(Date.now()+9*36e5).toISOString().slice(0,10);
+    var s=d.sessions.filter(function(x){return x&&x.date>=today}).sort(function(a,b){return a.date<b.date?-1:1})[0];
+    if(!s)return;
+    var p=s.date.split('-').map(Number),wd='일월화수목금토'[new Date(Date.UTC(p[0],p[1]-1,p[2])).getUTCDay()];
+    var el=document.querySelector('#next');
+    el.querySelector('b').textContent='다음 모임';
+    el.querySelector('span').textContent=p[1]+'월 '+p[2]+'일 ('+wd+') '+s.startTime+'~'+s.endTime+(s.courts?' · 코트 '+s.courts+'면':'');
+  }).catch(function(){});
+
+  /* 등장 */
+  var rv=[].slice.call(document.querySelectorAll('.rv'));
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.1,rootMargin:'0px 0px -6% 0px'});
+    rv.forEach(function(e){io.observe(e)});
+  }else rv.forEach(function(e){e.classList.add('in')});
+  var ap=[].slice.call(document.querySelectorAll('.appear'));
+  ap.forEach(function(e){e.addEventListener('animationend',function(){e.classList.add('is-in')},{once:true})});
+
+  var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 숫자: 최종값은 HTML 에 있다 */
+  var counts=[].slice.call(document.querySelectorAll('[data-count]'));
+  if('IntersectionObserver' in window&&!reduce&&counts.length){
+    var cio=new IntersectionObserver(function(es){
+      if(!es[0].isIntersecting)return;cio.disconnect();
+      counts.forEach(function(el,i){
+        var to=+el.dataset.count,dur=1500+i*80,start=null;el.textContent='0';
+        setTimeout(function(){requestAnimationFrame(function f(now){
+          if(start===null)start=now;var t=Math.min(1,(now-start)/dur);
+          el.textContent=String(Math.round(to*(1-Math.pow(1-t,3))));
+          if(t<1)requestAnimationFrame(f);
+        })},240+i*90);
+      });
+    },{threshold:.25});
+    cio.observe(counts[0].closest('.stats'));
+  }
+
+  /* 스크롤 = 시간: 노을 → 밤 → 조명 → 코트 라인 */
+  var root=document.documentElement,stage=document.getElementById('stage'),court=document.getElementById('evening'),clock=document.getElementById('clock'),nav=document.querySelector('.nav');
+  var lamps=[].slice.call(document.querySelectorAll('.lamps i'));
+  function clamp(x,a,b){return x<a?a:x>b?b:x}
+  var cur=-1,ticking=false,stageEnd=1,courtTop=1,maxS=1,H=1;
+  function measure(){
+    H=window.innerHeight;
+    stageEnd=Math.max(1,stage.offsetHeight-H);
+    courtTop=court.getBoundingClientRect().top+scrollY;
+    maxS=Math.max(1,root.scrollHeight-H);
+  }
+  function apply(y){
+    var p=clamp(y/stageEnd,0,1);
+    /* 코트 윗변이 화면 아래에 닿을 때 0, 화면 45% 까지 올라오면 1 */
+    var c=clamp((y-(courtTop-H))/(H*.55),0,1);
+    root.style.setProperty('--p',p.toFixed(4));
+    root.style.setProperty('--lit',clamp((c-.12)/.72,0,1).toFixed(3));
+    root.style.setProperty('--draw',clamp((c-.34)/.66,0,1).toFixed(3));
+    lamps.forEach(function(l){l.style.setProperty('--o',c>=+l.dataset.th?1:0)});
+    var mins=y<=courtTop-H*.45?19.5*60+30*clamp(y/Math.max(1,courtTop-H*.45),0,1):20*60+120*clamp((y-(courtTop-H*.45))/Math.max(1,maxS-(courtTop-H*.45)),0,1);
+    mins=Math.round(mins);
+    var txt=Math.floor(mins/60)+':'+String(mins%60).padStart(2,'0');
+    if(clock.textContent!==txt)clock.textContent=txt;
+    nav.classList.toggle('solid',y>=stageEnd*.92);
+  }
+  function loop(){
+    ticking=false;
+    var t=scrollY;
+    if(reduce||cur<0)cur=t;else cur+=(t-cur)*.14;
+    if(Math.abs(t-cur)<.4)cur=t;
+    apply(cur);
+    if(cur!==t)req();
+  }
+  function req(){if(!ticking){ticking=true;requestAnimationFrame(loop)}}
+  measure();apply(scrollY);cur=scrollY;
+  addEventListener('scroll',req,{passive:true});
+  addEventListener('resize',function(){measure();req()});
+  addEventListener('load',function(){measure();req()});
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(function(){measure();req()});
+})();
+</script>
+</body>
+</html>
