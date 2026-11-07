@@ -83,7 +83,7 @@
     <a class="cover-art-link" href="club/" aria-label="클럽 소개 보기"><span>클럽 소개 →</span></a>
   </div>
   <nav class="cover-menu" aria-label="메뉴">
-    <div class="cover-title"><img class="mark" src="assets/logo-mark.webp" alt="테니스윗 로고" width="52" height="52"><div><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div></div>
+    <div class="cover-title"><img class="mark" src="assets/logo-mark.webp" alt="테니스윗 로고" width="52" height="52"><div><span id="cover-name">테니스윗</span><span id="cover-meta" class="sub"></span></div><button type="button" class="cover-copy" data-copy-link title="테니스윗 주소를 복사합니다 (카톡 등으로 전달)"><svg class="ic"><use href="#i-link"/></svg>링크 복사</button></div>
     <button data-go="weekly" class="menu-main" id="cover-main"><span class="mm-row"><svg class="ic"><use href="#i-calendar"/></svg>정기 모임</span><small id="cover-weekly" class="sub"></small></button>
     <div class="cover-grid">
       <button data-go="courts" class="span2"><svg class="ic"><use href="#i-court"/></svg>코트 예약</button>
@@ -114,8 +114,9 @@
     <button id="btn-export" class="only-editor" title="tournament.json 파일로 저장 (수동 게시용)">내보내기</button>
     <button id="btn-import" class="only-editor" title="JSON 파일 불러오기">가져오기</button>
     <input type="file" id="file-import" accept="application/json" hidden>
+    <button data-copy-link title="이 화면으로 들어오는 주소를 복사합니다 (카톡 등으로 전달)"><svg class="ic"><use href="#i-link"/></svg>링크 복사</button>
     <button id="btn-image" title="현재 화면을 이미지로 저장·공유 (모바일용)"><svg class="ic"><use href="#i-camera"/></svg>이미지 저장</button>
-    <button id="btn-print"><svg class="ic"><use href="#i-print"/></svg>인쇄</button>
+    <button id="btn-print" title="인쇄"><svg class="ic"><use href="#i-print"/></svg><span class="lbl">인쇄</span></button>
     <button id="btn-reset" class="danger only-editor">초기화</button>
     <button id="btn-leave-editor" class="only-editor" title="로그아웃하고 일정표 보기로">로그아웃</button>
   </div>
@@ -185,7 +186,7 @@
         <button type="submit" class="primary">🆕 정기 모임 만들기</button>
       </form>
       <div id="wk-admin-list"></div>
-      <div class="row"><button type="button" id="wk-levels">NTRP 레벨 갱신</button><span id="wk-levels-status" class="sub"></span><span class="hint">대진 균형에 쓰는 레벨(NTRP, 여성은 −0.5 보정)을 저장합니다. 게스트와 NTRP 미입력자는 3.5 로 간주합니다. NTRP 를 바꾸면 다시 누르세요 (모임을 만들 때도 자동 갱신). 화면에는 표시되지 않지만 데이터 파일에는 숫자로 들어갑니다.</span></div>
+      <div class="row"><button type="button" id="wk-levels">NTRP 레벨 갱신</button><span id="wk-levels-status" class="sub"></span><span class="hint">대진 균형에 쓰는 레벨(NTRP, 여성은 −0.5 보정)을 저장합니다. 게스트는 구력으로 환산하고, 구력 모름·NTRP 미입력자는 3.5 로 간주합니다. NTRP 를 바꾸면 다시 누르세요 (모임을 만들 때도 자동 갱신). 화면에는 표시되지 않지만 데이터 파일에는 숫자로 들어갑니다.</span></div>
       <details open><summary>저장 서버(프록시) — 멤버 폰에서 직접 저장</summary>
       <form id="wk-form-proxy" class="row" autocomplete="off">
         <label class="inline" style="flex:1 1 320px">저장 서버 주소 <input name="proxy" placeholder="https://script.google.com/macros/s/…/exec"></label>

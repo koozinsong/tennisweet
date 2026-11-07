@@ -118,6 +118,10 @@
     if (b.dataset.go === 'admin') { adminLogin(); return; }
     showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + b.dataset.go);
   });
+  /** 다른 사람에게 보낼 주소: 지금 보는 탭까지 담고, 관리자 페이지·검색어·공유 스냅샷은 뺀다 (홈 화면 앱은 주소창이 없어 이 버튼으로만 복사할 수 있다) */
+  function shareLinkUrl() { const u = new URL(location.href); u.search = ''; u.pathname = u.pathname.replace(/(admin|index|app)\.html$/, ''); u.hash = /^#(weekly|courts|tournament|schedule|standings|players)$/.test(location.hash) && !document.body.classList.contains('cover-on') ? location.hash : ''; return u.href; }
+  async function copyShareLink() { const url = shareLinkUrl(); let ok = false; try { await navigator.clipboard.writeText(url); ok = true; } catch { try { const ta = document.createElement('textarea'); ta.value = url; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, url.length); ok = document.execCommand('copy'); ta.remove(); } catch {} } if (ok) toast(`링크를 복사했습니다 · ${url.replace(/^https?:\/\//, '')}`); else prompt('아래 주소를 길게 눌러 복사하세요', url); } // 클립보드 권한이 없으면 예전 방식으로, 그것도 안 되면 직접 복사하도록 보여 준다
+  document.addEventListener('click', (e) => { if (e.target.closest?.('[data-copy-link]')) copyShareLink(); });
   $('#btn-home')?.addEventListener('click', () => { showCover(true); history.replaceState(null, '', location.pathname); });
   $('#btn-refresh')?.addEventListener('click', () => { const b = $('#btn-refresh'); b.disabled = true; b.classList.add('spin'); location.reload(); }); // 홈 화면 앱(standalone)에는 브라우저 새로고침이 없으므로
 
@@ -503,6 +507,22 @@
     if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 각 팀에 같은 시각 참석 가능 선수가 2명 이상이고, 남복·여복·혼복 중 맞출 수 있는 조합이 있는지 확인하세요.');
     return { groups: [teams.map((t) => t.id)], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: teams.map((t) => t.id), seed };
   }
+  /** 경기 종류 제한(정기 모임 생성): 여 t 명을 k 코트에 담는 구성 { ff 여복, fm 혼복, mix1 잡복(여 1), mix3 잡복(여 3), mm 남복 }. 허용된 종류로 못 담으면 null. 남은 자리는 남자 (4k−t 명). wantFF 면 여복 1면을 먼저 생각한다 */
+  function typePlan(t, k, ty, wantFF) {
+    let best = null, bc = Infinity; if (t < 0 || t > 4 * k) return null;
+    for (let ff = 0; ff <= (ty.FF ? Math.min(k, Math.floor(t / 4)) : 0); ff++) for (let mix3 = 0; mix3 <= (ty.MIX ? Math.min(k - ff, Math.floor((t - 4 * ff) / 3)) : 0); mix3++) for (let fm = 0; fm <= (ty.FM ? Math.min(k - ff - mix3, Math.floor((t - 4 * ff - 3 * mix3) / 2)) : 0); fm++) {
+      const mix1 = t - 4 * ff - 3 * mix3 - 2 * fm; const mm = k - ff - mix3 - fm - mix1; if (mm < 0 || (mix1 && !ty.MIX) || (mm && !ty.MM)) continue;
+      const c = mix3 * 100 + (ty.FM ? mix1 * 10 : 0) + (wantFF ? (ff ? 0 : 50) : ff * 20); if (c < bc) { bc = c; best = { ff, fm, mix1, mix3, mm }; } } // 여 3·남 1 은 다른 방법이 없을 때만, 혼복이 허용되면 잡복보다 혼복, 여복은 원할 때만
+    return best;
+  }
+  /** 여 w·남 m 명이 있을 때 허용된 종류로 세울 수 있는 코트 수 (courts 이하). ty 가 없으면 사람 수로만 */
+  function typeCap(w, m, courts, ty) {
+    let k = Math.min(courts, Math.floor((w + m) / 4)); if (!ty) return k;
+    for (; k >= 1; k--) for (let t = Math.max(0, 4 * k - m); t <= Math.min(w, 4 * k); t++) if (typePlan(t, k, ty)) return k;
+    return 0;
+  }
+  /** 경기 종류를 뺐을 때, 여 w·남 m 명이 있는 시간대에 그 성별이 앉을 코트가 있는가 (없으면 그 시간대는 그 사람의 경기 수 공정에서 뺀다) */
+  const typeSeat = (female, w, m, ty) => { if (!ty) return true; if (female ? ty.FF && w >= 4 : ty.MM && m >= 4) return true; if (ty.FM && w >= 2 && m >= 2) return true; return !!ty.MIX && ((w >= 1 && m >= 3) || (w >= 3 && m >= 1)); };
   /** 복식 로테이션: 슬롯마다 가용 선수 중 경기 수 적은 순으로 코트×4 명 선발, 파트너·상대 중복 최소 조합 */
   /** 여러 번 생성해 [상대·파트너 중복 → 연속 휴식 → 경기 수 편차 → NTRP 불균형] 이 가장 적은 판을 고른다 */
   function generateRotation(s, seed = newSeed()) {
@@ -523,16 +543,17 @@
       for (const c of pool.slice(0, 12)) { repairSchedule(c.sch, s); c.sc = scheduleScore(c.sch); }
       pool.sort((a, b) => a.sc - b.sc);
       const top = pool.slice(0, 3); for (const c of top) { balanceSchedule(c.sch, s); c.base = scheduleScore(c.sch); c.sc = c.base + balancePenalty(c.sch); } // 마지막 균형 조정: 다 짠 판에서 같은 시간대 안의 자리만 바꿔 양 팀 레벨 합을 맞춘다 (누가 언제 뛰는지는 그대로)
-      const minBase = Math.min(...top.map((c) => c.base)); best = top.filter((c) => c.base - minBase < 300).sort((a, b) => a.sc - b.sc)[0].sch; // 균형은 같은 급의 판 사이에서만 가른다 — 상위 남복(1500)·게스트 우선(2000)·연속 휴식(300) 같은 윗순위 항목을 균형 때문에 내주지 않는다
+      const minBase = Math.min(...top.map((c) => c.base)); best = top.filter((c) => c.base - minBase < 300).sort((a, b) => a.sc - b.sc)[0].sch; // 균형은 같은 급의 판 사이에서만 가른다 — 상위 남복(1500, 이력이 있으면 4000)·게스트 우선·연속 휴식(300, 이력이 있으면 1300) 같은 윗순위 항목을 균형 때문에 내주지 않는다
     }
     best.seed = seed; // 재현용: 이 번호로 다시 생성하면 같은 판
     return best;
   }
+  const histUp = () => (GEN_HOOK && GEN_HOOK.hist && GEN_HOOK.hist.sessions > 0 ? WK_HIST_UP : 0); // 이력이 있으면 WK_HIST_UP, 없으면 0
   /** 양 팀 레벨 합(여성은 −0.5 보정된 값) 차이가 큰 경기의 벌점 — 마지막 균형 조정의 목표. 혼복(양쪽 여 1)은 '남자 급 맞추기' 원칙이 먼저라 제외 */
   function balancePenalty(sch) {
     let p = 0; for (const m of sch.matches) { const A = (m.aIds || []).map((x) => x.replace(/^p:/, '')), B = (m.bIds || []).map((x) => x.replace(/^p:/, '')); if (A.length !== 2 || B.length !== 2) continue;
       const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; const fm = wa === 1 && wb === 1; // 혼복은 남녀 짝 규칙이 따로 있어 가볍게
-      const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); if (d >= 1.5) p += fm ? 1200 : 4000; else if (d >= 1) p += fm ? 400 : 1500; else if (d >= 0.5) p += fm ? 0 : 150; } // 1.0 이상 차이는 파트너·상대 반복(300·100)·종류 골고루(250)보다 훨씬 무겁게 (NTRP 균형 > 다양성)
+      const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); if (d >= 1.5) p += fm ? 1200 : 4000; else if (d >= 1) p += fm ? 400 : 1500; else if (d >= 0.5) p += fm ? 0 : histUp() ? 60 : 150; } // 1.0 이상 차이는 막고, 지난 모임이 있으면 0.5 차이는 다양성에 양보한다
     return p;
   }
   /** 마지막 균형 조정(정기 모임): 누가 어느 시간대에 뛰는지는 그대로 두고, 같은 시간대 안에서 같은 성별 두 사람의 자리를 바꿔 본다 (같은 코트 = 조 변경, 다른 코트 = 맞교환). 판 점수 + 균형 벌점이 가장 많이 줄어드는 교환을 반복 채택. 이미 시작한 시간대는 손대지 않는다 */
@@ -572,7 +593,7 @@
       const games = {}; for (const m of sch.matches) for (const x of [...m.aIds, ...m.bIds]) games[x] = (games[x] || 0) + 1;
       const all = ps.map((p) => 'p:' + p.id); const g = (id) => games[id] || 0; const maxG = Math.max(...all.map(g));
       const guest = new Set(ps.filter((p) => p.guest).map((p) => 'p:' + p.id));
-      const late = new Set(); for (const p of ps) { let f = -1; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) { f = i; break; } if (f >= from && restingAt(f).includes('p:' + p.id) && sch.matches.some((m) => m.slot === f)) late.add('p:' + p.id); } /* late = 도착한 첫 시간대에 쉬는 사람 */ const yset = new Set(ps.filter((p) => p.yield).map((p) => 'p:' + p.id)); const ny = all.filter((id) => !guest.has(id) && !yset.has(id)); const maxM = Math.max(0, ...ny.map(g)); const minNy = ny.length ? Math.min(...ny.map(g)) : 0; /* 양보 제외 회원 최다·최소 */ const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : !yset.has(id) && g(id) <= maxM - 2) || late.has(id)), his = all.filter((id) => !guest.has(id) && (yset.has(id) ? g(id) >= minNy && g(id) >= 1 : g(id) === maxM)); if (!los.length || (!his.length && !late.size)) return false;
+      const late = new Set(); for (const p of ps) { let f = -1; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) { f = i; break; } if (f >= from && restingAt(f).includes('p:' + p.id) && sch.matches.some((m) => m.slot === f)) late.add('p:' + p.id); } /* late = 도착한 첫 시간대에 쉬는 사람 */ const yset = new Set(ps.filter((p) => p.yield).map((p) => 'p:' + p.id)); const ny = all.filter((id) => !guest.has(id) && !yset.has(id)); const maxM = Math.max(0, ...ny.map(g)); const minNy = ny.length ? Math.min(...ny.map(g)) : 0; /* 양보 제외 회원 최다·최소 */ const maxNG = Math.max(maxM, ...[...guest].map(g)); const los = all.filter((id) => (guest.has(id) ? g(id) < maxG : !yset.has(id) && g(id) <= maxNG - 2) || late.has(id)), his = all.filter((id) => (guest.has(id) ? g(id) >= minNy + 2 : yset.has(id) ? g(id) >= minNy && g(id) >= 1 : g(id) === maxM)); if (!los.length || (!his.length && !late.size)) return false;
       for (const lo of los) for (let A = from; A < n; A++) { if (!restingAt(A).includes(lo)) continue;
         for (const sa of seatsOf(A)) { if (protect.has(sa.m.id)) continue; const X = sa.m[sa.side][sa.i]; const crossA = gender(X) !== gender(lo); if (crossA && !late.has(lo)) continue; /* 성별이 다른 자리는 도착 직후 쉬는 사람을 옮길 때만 (코트 종류가 유효하게 남아야 함) */
           for (let B = from; B < n; B++) { if (B === A || !restingAt(B).includes(X)) continue;
@@ -626,17 +647,18 @@
       if (GEN_HOOK && A.length === 2 && B.length === 2) { const fa = (gOf(A[0]) === 'F') + (gOf(A[1]) === 'F'), fb = (gOf(B[0]) === 'F') + (gOf(B[1]) === 'F'); const ct = fa !== fb || fa === 1 ? 1 : fa === 2 ? 0 : 2; /* 0 여복 1 혼복·잡복(남녀 섞임) 2 남복 — 종류 골고루에서 잡복은 혼복과 같은 묶음 */ if (fa !== fb) mixCourts++; for (const x of [...A, ...B]) { const r = tcnt[x] || (tcnt[x] = [0, 0, 0]); r[ct]++; if (gOf(x) === 'F') tgF |= 1 << ct; else tgM |= 1 << ct; } }
     }
     const rep = (o) => Object.values(o).reduce((a, v) => a + Math.max(0, v - 1), 0);
+    let histCost = 0; const HUP = histUp(); const HH = HUP && !SCORE_LIGHT ? GEN_HOOK.hist : null; if (HH) for (const m of sch.matches) { const A = ids(m.aIds), B = ids(m.bIds); if (A.length === 2 && B.length === 2) histCost += histCourt(HH, k2, A[0], A[1], B[0], B[1]); } // 과거 대진: 지난 모임에서 같은 팀·상대였던 쌍을 또 묶는 값 (가까운 모임일수록 큼). 고치기 1단계에서는 종류 항처럼 뺀다 (자잘한 개선에 반복 예산을 쓰지 않게)
     const rep3 = Object.values(oc).filter((v) => v >= 3).length + Object.values(pc).filter((v) => v >= 3).length; // 같은 상대·같은 팀 3회 이상 조합 수 — 조정이 필요한 수준 (2회는 여성 구성상 불가피할 수 있음)
     const fmW = {}; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F'), wb = B.filter((x) => gOf(x) === 'F'); if (wa.length === 1 && wb.length === 1 && !fewWomen(m.slot)) fmW[k2(wa[0], wb[0])] = (fmW[k2(wa[0], wb[0])] || 0) + 1; }
     const fmWomenRep = rep(fmW); // 혼복에서 같은 여성 상대와 다시 붙은 횟수 (골고루 원칙)
     const apairs = avoidPairIds(state.settings.avoidPairs); const avoided = apairs.length ? sch.matches.filter((m) => avoidedPartner(m, apairs)).length : 0; // 같은 조 금지 위반
-    const st = state.settings, nSl = maxSlots(st); let cap = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) cap += Math.min(courtsAtSlot(st, sl), Math.floor(activePlayers().filter((p) => playerAvailable(p, st, sl)).length / 4)); // 코트 수 상한 (시도 간 상수) → 경기 수가 적은 판은 크게 불리
+    const st = state.settings, nSl = maxSlots(st); let cap = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) cap += hookCap(activePlayers().filter((p) => playerAvailable(p, st, sl)), courtsAtSlot(st, sl)); // 코트 수 상한 (시도 간 상수) → 경기 수가 적은 판은 크게 불리
     const missing = Math.max(0, cap - sch.matches.length);
     const ffCnt = sch.matches.filter((m) => [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])].every((x) => gOf(x) === 'F')).length; const ffShort = Math.max(0, (st.minWomenDoubles || 0) - ffCnt); // 여복 최소 미달
-    let spread, loss = 0, guestLoss = 0, memFar = 0, devL1 = 0, yieldOver = 0; if (GEN_HOOK) { // 정기 모임: 전원 경기 수를 같게 (일찍 와서 더 뛴 사람은 공유 시간대에서 양보). 참석 시간대를 다 뛴 사람은 상한이라 제외
+    let spread, loss = 0, guestLoss = 0, memFar = 0, devL1 = 0, yieldOver = 0, gapOver = 0; if (GEN_HOOK) { // 정기 모임: 전원 경기 수를 같게 (일찍 와서 더 뛴 사람은 공유 시간대에서 양보). 참석 시간대를 다 뛴 사람은 상한이라 제외
       const ps = activePlayers(); const g = (p) => games[p.id] || 0;
-      const playable = []; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) playable[sl] = Math.min(courtsAtSlot(st, sl), Math.floor(ps.filter((p) => playerAvailable(p, st, sl)).length / 4)) >= 1; // 코트가 서는 시간대 (4명 이상 + 코트 1면 이상)
-      const AVs = {}; ps.forEach((p) => { let av = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) if (playable[sl] && playerAvailable(p, st, sl)) av++; AVs[p.id] = av; }); // 머무는 동안 실제로 뛸 수 있는 시간대 수 (사람이 모자라 코트가 안 서는 시간대는 손해로 세지 않는다)
+      const playable = []; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) playable[sl] = hookCap(ps.filter((p) => playerAvailable(p, st, sl)), courtsAtSlot(st, sl)) >= 1; // 코트가 서는 시간대 (4명 이상 + 코트 1면 이상)
+      const TY0 = GEN_HOOK.types; const AVs = {}; ps.forEach((p) => { let av = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) if (playable[sl] && playerAvailable(p, st, sl)) { if (TY0) { const here = ps.filter((q) => playerAvailable(q, st, sl)); const w = here.filter((q) => q.gender === 'F').length; if (!typeSeat(p.gender === 'F', w, here.length - w, TY0)) continue; } av++; } AVs[p.id] = av; }); // 머무는 동안 실제로 뛸 수 있는 시간대 수 (사람이 모자라 코트가 안 서는 시간대는 손해로 세지 않는다)
       const maxG = ps.length ? Math.max(...ps.map(g)) : 0; const mem = ps.filter((p) => !p.guest);
       const byId = {}; for (const p of ps) byId[p.id] = p; const seatsX = seatsOfMatches(sch.matches, (x) => !!byId[x]?.guest);
       const X = expectedGames(ps, isFinite(nSl) ? nSl : 0, (id, sl) => playable[sl] && playerAvailable(byId[id], st, sl), seatsX.seatsAt, seatsX.guestSeatsAt); // 이 판의 실제 자리로 잰 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적, 게스트 우선)
@@ -648,6 +670,7 @@
       const devs = mem.map((p) => g(p) - (X.E[p.id] || 0)); devL1 = devs.reduce((a, d) => a + Math.abs(d), 0); // 기대 대비 편차 절대값 합 (소프트): 1경기 차이 안에서 누가 한 경기 더 뛰는지는 오래 머문 사람(기대가 큰 사람) 쪽으로
       const topEq = topEqOf(ps, g, (p) => X.Eq[p.id] || 0, maxG); memFar = mem.reduce((a, p) => a + Math.max(0, hardFloorOf(X.Eq[p.id] || 0, AVs[p.id], maxG, topEq) - (g(p) === 0 && maxG >= 2 ? 1 : 0) - g(p)) + (g(p) === 0 && maxG >= 2 ? 1 : 0), 0); // 회원 하한: 전체 최다(게스트 포함)보다 3경기 이상 적음(최다인 사람이 더 오래 있던 만큼은 빼 줌), 또는 누군가 2경기 뛰는 동안 0경기 — 게스트 보장으로도 넘지 못한다 (게스트가 자리보다 많아도 회원이 계속 쉬지 않게)
       for (const gp of ps.filter((p) => p.guest)) { const sh = Math.max(0, Math.min(AVs[gp.id], maxG) - g(gp)); guestLoss += sh + Math.max(0, sh - 1); } // (2경기 이상 모자라면 가중) 게스트 최대 경기 보장: 최다(뛸 수 있는 시간대 한도)보다 모자란 경기 수 — 여복·회원 공정성보다 위
+      if (ps.some((p) => p.guest)) { const nyAll = ps.filter((p) => !p.yield); const maxAll = nyAll.length ? Math.max(...nyAll.map(g)) : 0; gapOver = nyAll.reduce((a, p) => a + Math.max(0, Math.min(AVs[p.id], maxAll - 1) - g(p)), 0); } // 게스트가 있는 날: 양보를 뺀 전 선수 1경기 차이 이내 — 게스트 최대 경기(4e4)보다 무겁게. 머무는 시간대를 다 뛴 사람은 상한. 게스트가 없으면 loss 가 같은 것을 센다
       let below = 0; for (const p of ps) { const need = Math.min(AVs[p.id], 2); if (g(p) < need) below += need - g(p); } spread += below * 20; // 보조 항: 2경기(시간대가 1개면 1)를 채우도록 유도 — 기대 경기 수의 올림 안에서만 (판 점수·고치기가 되돌릴 수 있음)
     } else { const g = Object.values(games); spread = g.length ? Math.max(...g) - Math.min(...g) : 0; }
     // 3연속 출전 횟수
@@ -656,14 +679,23 @@
     let lateRest = 0; if (GEN_HOOK && isFinite(nSl)) { const firstOf = (p) => { for (let sl = 0; sl < nSl; sl++) if (playerAvailable(p, st, sl)) return sl; return -1; }; const playedBefore = (q, sl) => [...(bySlot[q.id] || [])].some((x) => x < sl); const inFF = {}; { const ffs = sch.matches.map((m) => ({ m, all: [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])] })).filter((x) => x.all.length === 4 && x.all.every((y) => gOf(y) === 'F')).sort((x, y) => x.m.slot - y.m.slot || (x.m.court | 0) - (y.m.court | 0)).slice(0, st.minWomenDoubles || 0); for (const x of ffs) for (const y of x.all) inFF[x.m.slot + '|' + y] = true; } /* 여복 우선은 최소 여복(설정 수)까지만: 그 코트 때문에 막 도착한 남자가 쉬는 것만 허용 */ for (const p of activePlayers()) { const f = firstOf(p); if (f < 0 || (bySlot[p.id] || new Set()).has(f)) continue; const man = p.gender !== 'F'; if (activePlayers().some((q) => q !== p && (bySlot[q.id] || new Set()).has(f) && playedBefore(q, f) && !q.guest && !(man && inFF[f + '|' + q.id]))) lateRest++; } } // 정기 모임 하드 규칙: 도착한 첫 시간대에 쉬는데 먼저 와서 이미 뛴 사람이 그 시간대에 뛰고 있으면 안 된다
     const tg = topMenGames(sch); const topMiss = tg && !tg.length ? 1 : 0; // 정기 모임: 상위 남복 1경기가 없으면 벌점
     let triple = 0, quad = 0; for (const set of Object.values(bySlot)) for (const sl of set) { if (set.has(sl + 1) && set.has(sl + 2)) triple++; if (set.has(sl + 1) && set.has(sl + 2) && set.has(sl + 3)) quad++; }
-    let ntrpDiff = 0, sameBig = 0, fmBig = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); ntrpDiff += d; if (GEN_HOOK && d >= 1) { const fm = A.length === 2 && B.length === 2 && A.filter((x) => gOf(x) === 'F').length === 1 && B.filter((x) => gOf(x) === 'F').length === 1; if (fm) fmBig++; else sameBig++; } } // 정기 모임: 팀 합 차이 1.0 이상 — 여복·남복·잡복은 sameBig, 혼복은 fmBig(가볍게)
+    let ntrpDiff = 0, sameBig = 0, fmBig = 0, fm15 = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const d = Math.abs(A.reduce((a, x) => a + ntrpOf(x), 0) - B.reduce((a, x) => a + ntrpOf(x), 0)); ntrpDiff += d; if (GEN_HOOK && d >= 1) { const fm = A.length === 2 && B.length === 2 && A.filter((x) => gOf(x) === 'F').length === 1 && B.filter((x) => gOf(x) === 'F').length === 1; if (fm) { fmBig++; if (d >= 1.5) fm15++; } else sameBig++; } } // 정기 모임: 팀 합 차이 1.0 이상 — 여복·남복·잡복은 sameBig, 혼복은 fmBig(가볍게)
     const menBad = GEN_HOOK ? sch.matches.filter((m) => { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wA = A.filter((x) => gOf(x) === 'F'), wB = B.filter((x) => gOf(x) === 'F'); if (wA.length !== 1 || wB.length !== 1 || A.length !== 2 || B.length !== 2) return false; const mA = A.find((x) => gOf(x) !== 'F'), mB = B.find((x) => gOf(x) !== 'F'); return fmMixBad(ntrpOf(wA[0]), ntrpOf(mA), ntrpOf(wB[0]), ntrpOf(mB)); }).length : state.settings.fmMenEqual === false ? 0 : sch.matches.filter(fmMenBad).length; // 대회: 특별 규칙 위반은 사실상 배제. 정기 모임: 혼복 원칙 위반 ×3000 ('경기 없음' 1e4 보다 가볍게)
     let mixBad = 0, mixSoft = 0; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (wa + wb === 3) { mixSoft += 600; continue; } /* 여 3·남 1 코트는 다른 방법이 없을 때만: 혼복 남자 급 300·여 1 잡복 벌점보다 위, 게스트 우선 2000·공정성·빈 코트보다 아래 */ if (wa + wb !== 1) continue; const sumA = A.reduce((a, x) => a + ntrpOf(x), 0), sumB = B.reduce((a, x) => a + ntrpOf(x), 0); const short = (wa ? sumB : sumA) - (wa ? sumA : sumB); if (short >= 1.5) mixBad += 1; else if (short > 0) mixSoft += 60 + 40 * short; const side = wa ? A : B, other = wa ? B : A; const mate = side.find((x) => gOf(x) !== 'F'); if (mate && other.some((x) => ntrpOf(x) > ntrpOf(mate))) mixSoft += 150; } // 잡복 원칙: 여자 쪽(여자 −0.5 반영) 합 ≥ 남자 둘 합
     let typeVar = 0, mixShort = 0; if (GEN_HOOK && !SCORE_LIGHT) { const bits = (b) => ((b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1)) || 1; const kF = bits(tgF), kM = bits(tgM); for (const x in tcnt) { const r = tcnt[x]; const g = r[0] + r[1] + r[2]; const k = gOf(x) === 'F' ? kF : kM; typeVar += Math.max(0, Math.max(r[0], r[1], r[2]) - Math.ceil(g / k)); if (gOf(x) !== 'F' && (tgM & 2)) mixShort += Math.max(0, Math.ceil(g / 2) - r[1]); } } // mixShort: 남자마다 섞인 경기(혼복·잡복)가 경기 수의 절반에 못 미치는 만큼 — 여성이 적은 날은 잡복으로 흩어서라도 채운다 (잡복 1000 보다 작지만 사람 수만큼 쌓인다) // 종류 골고루: 한 사람이 한 종류(여복·혼복·남복·잡복)에 몰린 경기 수 — 그 성별이 이 판에서 실제로 하는 종류 수로 나눈 몫을 넘는 만큼 (소프트)
+    let banned = 0; const TY = GEN_HOOK && GEN_HOOK.types; if (TY) for (const m of sch.matches) { const A = ids(m.aIds), B = ids(m.bIds); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (!TY[wa + wb === 4 ? 'FF' : wa + wb === 0 ? 'MM' : wa === 1 && wb === 1 ? 'FM' : 'MIX']) banned++; } // 뺀 경기 종류: 어떤 규칙보다 앞선다 (이미 시작한 시간대의 경기는 시도 간 상수)
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return (GEN_HOOK ? menBad * 300 : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * 300 + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 : 150) + rep(oc) * 100 + rep(pc) * (GEN_HOOK ? 300 : 100) + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * 3000 + ntrpDiff * 120 + sameBig * 800 + fmBig * 400 + topMiss * 1500 + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return banned * 1e7 + (GEN_HOOK ? menBad * (300 + HUP / 3) : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * (300 + HUP) + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + gapOver * 6e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 + 2.5 * HUP : 150) + rep(oc) * (100 + 0.3 * HUP) + rep(pc) * ((GEN_HOOK ? 300 : 100) + 0.7 * HUP) + histCost + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * (3000 + 2.5 * HUP) + ntrpDiff * 120 + fm15 * 1.5 * HUP + sameBig * (800 + 2.5 * HUP) + fmBig * (400 + HUP / 2) + topMiss * (1500 + 2.5 * HUP) + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
+  /** 그 시간대 사람들로 세울 수 있는 코트 수: 기본은 인원 ÷ 4, 경기 종류를 뺐으면 그 종류로 담을 수 있는 만큼 */
+  const hookCap = (list, courts) => { const ty = GEN_HOOK && GEN_HOOK.types; if (!ty) return Math.min(courts, Math.floor(list.length / 4)); const w = list.filter((p) => p.gender === 'F').length; return typeCap(w, list.length - w, courts, ty); };
+  const WK_HIST_DAYS = 56, WK_HIST_MAX = 16, WK_HIST_HALF = 14; // 과거 대진 참조: 8주 안 가까운 16회까지, 2주마다 무게 절반
+  // 과거 대진의 값 (tools/wk_season.js 로 정함): 같은 팀 800 · 상대 250 × 무게. 쌍마다 무게를 1 로 묶어 오래 쌓인 쌍이 판을 지배하지 않게 한다 (코트 단위로 자르면 참석이 같은 날 모든 코트가 상한에 걸려 효과가 사라진다)
+  // 이력이 있는 생성에서는 그보다 위에 있어야 할 항목을 WK_HIST_UP 만큼 올린다: 팀 합 1.0 이상 800→3300, 혼복 400→900(1.5 이상은 2400), 상위 남복·같은 조합 3회 1500→4000, 기대 경기 수 편차 3000→5500, 연속 휴식 300→1300, 혼복 남자 급 300→633, 그날 안의 같은 팀 300→1000·상대 100→400. 이력이 없으면 값이 그대로라 예전과 같은 판이 나온다
+  const WK_HIST_TEAM = 800, WK_HIST_OPP = 250, WK_HIST_COURT = 1600, WK_HIST_UP = 1000;
+  /** 이 코트가 지난 모임의 같은 팀·상대를 다시 묶는 값 (판 점수·코트 구성 공통). 코트당 1600 까지: 두 코트를 맞바꿔 아낄 수 있는 값(3200)이 팀 합 1.0 이상 벌점(3300)보다 작아서, 다양성 때문에 균형을 깨지 않는다 */
+  const histCourt = (H, k, a1, a2, b1, b2) => { const hp = (o, x, y) => Math.min(1, o[k(x, y)] || 0); return Math.min(WK_HIST_COURT, WK_HIST_TEAM * (hp(H.partner, a1, a2) + hp(H.partner, b1, b2)) + WK_HIST_OPP * (hp(H.opp, a1, b1) + hp(H.opp, a1, b2) + hp(H.opp, a2, b1) + hp(H.opp, a2, b2))); };
   function generateRotationOnce(s, seed) {
     seedRng(seed);
     const ps = activePlayers(); if (ps.length < 4) throw new Error('개인전은 참가 선수 4명 이상이 필요합니다.');
@@ -676,8 +708,9 @@
     const courtTypeOf = (c) => { const ta = pairType(c[0], c[1]), tb = pairType(c[2], c[3]); return ta === tb ? ta : 'MIX'; }; // [a1, a2, b1, b2]
     const typeBias = (x) => (isF[x] ? ctCnt[x].FF - ctCnt[x].FM - ctCnt[x].MIX : ctCnt[x].FM + ctCnt[x].MIX - ctCnt[x].MM); // 클수록 '기본 종류'(여복/남복 아닌 쪽)를 많이 한 사람 → 뒤에서 뽑는 순서상 먼저 뽑히지 않게 앞에 둔다
     let ffDone = 0; const minFF = s.minWomenDoubles || 0; // 여복 최소 경기 수
-    if (GEN_HOOK) { // 정기 모임: 지난 모임 이력(가중)과 이미 시작한 시간대의 경기를 카운터에 미리 반영
-      const H = GEN_HOOK.hist || {}; for (const [k, v] of Object.entries(H.partner || {})) partner[k] = (partner[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.opp || {})) opp[k] = (opp[k] || 0) + v * 0.5; for (const [k, v] of Object.entries(H.fmWomen || {})) fmWomen[k] = (fmWomen[k] || 0) + v * 0.25;
+    const HIST_UP = histUp(); // 과거 대진 (courtCost 에서 씀)
+    if (GEN_HOOK) { // 정기 모임: 혼복 여성 상대 이력과 이미 시작한 시간대의 경기를 카운터에 미리 반영
+      const H = GEN_HOOK.hist || {}; for (const [k, v] of Object.entries(H.fmWomen || {})) fmWomen[k] = (fmWomen[k] || 0) + v * 0.25;
       for (const m of GEN_HOOK.fixed) { const [a1, a2] = m.aIds.map((x) => x.slice(2)), [b1, b2] = m.bIds.map((x) => x.slice(2)); partner[key(a1, a2)] = (partner[key(a1, a2)] || 0) + 1; partner[key(b1, b2)] = (partner[key(b1, b2)] || 0) + 1; for (const x of [a1, a2]) for (const y of [b1, b2]) opp[key(x, y)] = (opp[key(x, y)] || 0) + 1; const tp = pairType(a1, a2); if (tp === 'FF' && pairType(b1, b2) === 'FF') ffDone++; const wk = fmWomenKey([a1, a2, b1, b2]); if (wk) fmWomen[wk] = (fmWomen[wk] || 0) + 1; const ctF = courtTypeOf([a1, a2, b1, b2]); for (const x of [a1, a2, b1, b2]) { if (played[x] == null) continue; played[x]++; lastPlayed[x] = m.slot; playedSlots[x].add(m.slot); ctCnt[x][ctF]++; const tpx = pairType(...([a1, a2].includes(x) ? [a1, a2] : [b1, b2])); if (tpx === 'FM') fmCnt[x]++; else if (tpx === 'MM') mmCnt[x]++; } }
     }
     let menEq = s.fmMenEqual !== false && !GEN_HOOK; // 특별 규칙: 혼복은 양쪽 남자 NTRP 동일 (대회, 기본 켬). 정기 모임은 대신 '혼복 원칙'(courtCost) 으로 유도. 어떤 시간대에서 도저히 못 지키면 그 시간대만 풀고 경기를 만든다 (아래 slot 루프)
@@ -689,21 +722,21 @@
     const DEFAULT_PREF = { '김지선': 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음)
     const CARE = {}; if (!GEN_HOOK) ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; }); // 정기 모임은 개인 선호 없이 레벨 균형만
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
-    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = (GEN_HOOK ? 350 : 150) * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += 120 * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (GEN_HOOK) { if (isF[a1] !== isF[a2] && isF[b1] !== isF[b2]) { const w1 = isF[a1] ? a1 : a2, m1 = isF[a1] ? a2 : a1, w2 = isF[b1] ? b1 : b2, m2 = isF[b1] ? b2 : b1; if (fmMixBad(NT[w1], NT[m1], NT[w2], NT[m2])) cost += 300; } } // 정기 모임 혼복 원칙 (약한 여자에게 강한 남자, 여자 동급이면 남자 동급)
-      else if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; const short = mSide - wSide; if (short >= 1.5) cost += 2e4; else if (short > 0) cost += 60 + 40 * short; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 150; } if (GEN_HOOK) { const fa = (isF[a1] ? 1 : 0) + (isF[a2] ? 1 : 0), fb = (isF[b1] ? 1 : 0) + (isF[b2] ? 1 : 0); const mixedC = fa !== fb || fa === 1; const cnt = (x) => (mixedC ? ctCnt[x].FM + ctCnt[x].MIX : fa === 2 ? ctCnt[x].FF : ctCnt[x].MM); cost += 90 * (cnt(a1) + cnt(a2) + cnt(b1) + cnt(b2)); } /* 혼복·잡복은 같은 묶음 */ /* 종류 골고루: 이미 한 종류를 또 하면 1회당 90 (파트너 반복 350·상대 반복 120 사이) — 문자열 연산 없이 (수백만 번 호출) */ const same = c.every((x) => isF[x]) || c.every((x) => !isF[x]); const fmCourt = !same && !mixed; return cost + d * 120 + (d > 0.5 && !mixed ? 100 : 0) + (GEN_HOOK && d >= 1 ? (fmCourt ? 400 : 800) : 0); }; // 정기 모임: 팀 합 차이 1.0 이상은 상대 반복(120)·종류(90)보다 훨씬 무겁게, 혼복은 절반 // 정기 모임: 여복·남복은 팀 합 차이 1.0 이상이면 상대 반복보다 무겁게 (NTRP 균형 > 다양성) // 잡복은 위의 부족분 벌점이 균형을 담당 // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
+    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = (GEN_HOOK ? 350 + HIST_UP : 150) * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += (120 + 0.3 * HIST_UP) * (opp[key(x, y)] || 0); const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (GEN_HOOK) { if (isF[a1] !== isF[a2] && isF[b1] !== isF[b2]) { const w1 = isF[a1] ? a1 : a2, m1 = isF[a1] ? a2 : a1, w2 = isF[b1] ? b1 : b2, m2 = isF[b1] ? b2 : b1; if (fmMixBad(NT[w1], NT[m1], NT[w2], NT[m2])) cost += 300 + HIST_UP / 3; } } // 정기 모임 혼복 원칙 (약한 여자에게 강한 남자, 여자 동급이면 남자 동급)
+      else if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; const short = mSide - wSide; if (short >= 1.5) cost += 2e4; else if (short > 0) cost += 60 + 40 * short; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 150; } if (GEN_HOOK) { const fa = (isF[a1] ? 1 : 0) + (isF[a2] ? 1 : 0), fb = (isF[b1] ? 1 : 0) + (isF[b2] ? 1 : 0); const mixedC = fa !== fb || fa === 1; const cnt = (x) => (mixedC ? ctCnt[x].FM + ctCnt[x].MIX : fa === 2 ? ctCnt[x].FF : ctCnt[x].MM); cost += 90 * (cnt(a1) + cnt(a2) + cnt(b1) + cnt(b2)); } /* 혼복·잡복은 같은 묶음 */ /* 종류 골고루: 이미 한 종류를 또 하면 1회당 90 (파트너 반복 350·상대 반복 120 사이) — 문자열 연산 없이 (수백만 번 호출) */ const same = c.every((x) => isF[x]) || c.every((x) => !isF[x]); const fmCourt = !same && !mixed; return cost + d * 120 + (d > 0.5 && !mixed ? 100 : 0) + (GEN_HOOK && d >= 1 ? (fmCourt ? 400 + HIST_UP / 2 + (d >= 1.5 ? 1.5 * HIST_UP : 0) : 800 + 2.5 * HIST_UP) : 0) + (HIST_UP ? histCourt(GEN_HOOK.hist, key, a1, a2, b1, b2) : 0); }; // 정기 모임: 팀 합 차이 1.0 이상은 상대 반복(120)·종류(90)보다 훨씬 무겁게, 혼복은 절반 // 정기 모임: 여복·남복은 팀 합 차이 1.0 이상이면 상대 반복보다 무겁게 (NTRP 균형 > 다양성) // 잡복은 위의 부족분 벌점이 균형을 담당 // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
     // 정기 모임 공정성: (a) 기대 경기 수(참석 시간대마다 자리/인원 비율 누적) 대비 부족한 사람 먼저, (b) 남은 시간대가 적은 사람(곧 가는 사람) 먼저
     const weekly = !!GEN_HOOK; let AVG_REMAIN = 0; let MIN_MEM = Infinity; // MIN_MEM = 그 시간대에 있는 회원 중 가장 적게 뛴 경기 수 (게스트 우선의 한도)
-    const slotPlayable = []; for (let i = 0; i < n; i++) slotPlayable[i] = !weekly || Math.min(courtsAtSlot(s, i), Math.floor(ps.filter((p) => playerAvailable(p, s, i)).length / 4)) >= 1; // 정기 모임: 코트가 서는 시간대만 '남은 시간대'로 센다
+    const slotPlayable = []; for (let i = 0; i < n; i++) slotPlayable[i] = !weekly || hookCap(ps.filter((p) => playerAvailable(p, s, i)), courtsAtSlot(s, i)) >= 1; // 정기 모임: 코트가 서는 시간대만 '남은 시간대'로 센다
     const remainOf = (p, slot) => { let r = 0; for (let i = slot; i < n; i++) if (slotPlayable[i] && playerAvailable(p, s, i)) r++; return r; };
     const AV = {}; if (weekly) ps.forEach((p) => { AV[p.id] = remainOf(p, 0); }); // 참석 시간대 수
-    const byIdP = {}; for (const p of ps) byIdP[p.id] = p; const EXP = weekly ? expectedGames(ps, n, (id, sl) => slotPlayable[sl] && playerAvailable(byIdP[id], s, sl), (sl) => 4 * Math.min(courtsAtSlot(s, sl), Math.floor(availAt(sl).length / 4)), null) : null; // 기대 경기 수(계획: 코트가 다 서는 전제) — '뛴 경기 − 기대'가 적은 사람부터 고르면 오래 있는 사람이 그만큼 더 뛴다
+    const byIdP = {}; for (const p of ps) byIdP[p.id] = p; const EXP = weekly ? expectedGames(ps, n, (id, sl) => slotPlayable[sl] && playerAvailable(byIdP[id], s, sl), (sl) => 4 * hookCap(availAt(sl), courtsAtSlot(s, sl)), null) : null; // 기대 경기 수(계획: 코트가 다 서는 전제) — '뛴 경기 − 기대'가 적은 사람부터 고르면 오래 있는 사람이 그만큼 더 뛴다
     // 보조 항: 참석 시간대가 2개 이상이면 2경기, 1개면 1경기를 채우도록 유도 (남은 시간대를 다 뛰어야 채울 수 있으면 −300). 기대 경기 수의 올림을 넘지는 못한다 (판 점수·고치기가 되돌림)
     const urgent = (p, slot) => { const need = Math.min(AV[p.id], 2) - played[p.id]; return need > 0 && remainOf(p, slot) <= need ? 300 : 0; };
     const eTie = (p, slot) => Math.min(50, 15 * Math.max(0, EXP.upTo(p.id, slot) + (p.yield ? 1 : 0))); // 같은 경기 수면 기대(지금까지 머문 시간대의 자리 비율 누적)가 큰 사람 먼저 — 1경기(100)는 못 넘는다
-    const prio = (p, slot) => played[p.id] * 100 + (weekly ? (p.yield ? 100 : 0) - (p.guest ? 0 : eTie(p, slot)) : 0) + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest && played[p.id] < MIN_MEM + 2 ? 2e4 : 0) - (played[p.id] === 0 ? (remainOf(p, slot) <= 1 ? 4e4 : 1e4) : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
-    const capAt = (slot) => Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4));
+    const prio = (p, slot) => played[p.id] * 100 + (weekly ? (p.yield ? 100 : 0) - (p.guest ? 0 : eTie(p, slot)) : 0) + (weekly ? -100 * Math.max(0, AVG_REMAIN - remainOf(p, slot)) - urgent(p, slot) - (p.guest && played[p.id] < MIN_MEM + 1 ? 2e4 : 0) - (played[p.id] === 0 ? (remainOf(p, slot) <= 1 ? 4e4 : 1e4) : 0) : 0) + (weekly && slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -80 : 0) + (weekly ? 0.6 : 1) * ((slot > 0 && lastPlayed[p.id] < slot - 1 && playerAvailable(p, s, slot - 1) ? -60 : 0) + (slot >= 2 && playedSlots[p.id].has(slot - 1) && playedSlots[p.id].has(slot - 2) ? 40 : 0) - (slot - lastPlayed[p.id])); // 정기 모임: 아직 안 뛴 사람(막 도착)은 이미 뛴 사람보다 무조건 먼저(하드), 곧 가는 사람은 1경기 차이를 뒤집을 만큼(−100/시간대) 우선, 휴식·연속 항은 1경기(100)를 넘지 못하게 0.6 배
+    const capAt = (slot) => (GEN_HOOK ? hookCap(availAt(slot), courtsAtSlot(s, slot)) : Math.min(courtsAtSlot(s, slot), Math.floor(availAt(slot).length / 4)));
     const byPrio = (arr, slot) => shuffle([...arr]).sort((a, b) => prio(a, slot) - prio(b, slot));
     const pairings4 = ([a, b, c, d]) => [[a, b, c, d], [a, c, b, d], [a, d, b, c]]; // 같은 성별 4명의 조 편성 3가지
     const bestOf = (cs) => { let best = null, bc = Infinity; for (const c of cs) { if (avoidedCourt(c)) continue; const v = courtCost(c); if (v < bc) { bc = v; best = c; } } return best; };
@@ -779,11 +812,18 @@
         return pairsOf(M) >= fm ? M : null;
       };
       // 1) 선발: 여성 수(짝수) 분할 후보 중 선발 우선순위 합이 최선에 가까운 것들에서 무작위 선택 (시도마다 다른 구성 탐색)
-      let kSel = k, pick = null; const mixOk = !!(GEN_HOOK && GEN_HOOK.mixOk); // 정기 모임: 여성이 홀수로 남으면 잡복(여+상위 남자 vs 남+남)도 허용해 코트를 최대한 채운다
+      const TYPES = GEN_HOOK && GEN_HOOK.types; let kSel = k, pick = null; const mixOk = !!(GEN_HOOK && GEN_HOOK.mixOk); // 정기 모임: 여성이 홀수로 남으면 잡복(여+상위 남자 vs 남+남)도 허용해 코트를 최대한 채운다
       for (; kSel >= 1; kSel--) {
         const need = kSel * 4;
         const ideal = need * Wav.length / avail.length; // 동률이면 성별 비율에 가까운 분할
         const cands = [];
+        if (TYPES) { // 경기 종류를 뺐을 때: 허용된 종류로 담을 수 있는 여성 수만 후보로 (전부 고른 기본 생성은 아래의 기존 경로 그대로)
+          let forceFF = false; if (ffForce) for (let t = 4; t <= Wav.length && !forceFF; t++) if (need - t >= 0 && need - t <= Mav.length && typePlan(t, kSel, TYPES, true)?.ff) forceFF = true; // 여복을 넣으면 고른 종류로 코트를 다 못 채우는 경우엔 강제하지 않는다 (빈 코트 > 여복 최소)
+          for (let t = forceFF ? 4 : 0; t <= Wav.length; t++) { if (need - t < 0 || need - t > Mav.length) continue;
+            for (const asFF of (ffPossible && t >= 4 ? [false, true] : [false])) { const plan = typePlan(t, kSel, TYPES, asFF); if (!plan || (asFF && !plan.ff) || (forceFF && !plan.ff)) continue;
+              const M = Mav.slice(0, need - t).map((p) => p.id); const sum = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + M.reduce((a, id) => a + score(playerById(id)), 0);
+              cands.push({ t, asFF, M, plan, sum: sum - (asFF ? (forceFF ? 1e9 : 150) : 0) + (TYPES.FM && t % 2 ? 300 : 0) + plan.mix3 * 60, dist: Math.abs(t - ideal) }); } }
+        } else
         for (let t = ffForce ? 4 : 0; t <= Wav.length; t += mixOk ? 1 : 2) {
           if (need - t < 0 || need - t > Mav.length) continue;
           const fmOk = !!menFor(t, kSel, false); // 혼복 남자 짝이 안 나오면 여복 코트로 여성을 담는 변형도 후보에 (가점 없이)
@@ -810,9 +850,16 @@
       for (let t = 0; t < 40; t++) {
         // 무작위 초기 배치: 남성은 혼복을 덜 한 사람이 뒤(=먼저 뽑히는 쪽)에 오도록 정렬 → 혼복 코트에 우선 배치
         const w = shuffle([...W]).sort((a, b) => typeBias(b) - typeBias(a) + (rng() - 0.5) * 0.5), m = shuffle([...M]).sort((a, b) => typeBias(b) - typeBias(a) + (rng() - 0.5) * 0.5); const courts = []; // 뒤에서부터 여복(여성)·혼복(남성) 코트에 뽑히므로, 그 종류를 덜 한 사람을 뒤에
-        const ff0 = ffCount(W.length, kk, wantFF); const three = mixOk && ff0 * 4 > W.length; const ff = three ? ff0 - 1 : ff0; // three = 여성이 4kk−1 명: 여복 (kk−1)면 + 여 3·남 1 코트 1면
+        if (TYPES) { const P = { ...pick.plan }; if (TYPES.MIX && P.fm === 1 && !P.mix1 && P.mm >= 1 && Wav.length <= 2 && m.length >= 6) { P.fm = 0; P.mix1 = 2; P.mm--; } // 경기 종류를 뺐을 때: 정해 둔 구성대로 앉힌다 (교환 탐색은 같은 성별끼리라 종류가 유지된다). 여성이 2명뿐이면 기본 경로처럼 혼복 1면 대신 잡복 2면
+          for (let c = 0; c < P.ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
+          for (let c = 0; c < P.fm; c++) { const x = m.pop(), y = m.pop(); courts.push([w.pop(), x, w.pop(), y]); }
+          for (let c = 0; c < P.mix3; c++) courts.push([w.pop(), m.pop(), w.pop(), w.pop()]);
+          for (let c = 0; c < P.mix1; c++) { let pi = 0; for (let i = 1; i < m.length; i++) if (NT[m[i]] > NT[m[pi]]) pi = i; const mate = m.splice(pi, 1)[0]; courts.push([w.pop(), mate, m.pop(), m.pop()]); } // 잡복은 여성 + 남은 남자 중 최고 (아래 기본 경로와 같은 원칙)
+          for (let c = 0; c < P.mm; c++) courts.push([m.pop(), m.pop(), m.pop(), m.pop()]);
+        }
+        const ff0 = TYPES ? 0 : ffCount(W.length, kk, wantFF); const three = !TYPES && mixOk && ff0 * 4 > W.length; const ff = three ? ff0 - 1 : ff0; // three = 여성이 4kk−1 명: 여복 (kk−1)면 + 여 3·남 1 코트 1면
         for (let c = 0; c < ff; c++) courts.push([w.pop(), w.pop(), w.pop(), w.pop()]);
-        if (mixOk && GEN_HOOK && w.length === 2 && Wav.length <= 2 && kk >= 2 && m.length >= 6) { courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); } // 여성이 2명뿐이면 혼복 1면 대신 잡복 2면 — 남자 6명이 섞인 경기를 하게 (섞인 경기 절반 보장 > 혼복 우선)
+        if (!TYPES && mixOk && GEN_HOOK && w.length === 2 && Wav.length <= 2 && kk >= 2 && m.length >= 6) { courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); courts.push([w.pop(), m.pop(), m.pop(), m.pop()]); } // 여성이 2명뿐이면 혼복 1면 대신 잡복 2면 — 남자 6명이 섞인 경기를 하게 (섞인 경기 절반 보장 > 혼복 우선)
         const aside = [];
         while (w.length >= 2 && m.length) { // 혼복: 남자 x 와 같은 NTRP 의 남자 y 를 짝으로 (menEq), 짝이 없으면 남복으로
           const x = m.pop(); let j = m.length - 1;
@@ -863,6 +910,7 @@
           const rest0 = avail.filter((p) => !used.has(p.id)); const k0 = Math.min(courtsAtSlot(s, slot) - courts.length, Math.floor(rest0.length / 4));
           const rest1 = rest0.filter((p) => !c.includes(p.id)); const k1 = Math.min(courtsAtSlot(s, slot) - courts.length - 1, Math.floor(rest1.length / 4));
           if (!seatable(rest1, k1) && (c.some((x) => played[x] > 0) || seatable(rest0, k0))) { f.skipped = true; continue; }
+          if (GEN_HOOK.types && 1 + hookCap(rest1, courtsAtSlot(s, slot) - courts.length - 1) < hookCap(rest0, courtsAtSlot(s, slot) - courts.length)) { f.skipped = true; continue; } // 경기 종류를 뺐을 때: 이 코트를 세우면 남은 사람으로 고른 종류의 코트를 못 채우는 경우 (빈 코트 > 상위 남복)
         }
         courts.push(c); c.forEach((x) => used.add(x)); }
       const rest = avail.filter((p) => !used.has(p.id));
@@ -879,7 +927,7 @@
       });
       round++;
     }
-    if (!matches.length) throw new Error('배정 가능한 경기가 없습니다. 합류 시각과 종료 시각을 확인하세요.');
+    if (!matches.length) throw new Error(GEN_HOOK && GEN_HOOK.types ? '고른 경기 종류로 만들 수 있는 경기가 없습니다. 종류를 더 고르거나 참석 구성을 확인해 주세요.' : '배정 가능한 경기가 없습니다. 합류 시각과 종료 시각을 확인하세요.');
     const bad = forced.filter((f) => !f.skipped && !matches.some((m) => m.slot === f.slot)); if (bad.length) throw new Error(`${bad[0].label} 편성 실패`);
     return { groups: [], advance: 0, matches, qualifiers: 0, extraSlots: 0, unitIds: ps.map((p) => 'p:' + p.id), seed, ...(notes.length ? { notes } : {}) };
   }
@@ -1726,7 +1774,7 @@
   }
   const wkCommitMsg = (op) => { const who = op.by ? ` by ${String(op.by).slice(0, 20)}` : ''; if (op.op === 'edit') return `정기 모임 ${op.session} 조 조정 ${(Array.isArray(op.value) ? op.value : [op.value]).map((e) => e && e.id).join(',')}${who}`; return op.op === 'set' ? `정기 모임 ${op.session} ${op.path}${op.value == null ? ' 삭제' : ''}${who}` : `정기 모임 ${op.session} 대진 ${op.value ? '#' + (op.value.seed | 0) : '삭제'}${who}`; };
   // ---- 상태 ----
-  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, adjust: null, pick: null, busy: false, pending: [], failed: [], srvRev: -1, lastMsg: '', cache: {}, hist: null, histFor: null };
+  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, adjust: null, pick: null, busy: false, pending: [], failed: [], srvRev: -1, lastMsg: '', cache: {}, typesOpen: null, typesMem: {} };
   const wkUnsent = () => [...W.pending, ...W.failed].filter((op) => op.session === W.id); // 아직 서버가 확인하지 않은 이 모임의 변경 (순서대로)
   /** 서버 문서를 받아들이되, 아직 확인되지 않은 내 변경은 그 위에 다시 얹는다 (화면이 되돌아가지 않도록) */
   function wkAdopt(raw, rev) { let d; try { d = assertWeekly(raw); } catch { return false; } if (d.id !== W.id) return false; const r = rev != null ? rev | 0 : d.rev | 0; W.srvRev = W.doc ? Math.max(W.srvRev, r) : r; for (const op of wkUnsent()) { const c = JSON.parse(JSON.stringify(d)); const r = applyWeeklyOp(c, op.op === 'generate' || op.op === 'edit' ? { ...op, base: c.rev } : op); if (r.ok) d = c; else if (op.op === 'edit') { W.failed = W.failed.filter((x) => x !== op); W.pending = W.pending.filter((x) => x !== op); } } W.doc = d; return true; } // 서버 문서와 어긋난 조 조정은 버린다 // 지금 보고 있는 모임의 문서만 채택 (다른 모임 응답·전환 경합 방지)
@@ -1749,6 +1797,9 @@
     while (i < hours.length) { const v = cb[String(hours[i])] ?? s.courts; let j = i; while (j + 1 < hours.length && (cb[String(hours[j + 1])] ?? s.courts) === v) j++; parts.push(`${hours[i]}~${hours[j] + 1}시 ${v}면`); i = j + 1; }
     return parts.length === 1 ? `코트 ${parts[0].replace(/^\S+ /, '')}` : '코트 ' + parts.join(' · ');
   }
+  /** 게스트 구력 → 내부 NTRP (참석 데이터 lv 에 저장, 화면에는 구력만 보인다. 예전에 NTRP 로 넣은 값은 가장 가까운 구간으로 표시만 하고 값은 그대로 둔다) */
+  const WK_CAREER = [['1~3년', 2.5], ['4~6년', 3], ['7~9년', 3.5], ['10년 이상', 4]];
+  const wkCareerLv = (lv) => (lv <= 2.5 ? 2.5 : lv <= 3 ? 3 : lv <= 3.5 ? 3.5 : 4);
   const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, yield: !!a.y, lv: Number.isFinite(a.lv) ? a.lv : null, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
   const wkName = (doc, id) => doc?.attendance?.[id]?.n || playerById(id)?.name || id;
   function wkStatus(msg, bad) { const el = $('#wk-status'); if (!el) return; el.textContent = msg || ''; el.classList.toggle('bad', !!bad); const rb = $('#wk-retry'); if (rb) rb.hidden = !W.failed.length; }
@@ -1759,7 +1810,7 @@
     const idx = await dataRead('weekly/index.json');
     if (idx && typeof idx === 'object') {
       const lv = {}; if (idx.levels && typeof idx.levels === 'object') for (const [k, v] of Object.entries(idx.levels)) if (ID_RE.test(k) && Number.isFinite(Number(v))) lv[k] = Number(v);
-      W.index = { v: 1, levels: lv, levelsAt: String(idx.levelsAt || '').slice(0, 30), proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0, courtsLabel: String(s.courtsLabel || '').slice(0, 60) })) }; W.indexErr = '';
+      W.index = { v: 1, levels: lv, levelsAt: String(idx.levelsAt || '').slice(0, 30), proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', past: (Array.isArray(idx.past) ? idx.past : []).filter((x) => SESSION_RE.test(String(x))), sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0, courtsLabel: String(s.courtsLabel || '').slice(0, 60) })) }; W.indexErr = '';
     } else { W.index = { v: 1, proxy: '', sessions: [] }; W.indexErr = WK_MOCK ? '' : (document.body.classList.contains('editor') ? '아직 모임 목록 파일이 없습니다. 위에서 첫 모임을 만들면 생깁니다 (데이터 저장소 tennisweet-data 와 GitHub Pages 가 준비되어 있어야 합니다 — README 참고).' : '아직 만들어진 정기 모임이 없습니다.'); }
     if (!W.id || !wkSessions().some((s) => s.id === W.id)) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.srvRev = -1; }
     renderWeeklyView();
@@ -1804,7 +1855,7 @@
     W.busy = false;
     W.pending = W.pending.filter((x) => x !== op);
     const mine = op.session === W.id; // 다른 모임의 응답 문서는 화면에 채택하지 않는다
-    if (res.ok) { if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
+    if (res.ok) { if (op.op === 'generate' && op.value) wkTypesSave({ id: op.session, schedule: op.value }, null); /* 고르던 경기 종류는 이제 대진에 기록돼 있다 (거절되면 남겨 둔다) */ if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
     if (res.code === 'AUTH') { wkForgetKey(); W.adjust = false; W.pick = null; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
     const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
@@ -1923,7 +1974,7 @@
       <div class="wk-panel-head">${e.guest ? `<input id="wk-guest-name" placeholder="게스트 이름" maxlength="20" autocomplete="off" value="${esc(e.name || '')}" title="${isNew ? '' : '이름을 고치면 이 게스트의 참석·대진은 그대로 두고 이름만 바뀝니다'}"><span class="wk-gender"><button class="hbtn ${e.gender === 'M' ? 'sel' : ''}" data-wk-gender="M">남</button><button class="hbtn ${e.gender === 'F' ? 'sel' : ''}" data-wk-gender="F">여</button></span>` : `<b>${esc(e.name)}</b>`}${e.attending ? '<span class="tag">참석 중</span>' : ''}</div>
       <div class="wk-hours"><span class="lbl">도착</span>${hb('from', wkArriveTimes(s))}</div>
       <div class="wk-hours"><span class="lbl">퇴장</span>${hb('until', wkLeaveTimes(s))}</div>
-      ${e.guest ? `<div class="wk-hours wk-lv"><span class="lbl">NTRP</span><button class="hbtn ${e.lv == null ? 'sel' : ''}" data-wk-lv="" type="button">모름</button>${[2, 2.5, 3, 3.5, 4, 4.5, 5].map((v) => `<button class="hbtn ${e.lv === v ? 'sel' : ''}" data-wk-lv="${v}" type="button">${v.toFixed(1)}</button>`).join('')}<span class="sub">대진 균형에만 쓰고 화면에는 표시하지 않습니다 (모름 = 3.5, 여성은 0.5 낮춰 계산)</span></div>` : ''}
+      ${e.guest ? `<div class="wk-hours wk-lv"><span class="lbl">구력</span><button class="hbtn career ${e.lv == null ? 'sel' : ''}" data-wk-lv="" type="button">모름</button>${WK_CAREER.map(([label, v]) => `<button class="hbtn career ${e.lv != null && wkCareerLv(e.lv) === v ? 'sel' : ''}" data-wk-lv="${v}" type="button">${label}</button>`).join('')}<span class="sub">대진을 고르게 짜는 데만 쓰고 화면에는 표시하지 않습니다</span></div>` : ''}
       ${e.guest ? '' : `<div class="wk-hours"><span class="lbl">양보</span><button class="hbtn ${e.yield ? 'sel' : ''}" id="wk-yield" type="button">${e.yield ? '양보함 — 경기 수를 1 적게' : '양보 안 함'}</button><span class="sub">양보하면 기대 경기 수가 1 줄어 자리가 모자랄 때 먼저 빠지고, 다시 섞어도 유지됩니다</span></div>`}
       <div class="row"><button id="wk-save" class="primary">${esc(wkShort(e.from))}~${esc(wkShort(e.until))}시 참석${e.attending ? '으로 변경' : ''}</button>${e.attending ? `<button id="wk-absent" class="danger-text">${e.guest ? '게스트 삭제' : '불참'}</button>` : ''}<button id="wk-close">닫기</button></div>
     </div>`;
@@ -1946,7 +1997,7 @@
     W.edit = null;
     const ok = await wkSend({ op: 'set', path: 'attendance.' + id, value: { n: name, g: e.gender === 'F' ? 'F' : 'M', from: e.from, until: e.until, ...(e.guest ? { guest: true } : {}), ...(e.yield && !e.guest ? { y: true } : {}), ...(e.guest && Number.isFinite(e.lv) ? { lv: e.lv } : {}) } });
     if (ok && e.yield && !e.guest && W.doc?.attendance?.[id] && !W.doc.attendance[id].y) toast('⚠ 양보 표시가 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전입니다. Apps Script 를 새 버전으로 배포해 주세요'); /* 옛 프록시는 모르는 필드를 버린다 */
-    if (ok && e.guest && Number.isFinite(e.lv) && W.doc?.attendance?.[id] && !Number.isFinite(W.doc.attendance[id].lv)) toast('⚠ 게스트 NTRP 가 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전(v7 미만)입니다. Apps Script 를 새 버전으로 배포해 주세요');
+    if (ok && e.guest && Number.isFinite(e.lv) && W.doc?.attendance?.[id] && !Number.isFinite(W.doc.attendance[id].lv)) toast('⚠ 게스트 구력이 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전(v7 미만)입니다. Apps Script 를 새 버전으로 배포해 주세요');
     if (ok && !e.guest && !W.me) { W.me = id; localStorage.setItem('tennisweet.me', id); renderWeeklyView(); }
   }
   $('#tab-weekly')?.addEventListener('click', async (e) => {
@@ -1960,7 +2011,7 @@
     const hb = t.closest('[data-wk-hour]'); if (hb && W.edit) { const k = hb.dataset.wkKind, v = hb.dataset.wkHour; W.edit[k] = v; const st = wkSettings(W.doc); const step = (st.matchMinutes || 30) + (st.breakMinutes || 0); if (k === 'from' && W.edit.until <= v) W.edit.until = hhmm(toMin(v) + step); if (k === 'until' && W.edit.from >= v) W.edit.from = hhmm(toMin(v) - step); renderWeeklyView(); return; }
     const gb = t.closest('[data-wk-gender]'); if (gb && W.edit) { W.edit.gender = gb.dataset.wkGender; renderWeeklyView(); return; }
     if (t.closest('#wk-yield') && W.edit) { W.edit.yield = !W.edit.yield; renderWeeklyView(); return; }
-    const lb = t.closest('[data-wk-lv]'); if (lb && W.edit) { const v = parseFloat(lb.dataset.wkLv); W.edit.lv = Number.isFinite(v) ? v : null; renderWeeklyView(); return; }
+    const lb = t.closest('[data-wk-lv]'); if (lb && W.edit) { const v = parseFloat(lb.dataset.wkLv); if (Number.isFinite(v) && W.edit.lv != null && wkCareerLv(W.edit.lv) === v) return; /* 이미 선택된 구간: 옛 NTRP 값(예: 4.5)을 표시만 묶어 둔 것이라 다시 눌러도 바꾸지 않는다 */ W.edit.lv = Number.isFinite(v) ? v : null; renderWeeklyView(); return; }
     if (t.closest('#wk-close')) { W.edit = null; renderWeeklyView(); return; }
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
     if (t.closest('#wk-absent') && W.edit) { const { id, name, guest } = W.edit; W.edit = null; if (confirm(guest ? `게스트 ${name} 님을 이 모임에서 삭제할까요?` : `${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
@@ -1976,50 +2027,73 @@
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
   const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}${p.lv != null ? 'L' + p.lv : ''}`).join(',')).toString(36);
-  function generateWeeklySchedule(doc, hist, fromSlot, gen) {
-    const ps = wkAttendees(doc); const s = wkSettings(doc);
+  const WK_TYPES = [['FF', '여복', 'f'], ['MM', '남복', 'm'], ['FM', '혼복', 'x'], ['MIX', '잡복', 'j']]; // 생성할 때 고르는 경기 종류 (기본 전부)
+  const WK_TYPES_KEY = 'tennisweet.wk.types';
+  /** 대진을 만들 때 뺀 종류: 저장 서버(Code.gs)가 모르는 칸을 버리므로 inputHash 뒤에 '~글자들'로 붙여 함께 저장한다. 뺀 종류가 없으면 아무것도 붙지 않는다. 반환 { FF, MM, FM, MIX } (참이면 허용), 전부 허용이면 null */
+  function wkSchTypes(sch) { const t = String(sch?.inputHash || '').split('~')[1]; if (!t) return null; const o = {}; for (const [c, , k] of WK_TYPES) o[c] = t.includes(k); return WK_TYPES.some(([c]) => o[c]) && !WK_TYPES.every(([c]) => o[c]) ? o : null; }
+  const wkSchHash = (sch) => String(sch?.inputHash || '').split('~')[0]; // 참석 변경 비교용 (종류 표시를 뗀 값)
+  function wkTypesLocal(id) { if (id in W.typesMem) return W.typesMem[id]; try { const v = JSON.parse(localStorage.getItem(WK_TYPES_KEY) || '{}')?.[id]; if (Array.isArray(v) && v.length && v.every((c) => WK_TYPES.some(([k]) => k === c))) return v; } catch {} return null; }
+  /** 다음 생성에 쓸 경기 종류: 이 기기에서 고르는 중인 값이 있으면 그것, 없으면 지금 대진이 쓴 값. 반환은 wkSchTypes 와 같다 */
+  function wkTypesOf(doc) { const v = wkTypesLocal(doc.id); if (!v) return wkSchTypes(doc.schedule); if (WK_TYPES.every(([c]) => v.includes(c))) return null; const o = {}; for (const [c] of WK_TYPES) o[c] = v.includes(c); return o; }
+  /** 고르는 중인 값 저장 (지금 대진과 같아지면 지운다). next = null 이면 지운다. 저장소를 못 쓰는 기기에서도 페이지가 열려 있는 동안은 동작한다 */
+  function wkTypesSave(doc, next) { const id = doc.id; const sch = wkSchTypes(doc.schedule); const same = !next || WK_TYPES.every(([c]) => next.includes(c) === (!sch || !!sch[c])); if (same) delete W.typesMem[id]; else W.typesMem[id] = next; let all = {}; try { const p = JSON.parse(localStorage.getItem(WK_TYPES_KEY) || '{}'); if (p && typeof p === 'object' && !Array.isArray(p)) all = p; } catch {} if (same) delete all[id]; else all[id] = next; for (const k of Object.keys(all).sort().slice(0, -8)) delete all[k]; try { localStorage.setItem(WK_TYPES_KEY, JSON.stringify(all)); } catch {} }
+  function wkTypesHtml(doc) { const ty = wkTypesOf(doc); const off = WK_TYPES.filter(([c]) => ty && !ty[c]).map(([, l]) => l); return `<div class="row wk-types" role="group" aria-label="만들 경기 종류"><span class="sub">경기 종류</span>${WK_TYPES.map(([c, l]) => `<button type="button" class="chip ${!ty || ty[c] ? 'on' : ''}" aria-pressed="${!ty || ty[c] ? 'true' : 'false'}" data-wk-type="${c}">${l}</button>`).join('')}${off.length ? `<span class="hint">${off.join('·')} 없이 만듭니다${(doc.schedule?.matches || []).some((m) => { const f = (x) => doc.attendance[x.slice(2)]?.g === 'F'; const wa = m.aIds.filter(f).length, wb = m.bIds.filter(f).length; return !ty[wa + wb === 4 ? 'FF' : wa + wb === 0 ? 'MM' : wa === 1 && wb === 1 ? 'FM' : 'MIX']; }) ? ' · 지금 대진에는 아직 들어 있어 다시 섞어야 빠집니다' : ''}</span>` : ''}</div>`; }
+  function generateWeeklySchedule(doc, hist, fromSlot, gen, types) { // types: 뺀 종류가 있을 때 { FF, MM, FM, MIX } (참이면 허용), 전부 허용이면 null
+    const ps = wkAttendees(doc); const s = wkSettings(doc); const ty = types && WK_TYPES.some(([c]) => !types[c]) ? types : null;
     const fixed = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
-    const inputHash = wkInputHash(doc); const seed = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}`) % 1000000; // 같은 참석 상태면 어느 기기에서 눌러도 같은 판
+    const inputHash = wkInputHash(doc); const seed = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}${ty ? '|' + WK_TYPES.filter(([c]) => ty[c]).map(([c]) => c).join('') : ''}`) % 1000000; // 같은 참석 상태·같은 경기 종류면 어느 기기에서 눌러도 같은 판
     const saved = { players: state.players, settings: state.settings, nt: new Map(ntrp) };
     state.players = ps; state.settings = s; ntrp.clear();
     ps.forEach((p) => ntrp.set(p.id, String(wkLevelOf(p)))); // 레벨(관리자가 갱신: NTRP, 여성 −0.5)로 균형. 게스트·미입력은 3.5 로 간주
-    { const menLv = ps.filter((p) => p.gender !== 'F').map((p) => wkLevelOf(p)); s.sameNtrpGame = menLv.length >= 4 ? String(Math.max(...menLv)) : ''; } // 상위 남복 1경기: 참석 남자 최고 레벨 4명 (모자라면 다음 등급 포함 상위 4명) — 대회의 '동일 NTRP 남복' 장치 재사용
-    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true };
+    { const menLv = ps.filter((p) => p.gender !== 'F').map((p) => wkLevelOf(p)); s.sameNtrpGame = menLv.length >= 4 && (!ty || ty.MM) ? String(Math.max(...menLv)) : ''; if (ty && !ty.FF) s.minWomenDoubles = 0; } // 상위 남복 1경기: 참석 남자 최고 레벨 4명 (모자라면 다음 등급 포함 상위 4명) — 대회의 '동일 NTRP 남복' 장치 재사용
+    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true, types: ty };
     try {
       const sch = generateRotation(s, seed);
       const matches = sch.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })).sort((a, b) => a.slot - b.slot || a.court - b.court);
-      return { seed, gen, fromSlot, inputHash, at: new Date().toISOString(), by: W.me || '', matches };
+      if (ty && !matches.some((m) => m.slot >= fromSlot)) throw new Error('고른 경기 종류로 만들 수 있는 경기가 없습니다. 종류를 더 고르거나 참석 구성을 확인해 주세요.'); // '남은 시간대 다시 짜기'도 기존 대진을 지우지 않는다
+      return { seed, gen, fromSlot, inputHash: ty ? `${inputHash}~${WK_TYPES.filter(([c]) => ty[c]).map(([, , k]) => k).join('')}` : inputHash, at: new Date().toISOString(), by: W.me || '', matches };
     } finally { GEN_HOOK = null; state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
   }
-  /** 최근 6회 모임의 파트너·상대·혼복 여성 상대 횟수 (완료 체크된 경기만, 없으면 편성 전체를 절반 가중) — 골고루 섞기용 */
-  async function wkHistory(curId) {
-    if (W.histFor === curId && W.hist) return W.hist;
-    const cur = wkSessions().find((x) => x.id === curId); const past = cur ? wkSessions().filter((x) => x.id !== curId && x.date < cur.date).reverse().slice(0, 6) : []; // 가까운 과거부터 6회
-    const H = { partner: {}, opp: {}, fmWomen: {}, sessions: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
-    for (let k = 0; k < past.length; k++) {
-      let d = W.cache[past[k].id]; if (!d) { d = await dataRead(`weekly/sessions/${past[k].id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[past[k].id] = d; }
-      if (!d?.schedule?.matches?.length) continue; H.sessions++;
-      const ms = d.schedule.matches; const dn = ms.filter((m) => d.done[m.id]); const use = dn.length ? dn : ms; const w = Math.pow(0.8, k) * (dn.length ? 1 : 0.5);
-      for (const m of use) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); add(H.partner, key(A[0], A[1]), w); add(H.partner, key(B[0], B[1]), w); for (const x of A) for (const y of B) add(H.opp, key(x, y), w); const g = (x) => d.attendance[x]?.g; const wa = A.filter((x) => g(x) === 'F'), wb = B.filter((x) => g(x) === 'F'); if (wa.length === 1 && wb.length === 1) add(H.fmWomen, key(wa[0], wb[0]), w); }
+  /** 지난 모임 문서들 → 사람 쌍별 같은 팀·상대·혼복 여성 상대 횟수 (가까운 모임일수록 크게: 2주마다 절반). 완료 표시는 일부만 하는 경우가 많아 편성 전체를 센다. 게스트도 이름이 같으면 id 가 같아 그대로 이어진다. 여자끼리 상대는 여자 수가 적어 구조적으로 반복되므로 opp 에 넣지 않고 fmWomen 으로만 센다 (넣으면 혼복을 피해 잡복으로 흩어진다) */
+  function wkHistoryFrom(docs, curDate) {
+    const H = { partner: {}, opp: {}, fmWomen: {}, sessions: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v); const cur = Date.parse(curDate);
+    for (const d of docs) {
+      const ms = d?.schedule?.matches; if (!ms?.length) continue; const days = (cur - Date.parse(d.date)) / 86400000; if (!(days > 0) || days > WK_HIST_DAYS) continue;
+      const w = Math.pow(0.5, days / WK_HIST_HALF); H.sessions++;
+      for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); for (const T of [A, B]) if (T.length === 2) add(H.partner, key(T[0], T[1]), w); const g = (x) => d.attendance?.[x]?.g; for (const x of A) for (const y of B) if (!(g(x) === 'F' && g(y) === 'F')) add(H.opp, key(x, y), w); const wa = A.filter((x) => g(x) === 'F'), wb = B.filter((x) => g(x) === 'F'); if (wa.length === 1 && wb.length === 1) add(H.fmWomen, key(wa[0], wb[0]), w); }
     }
-    W.hist = H; W.histFor = curId; return H;
+    return H;
+  }
+  /** 이번 모임 이전 모임들의 이력. 끝난 모임은 보통 목록(sessions)에서 빠지므로 index.past 까지 합쳐 찾는다. 목록에 있는 모임은 대진이 또 바뀔 수 있어 매번 새로 읽고, 목록에서 빠진 모임만 캐시를 쓴다. 파일 하나를 못 읽어도 나머지로 진행하고, 못 읽은 수를 failed 로 돌려준다 */
+  async function wkHistory(curId) {
+    const cur = wkSessions().find((x) => x.id === curId); if (!cur) return { partner: {}, opp: {}, fmWomen: {}, sessions: 0, failed: 0 };
+    const listed = new Set(wkSessions().map((x) => x.id));
+    const ids = [...new Set([...(W.index?.past || []), ...listed])].filter((id) => id.slice(0, 10) < cur.date && (Date.parse(cur.date) - Date.parse(id.slice(0, 10))) / 86400000 <= WK_HIST_DAYS).sort().slice(-WK_HIST_MAX); // 8주 안, 가까운 16회까지
+    let failed = 0;
+    const docs = await Promise.all(ids.map(async (id) => { if (W.id === id && W.doc) return W.doc; const cached = W.cache[id]; if (cached && !listed.has(id)) return cached;
+      let d = await Promise.race([dataRead(`weekly/sessions/${id}.json`), new Promise((r) => setTimeout(() => r(null), 5000))]); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (!d) { if (cached) return cached; failed++; return null; } if (!listed.has(id)) W.cache[id] = d; return d; }));
+    return { ...wkHistoryFrom(docs, cur.date), failed };
   }
   async function wkGenerate(mode) {
     const doc = W.doc; if (!doc || wkClosed(doc) || !wkCanWrite()) return; const s = wkSettings(doc); const att = wkAttendees(doc);
     if (att.length < 4) { toast('4명 이상 참석해야 대진을 만들 수 있습니다'); return; }
     if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 대진을 만드세요'); return; }
     if (!(await wkRequireAuth())) return; // 대진 생성·다시 섞기는 대진표 비밀번호
-    const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1;
+    const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1; const ty = wkTypesOf(doc); const offTypes = WK_TYPES.filter(([c]) => ty && !ty[c]).map(([, l]) => l).join('·');
     if (mode === 'left') { fromSlot = wkFromSlot(doc, s); gen = doc.schedule?.gen || 1; if (fromSlot === 0 && hasDone && !confirm('아직 시작 전이라 전체를 다시 만듭니다. 완료 표시가 지워질 수 있습니다. 계속할까요?')) return; }
-    else if (mode === 'reshuffle') { if (!confirm(hasDone ? '완료 표시된 경기가 있습니다. 전체를 새로 섞으면 완료 표시도 지워집니다. 계속할까요?' : '대진을 새로 섞을까요? 다른 분들 화면도 함께 바뀝니다.')) return; gen = (doc.schedule?.gen || 0) + 1; }
+    else if (mode === 'reshuffle') { if (!confirm(`${hasDone ? '완료 표시된 경기가 있습니다. 전체를 새로 섞으면 완료 표시도 지워집니다. 계속할까요?' : '대진을 새로 섞을까요? 다른 분들 화면도 함께 바뀝니다.'}${offTypes ? `\n(${offTypes} 제외)` : ''}`)) return; gen = (doc.schedule?.gen || 0) + 1; }
     $$('#wk-gen, #wk-regen-left, #wk-reshuffle, #wk-adjust').forEach((b) => { b.disabled = true; }); wkStatus('대진 만드는 중…');
     const busy = $('#wk-busy'); const busyText = (t) => { const b = busy?.querySelector('b'); if (b) b.textContent = t; };
     if (busy) { busyText('지니가 대진을 짜는 중…'); busy.hidden = false; } // 생성 중 표시 (계산은 5~10초 동안 화면을 멈추므로, 표시가 먼저 그려진 뒤 시작한다)
     try {
       const hist = await Promise.race([wkHistory(doc.id), new Promise((r) => setTimeout(() => r(null), 6000))]); await Promise.race([new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60))), new Promise((r) => setTimeout(r, 400))]);
-      const sch = generateWeeklySchedule(doc, hist, fromSlot, gen);
+      const sch = generateWeeklySchedule(doc, hist, fromSlot, gen, ty);
       const sending = wkSend({ op: 'generate', base: doc.rev, value: sch }); // 새 대진은 이 시점에 화면에 그려진다 (낙관적 반영)
       if (busy) busy.hidden = true; // 표시는 계산 동안만: 저장은 상태 줄('저장 중…')이 알리고, 신호가 약해 저장이 늦어도 화면을 막지 않는다
+      { const parts = []; let warn = false; // 생성 결과 안내: 뺀 종류 때문에 코트가 비거나 경기 수 차이가 나면 먼저 알린다
+        if (offTypes) { let empty = 0; const n = maxSlots(s); for (let i = fromSlot; i < n; i++) empty += Math.max(0, Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => playerAvailable(p, s, i)).length / 4)) - sch.matches.filter((m) => m.slot === i).length); const gap = wkRuleCheck(doc, s, sch.matches, ty).issues.some((x) => x.startsWith('경기 수 부족')); const zero = att.filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).length; if (empty) { parts.push(`${offTypes} 없이 짜서 코트 ${empty}칸이 비었습니다`); warn = true; } else parts.push(`${offTypes} 없이 만들었습니다`); if (zero) { parts.push(`경기가 없는 사람이 ${zero}명입니다`); warn = true; } else if (gap) { parts.push('경기 수 차이가 나는 사람이 있습니다'); warn = true; } }
+        if (!hist || hist.failed) { parts.push(hist && hist.sessions ? `지난 모임 ${hist.failed}회를 읽지 못해 ${hist.sessions}회만 참고했습니다` : '지난 대진을 읽지 못해 이번 모임 안에서만 섞었습니다'); warn = true; } else if (hist.sessions) parts.push(`지난 모임 ${hist.sessions}회의 대진을 참고했습니다`);
+        if (parts.length) toast(parts.join(' · '), warn ? 6000 : 3500); }
       await sending;
     } catch (err) { if (busy) busy.hidden = true; await new Promise((r) => setTimeout(r, 30)); alert('대진을 만들지 못했습니다: ' + err.message); renderWeeklyView(); }
     finally { if (busy) busy.hidden = true; }
@@ -2053,9 +2127,9 @@
     let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date);
     if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? (W.adjust && !closed ? '이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료' : !closed ? '카드를 누르면 완료 표시, 점수 버튼으로 기록 · 조 조정과 다시 섞기는 대진표 비밀번호' : wkDoneOpen(doc) && wkCanWrite() ? `지난 모임 · 완료 표시와 점수 기록은 모임 후 ${WK_DONE_GRACE_DAYS}일까지` : '지난 모임의 대진입니다') : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
     if (!closed) {
-      const stale = sch && sch.inputHash !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s);
-      if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>`;
-      else html += `<div class="row wk-gen"><span class="sub">대진 #${sch.seed}${sch.gen > 1 ? ` (${sch.gen}번째)` : ''}${sch.by ? ' · ' + esc(wkName(doc, sch.by)) : ''}${sch.at ? ' · ' + new Date(sch.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>${stale ? '<span class="warn">참석이 바뀌었습니다</span>' : ''}${stale && left ? `<button id="wk-regen-left" class="primary">${fromSlot > 0 ? '남은 시간대 다시 짜기' : '대진 다시 만들기'}</button>` : ''}<button id="wk-adjust" class="small ${W.adjust ? 'on' : ''}"><svg class="ic"><use href="#i-edit"/></svg>${W.adjust ? '조정 완료' : '조 조정'}</button><button id="wk-reshuffle" class="small" ${W.adjust ? 'disabled' : ''}>다시 섞기</button></div>`;
+      const stale = sch && wkSchHash(sch) !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s); const tyNow = wkTypesOf(doc); const typesOpen = W.typesOpen ?? !!tyNow;
+      if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 참석과 경기 종류가 같으면 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>${att.length >= 4 ? wkTypesHtml(doc) : ''}`;
+      else html += `<div class="row wk-gen"><span class="sub">대진 #${sch.seed}${sch.gen > 1 ? ` (${sch.gen}번째)` : ''}${sch.by ? ' · ' + esc(wkName(doc, sch.by)) : ''}${sch.at ? ' · ' + new Date(sch.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>${stale ? '<span class="warn">참석이 바뀌었습니다</span>' : ''}${stale && left ? `<button id="wk-regen-left" class="primary">${fromSlot > 0 ? '남은 시간대 다시 짜기' : '대진 다시 만들기'}</button>` : ''}<button id="wk-adjust" class="small ${W.adjust ? 'on' : ''}"><svg class="ic"><use href="#i-edit"/></svg>${W.adjust ? '조정 완료' : '조 조정'}</button><button id="wk-reshuffle" class="small" ${W.adjust ? 'disabled' : ''}>다시 섞기</button>${W.adjust ? '' : `<button id="wk-types-toggle" class="small ${typesOpen ? 'on' : ''}" aria-expanded="${typesOpen ? 'true' : 'false'}">경기 종류${tyNow ? ` ${WK_TYPES.filter(([c]) => tyNow[c]).length}/${WK_TYPES.length}` : ''}</button>`}</div>${!W.adjust && typesOpen ? wkTypesHtml(doc) : ''}`;
     }
     if (sch) {
       const ms = [...sch.matches].sort((a, b) => a.slot - b.slot || a.court - b.court); const rc = wkRuleCheck(doc, s, ms);
@@ -2101,10 +2175,12 @@
   const hardFloorOf = (Eq, av, maxG, topEq) => Math.max(Math.min(av, maxG - 2 - Math.max(0, flE(topEq - Eq))), maxG >= 2 ? 1 : 0); // 게스트 보장보다 위인 회원 하한: 전체 최다보다 3경기 이상 뒤지지 않음(최다인 사람이 더 오래 있어 균등 기대가 큰 만큼은 빼 줌) + 누군가 2경기 뛰면 0경기 금지
   const memFloorOf = (E, Eq, av, maxG, topEq) => Math.max(flE(E), hardFloorOf(Eq, av, maxG, topEq)); // 회원 하한 (판 점수·룰 체크·요약표 공통) = 기대의 내림 ∨ 위의 하한
   const topEqOf = (people, gOf, EqOf, maxG) => { const t = people.filter((p) => gOf(p) === maxG).map(EqOf); return t.length ? Math.min(...t) : 0; }; // 최다 경기인 사람들의 균등 기대 중 최소
-  function wkRuleCheck(doc, s, ms) {
+  function wkRuleCheck(doc, s, ms, types) { // types: 아직 저장 전인 판을 잴 때 그 판의 경기 종류 (없으면 대진에 기록된 값)
     const att = doc.attendance || {}; const L = W.index?.levels || {}; const lv = (id) => { const a = att[id]; if (!a) return 0; return Number.isFinite(L[id]) ? L[id] : (Number.isFinite(a.lv) ? a.lv : WK_GUEST_NTRP) - (a.g === 'F' ? 0.5 : 0); };
     const g = (id) => (att[id]?.g === 'F' ? 'F' : 'M'); const nm = (id) => wkName(doc, id); const bad = {}, soft = {}; const issues = [], notes = []; // bad[mid] = 위반, soft[mid] = 참고
     const n = maxSlots(s); const avOk = (id, i) => { const a = att[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; // 시간대 i 에 참석 중
+    const TY = types === undefined ? wkSchTypes(doc.schedule) : types; // 이 대진을 만들 때 뺀 경기 종류 (뺀 종류 때문에 못 만드는 것은 위반으로 세지 않는다)
+    const seatOk = (id, i) => { if (!TY) return true; const av = Object.keys(att).filter((x) => avOk(x, i)); const wn = av.filter((x) => g(x) === 'F').length; return typeSeat(g(id) === 'F', wn, av.length - wn, TY); };
     const flag = (m, why) => { (bad[m.id] ??= []).push(why); }; const note = (m, why) => { (soft[m.id] ??= []).push(why); };
     for (const m of ms) {
       const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2));
@@ -2119,35 +2195,35 @@
     const seen = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) { const k = m.slot + '|' + x; if (seen[k]) { flag(m, `${nm(x.slice(2))} 같은 시간대 중복`); } seen[k] = true; }
     const ffMs = ms.filter((m) => [...m.aIds, ...m.bIds].every((x) => g(x.slice(2)) === 'F')).sort((a, b) => a.slot - b.slot || a.court - b.court); const minFFIds = new Set(ffMs.slice(0, s.minWomenDoubles || 0).map((m) => m.id)); // 최소 여복에 해당하는 코트 (시간순)
     { const slotsOf = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (slotsOf[x.slice(2)] ??= new Set()).add(m.slot); const nS = isFinite(n) ? n : 0; // 도착한 첫 시간대에 쉬는데 이미 뛴 사람이 뛰고 있으면 위반
-      for (const id of Object.keys(att)) { let f = -1; for (let i = 0; i < nS; i++) if (avOk(id, i)) { f = i; break; } if (f < 0 || slotsOf[id]?.has(f)) continue; const ms2 = ms.filter((m) => m.slot === f); if (!ms2.length) continue; const man = g(id) !== 'F'; const early = ms2.filter((m) => !(man && minFFIds.has(m.id))).flatMap((m) => [...m.aIds, ...m.bIds]).map((x) => x.slice(2)).filter((q) => !att[q]?.guest && [...(slotsOf[q] || [])].some((sl) => sl < f)); /* 여복 코트의 이미 뛴 여성 때문에 막 도착한 남자가 쉬는 것은 허용 (여복 우선) */ if (early.length) for (const m of ms2.filter((m) => [...m.aIds, ...m.bIds].some((x) => early.includes(x.slice(2))))) flag(m, `${nm(id)} 도착 직후 휴식 (이미 뛴 ${early.filter((q) => [...m.aIds, ...m.bIds].includes('p:' + q)).map(nm).join('·')} 출전)`); } }
+      for (const id of Object.keys(att)) { let f = -1; for (let i = 0; i < nS; i++) if (avOk(id, i)) { f = i; break; } if (f < 0 || slotsOf[id]?.has(f) || !seatOk(id, f)) continue; const ms2 = ms.filter((m) => m.slot === f); if (!ms2.length) continue; const man = g(id) !== 'F'; const early = ms2.filter((m) => !(man && minFFIds.has(m.id))).flatMap((m) => [...m.aIds, ...m.bIds]).map((x) => x.slice(2)).filter((q) => !att[q]?.guest && [...(slotsOf[q] || [])].some((sl) => sl < f)); /* 여복 코트의 이미 뛴 여성 때문에 막 도착한 남자가 쉬는 것은 허용 (여복 우선) */ if (early.length) for (const m of ms2.filter((m) => [...m.aIds, ...m.bIds].some((x) => early.includes(x.slice(2))))) flag(m, `${nm(id)} 도착 직후 휴식 (이미 뛴 ${early.filter((q) => [...m.aIds, ...m.bIds].includes('p:' + q)).map(nm).join('·')} 출전)`); } }
     const games = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) games[x.slice(2)] = (games[x.slice(2)] || 0) + 1;
     { const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const pc = {}, oc = {}; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); if (A.length === 2) pc[k2(A[0], A[1])] = (pc[k2(A[0], A[1])] || 0) + 1; if (B.length === 2) pc[k2(B[0], B[1])] = (pc[k2(B[0], B[1])] || 0) + 1; const wHere = Object.keys(att).filter((id) => g(id) === 'F' && avOk(id, m.slot)).length; for (const x of A) for (const y of B) { if (g(x) === 'F' && g(y) === 'F' && wHere <= 2) continue; /* 여성이 2명뿐인 시간대의 여성끼리 상대는 피할 수 없음 */ oc[k2(x, y)] = (oc[k2(x, y)] || 0) + 1; } }
       const r3 = [...Object.entries(pc).filter(([, v]) => v >= 3).map(([k, v]) => `${k.split('|').map(nm).join('+')} 같은 팀 ${v}회`), ...Object.entries(oc).filter(([, v]) => v >= 3).map(([k, v]) => `${k.split('|').map(nm).join(' vs ')} 상대 ${v}회`)]; if (r3.length) issues.push(`같은 조합 3회 이상 (조정 권장): ${r3.join(', ')}`); } // 같은 팀·같은 상대 3회 이상은 조정이 필요한 수준
     const pastFrom = wkClosed(doc) ? Infinity : wkFromSlot(doc, s); // 이 시간대 앞은 이미 시작했거나 지난 모임 — 다시 짤 수 없다
-    const slotOn = []; if (isFinite(n)) for (let i = 0; i < n; i++) slotOn[i] = Math.min(courtsAtSlot(s, i), Math.floor(Object.keys(att).filter((id) => avOk(id, i)).length / 4)) >= 1; // 코트가 서는 시간대
-    const avail = (id) => { let c = 0; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i)) c++; return c; }; // 머무는 동안 실제로 뛸 수 있는 시간대 수
+    const slotOn = []; if (isFinite(n)) for (let i = 0; i < n; i++) { const av = Object.keys(att).filter((id) => avOk(id, i)); const wn = av.filter((id) => g(id) === 'F').length; slotOn[i] = typeCap(wn, av.length - wn, courtsAtSlot(s, i), TY) >= 1; } // 코트가 서는 시간대
+    const avail = (id) => { let c = 0; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i) && seatOk(id, i)) c++; return c; }; // 머무는 동안 실제로 뛸 수 있는 시간대 수
     const ids = Object.keys(att); const maxG = ids.length ? Math.max(...ids.map((id) => games[id] || 0)) : 0;
-    if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
+    if (isFinite(n)) for (let i = 0; i < n; i++) { const av = ids.filter((id) => avOk(id, i)); const Wn = av.filter((id) => g(id) === 'F').length, Mn = av.length - Wn; let cap = Math.min(courtsAtSlot(s, i), Math.floor(av.length / 4)); for (; cap >= 1; cap--) { const lo = Math.max(0, 4 * cap - Mn), hi = Math.min(Wn, 4 * cap); if (lo <= hi) break; } if (TY) cap = typeCap(Wn, Mn, courtsAtSlot(s, i), TY); const cnt = ms.filter((m) => m.slot === i).length; if (cnt < cap) (pastFrom > i ? notes : issues).push(`${hhmm(slotStartMin(s, i))} 빈 코트: 참석 ${av.length}명(여 ${Wn})으로 ${cap}경기 가능한데 ${cnt}경기${pastFrom > i ? ' (이미 지난 시간대)' : ''}`); } // 코트 종류(여복 4·혼복 2·잡복 1·남복 0)로 채울 수 있는 코트 수보다 경기가 적으면 위반
     const memIds = ids.filter((id) => !att[id].guest); const gm = (id) => games[id] || 0;
     const sx = seatsOfMatches(ms, (x) => !!att[x]?.guest); const X = expectedGames(ids.map((id) => ({ id, guest: !!att[id].guest, yield: !!att[id].y })), isFinite(n) ? n : 0, (id, i) => avOk(id, i), sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (이 대진의 실제 자리 기준, 게스트 우선) — 공정의 기준: 머문 시간대마다 자리/인원 비율 누적
-    const nyIds = memIds.filter((id) => !att[id].y), ylIds = memIds.filter((id) => att[id].y); const maxM = nyIds.length ? Math.max(...nyIds.map(gm)) : 0; // 양보하지 않은 회원끼리 1경기 차이 이내
+    const nyIds = memIds.filter((id) => !att[id].y), ylIds = memIds.filter((id) => att[id].y); const maxM = Math.max(0, ...ids.filter((id) => !att[id].y).map(gm)); // 양보를 뺀 전 선수(게스트 포함) 1경기 차이 이내
     const topEq = topEqOf(ids, gm, (id) => X.Eq[id] || 0, maxG); const hardOf = (id) => hardFloorOf(X.Eq[id] || 0, avail(id), maxG, topEq); const floorOf = (id) => Math.max(att[id].y ? 0 : Math.min(avail(id), maxM - 1), hardOf(id)); // 회원 하한: 최다 −1(양보 제외), 전체 최다 −2(최다인 사람이 더 오래 있던 만큼은 빼 줌), 누군가 2경기 뛰면 0경기 금지
-    const shortIds = memIds.filter((id) => gm(id) < avail(id) && gm(id) < floorOf(id)); const short = shortIds.map((id) => `${nm(id)} ${gm(id)} (회원 최다 ${maxM}${hardOf(id) > Math.min(avail(id), maxM - 1) ? ` · 최소 ${hardOf(id)}` : ''})`);
-    let memSeats = 0, memCap = 0; if (isFinite(n)) for (let i = 0; i < n; i++) { memSeats += sx.seatsAt(i) - sx.guestSeatsAt(i); memCap += Math.min(sx.seatsAt(i), memIds.filter((id) => avOk(id, i)).length); } const needFloor = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), floorOf(id)) : 0), 0), hardNeed = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), hardOf(id)) : 0), 0); const slack = Math.max(0, needFloor - Math.max(memSeats, Math.min(memCap, hardNeed))); // 하한의 합이 회원 자리보다 많으면(짧게 머무는 사람의 올림 때문) 그만큼은 누군가 1경기 모자랄 수밖에 없다. 회원 자리는 게스트가 쓰고 남은 자리이되, 게스트 보장보다 위인 하한(최다 −2·0경기 금지)만큼은 게스트를 밀어내고라도 확보할 수 있으므로(앉을 수 있는 자리 한도 안에서) 게스트가 다 차지한 판 자체를 '불가피'로 보지 않는다
+    const shortIds = memIds.filter((id) => gm(id) < avail(id) && gm(id) < floorOf(id)); const short = shortIds.map((id) => `${nm(id)} ${gm(id)} (최다 ${maxM}${hardOf(id) > Math.min(avail(id), maxM - 1) ? ` · 최소 ${hardOf(id)}` : ''})`);
+    let memSeats = 0, memCap = 0; if (isFinite(n)) for (let i = 0; i < n; i++) { memSeats += sx.seatsAt(i) - sx.guestSeatsAt(i); memCap += Math.min(sx.seatsAt(i), memIds.filter((id) => avOk(id, i)).length); } const needFloor = memIds.reduce((a, id) => a + (avail(id) >= 1 ? Math.min(avail(id), floorOf(id)) : 0), 0); const slack = Math.max(0, needFloor - Math.max(memSeats, memCap)); // 하한의 합이 회원 자리보다 많으면(짧게 머무는 사람의 올림 때문) 그만큼은 누군가 1경기 모자랄 수밖에 없다. 회원 자리는 게스트가 쓰고 남은 자리이되, 게스트 보장보다 위인 하한(최다 −2·0경기 금지)만큼은 게스트를 밀어내고라도 확보할 수 있으므로(앉을 수 있는 자리 한도 안에서) 게스트가 다 차지한 판 자체를 '불가피'로 보지 않는다
     if (short.length) (shortIds.length <= slack && shortIds.every((id) => gm(id) >= floorOf(id) - 1) ? notes : issues).push(`경기 수 부족: ${short.join(', ')}${shortIds.length <= slack ? ' (자리 수상 불가피)' : ''}`);
     { const yv = ylIds.filter((id) => { const ref = nyIds.filter((q) => avail(q) >= avail(id)).map(gm); return ref.length && gm(id) > 0 && gm(id) >= Math.min(...ref); }).map((id) => `${nm(id)} ${gm(id)}`); if (yv.length) issues.push(`양보한 사람이 가장 적게 뛰지 않음: ${yv.join(', ')}`); } // 양보: 자기만큼(이상) 머문 회원 누구보다 적어야
     { const mixG = {}, allG = {}; let anyW = false; for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); const wa = A.filter((id) => g(id) === 'F').length, wb = B.filter((id) => g(id) === 'F').length; const mixed = wa + wb > 0 && wa + wb < 4; if (wa + wb > 0) anyW = true; for (const id of [...A, ...B]) { allG[id] = (allG[id] || 0) + 1; if (mixed && g(id) !== 'F') mixG[id] = (mixG[id] || 0) + 1; } }
-      const low = anyW ? ids.filter((id) => g(id) !== 'F' && (allG[id] || 0) >= 2 && (mixG[id] || 0) < Math.ceil((allG[id] || 0) / 2)).map((id) => `${nm(id)} ${mixG[id] || 0}/${allG[id]}`) : []; if (low.length) notes.push(`섞인 경기(혼복·잡복)가 절반 미만인 남자: ${low.join(', ')}`); } // 여성이 적은 날은 피할 수 없어 참고로만
+      const low = anyW && (!TY || TY.FM || TY.MIX) ? ids.filter((id) => g(id) !== 'F' && (allG[id] || 0) >= 2 && (mixG[id] || 0) < Math.ceil((allG[id] || 0) / 2)).map((id) => `${nm(id)} ${mixG[id] || 0}/${allG[id]}`) : []; if (low.length) notes.push(`섞인 경기(혼복·잡복)가 절반 미만인 남자: ${low.join(', ')}`); } // 여성이 적은 날은 피할 수 없어 참고로만
     { const canGive = memIds.some((id) => gm(id) >= 2 && gm(id) - 1 >= floorOf(id)); /* 회원 중 하한을 지키면서 자리를 내줄 수 있는 사람이 있는가 — 없으면 게스트가 자리보다 많아 생긴 불가피한 부족 */
-      const gAll = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id))); const gBad = gAll.filter((id) => canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1); const gOk = gAll.filter((id) => !gBad.includes(id)); const fmt = (a) => a.map((id) => `${nm(id)} ${games[id] || 0}`).join(', ');
+      const gAll = ids.filter((id) => att[id].guest && (games[id] || 0) < Math.min(maxG, avail(id))); const gBad = gAll.filter((id) => canGive || (games[id] || 0) < Math.min(maxG, avail(id)) - 1 || (games[id] || 0) < Math.min(avail(id), maxM - 1)); const gOk = gAll.filter((id) => !gBad.includes(id)); const fmt = (a) => a.map((id) => `${nm(id)} ${games[id] || 0}`).join(', ');
       if (gBad.length) issues.push(`게스트가 최다(${maxG})보다 적게 뜀: ${fmt(gBad)}`); if (gOk.length) notes.push(`게스트가 최다(${maxG})보다 1경기 적음: ${fmt(gOk)} (게스트가 자리보다 많아 회원 최소 경기를 지키느라 허용)`); }
-    { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
-    if ((s.minWomenDoubles || 0) >= 1 && ffMs.length < s.minWomenDoubles && isFinite(n)) { let can = false; for (let i = 0; i < n && !can; i++) if (courtsAtSlot(s, i) >= 1 && Object.keys(att).filter((id) => g(id) === 'F' && avOk(id, i)).length >= 4) can = true; if (can) notes.push(`여복 ${ffMs.length}경기 (설정 최소 ${s.minWomenDoubles}) — 여복을 넣으면 누군가 2경기 이상 뒤져서 생략됐습니다. 조 조정으로 직접 만들 수 있습니다`); }
+    { const playedAt = {}; for (const m of ms) for (const x of [...m.aIds, ...m.bIds]) (playedAt[x.slice(2)] ??= new Set()).add(m.slot); const dbl = []; for (const id of ids) { const a = att[id]; const set = playedAt[id] || new Set(); for (let sl = 1; sl < n; sl++) { const av = (i) => { const t0 = slotStartMin(s, i); return toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; if (av(sl - 1) && av(sl) && !set.has(sl - 1) && !set.has(sl) && seatOk(id, sl - 1) && seatOk(id, sl)) { dbl.push(`${nm(id)} ${hhmm(slotStartMin(s, sl - 1))}~`); break; } } } if (dbl.length) notes.push(`연속 2회 휴식: ${dbl.join(', ')} (경기 수 균등을 위해 허용)`); }
+    if ((s.minWomenDoubles || 0) >= 1 && ffMs.length < s.minWomenDoubles && isFinite(n) && (!TY || TY.FF)) { let can = false; for (let i = 0; i < n && !can; i++) if (courtsAtSlot(s, i) >= 1 && Object.keys(att).filter((id) => g(id) === 'F' && avOk(id, i)).length >= 4) can = true; if (can) notes.push(`여복 ${ffMs.length}경기 (설정 최소 ${s.minWomenDoubles}) — ${TY ? '고른 경기 종류로 코트를 채우다 보니' : '여복을 넣으면 누군가 2경기 이상 뒤져서'} 생략됐습니다. 조 조정으로 직접 만들 수 있습니다`); }
     for (const m of ms) if (bad[m.id]) issues.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${bad[m.id].join(' · ')}`);
     for (const m of ms) if (soft[m.id]) notes.push(`${hhmm(slotStartMin(s, m.slot))} ${wkCourtLabel(s, m.court, m.slot)}코트 — ${soft[m.id].join(' · ')}`);
-    { const men = ids.filter((id) => g(id) !== 'F').sort((a, b) => lv(b) - lv(a)); if (men.length >= 4) { const th = lv(men[3]); let feasible = false; if (isFinite(n)) for (let i = 0; i < n && !feasible; i++) if (courtsAtSlot(s, i) >= 1 && men.filter((id) => lv(id) >= th && avOk(id, i)).length >= 4) feasible = true; // 어떤 시간대에 th 이상 남자 4명이 함께 있어야 성립
+    { const men = ids.filter((id) => g(id) !== 'F').sort((a, b) => lv(b) - lv(a)); if (men.length >= 4 && (!TY || TY.MM)) { const th = lv(men[3]); let feasible = false; if (isFinite(n)) for (let i = 0; i < n && !feasible; i++) if (courtsAtSlot(s, i) >= 1 && men.filter((id) => lv(id) >= th && avOk(id, i)).length >= 4) feasible = true; // 어떤 시간대에 th 이상 남자 4명이 함께 있어야 성립
       const top = ms.find((m) => { const all = [...m.aIds, ...m.bIds].map((x) => x.slice(2)); if (!all.every((id) => att[id] && g(id) !== 'F' && lv(id) >= th)) return false; const lo = Math.min(...all.map(lv)); return men.every((id) => lv(id) <= lo || all.includes(id) || !avOk(id, m.slot)); }); // 그 시간대에 있는 더 높은 남자는 전원 포함 = 그 시간대의 최상위 4명
-      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${wkCourtLabel(s, top.court, top.slot)}코트` : feasible ? '상위 남복 없음 (다시 섞기로 만들 수 있음)' : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
+      notes.push(top ? `상위 남복 있음: ${hhmm(slotStartMin(s, top.slot))} ${wkCourtLabel(s, top.court, top.slot)}코트` : feasible ? (TY ? '상위 남복 없음 (고른 경기 종류로는 만들기 어려울 수 있음)' : '상위 남복 없음 (다시 섞기로 만들 수 있음)') : '상위 남복 불가 (상위 남자 4명이 같은 시간대에 없음)'); } }
     return { bad, issues, notes };
   }
   /** 인당 경기 수 요약 (접기) */
@@ -2162,9 +2238,9 @@
     const oppHtml = !document.body.classList.contains('editor') ? '' : `<details class="wk-opp"><summary>같은 팀·상대 횟수 <span class="sub">(이름 뒤 숫자 = 횟수, 2회는 굵게, 3회 이상은 빨강 = 조정 권장)</span></summary><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>같은 팀이 된 사람 (횟수)</th><th>상대한 사람 (횟수)</th></tr></thead><tbody>${rows.map((p) => { const r = rel[p.id] || { p: {}, o: {} }; return `<tr><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b></td><td class="list">${listOf(r.p)}</td><td class="list">${listOf(r.o)}</td></tr>`; }).join('')}</tbody></table></div></details>`;
     const cnts = rows.map((p) => games[p.id] || 0); const mn = Math.min(...cnts), mx = Math.max(...cnts);
     const n = maxSlots(s); const avOk = (id, i) => { const a = doc.attendance[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; const sx = seatsOfMatches(ms, (x) => !!doc.attendance[x]?.guest); const X = expectedGames(att.map((p) => ({ id: p.id, guest: !!p.guest, yield: !!p.yield })), isFinite(n) ? n : 0, avOk, sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적)
-    const slotOn = []; if (isFinite(n)) for (let i = 0; i < n; i++) slotOn[i] = Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => avOk(p.id, i)).length / 4)) >= 1; const avail = (id) => { let c = 0; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i)) c++; return c; }; const maxG = Math.max(0, ...att.map((p) => games[p.id] || 0)); const topEq = topEqOf(att, (p) => games[p.id] || 0, (p) => X.Eq[p.id] || 0, maxG); const nyAtt = att.filter((p) => !p.guest && !p.yield); const maxM = nyAtt.length ? Math.max(...nyAtt.map((p) => games[p.id] || 0)) : 0; const isLow = (p, gN) => gN < avail(p.id) && gN < Math.max(p.yield ? 0 : Math.min(avail(p.id), maxM - 1), hardFloorOf(X.Eq[p.id] || 0, avail(p.id), maxG, topEq)); const isHi = (p, gN) => { if (!p.yield) return false; const ref = nyAtt.filter((q) => avail(q.id) >= avail(p.id)).map((q) => games[q.id] || 0); return ref.length > 0 && gN > 0 && gN >= Math.min(...ref); }; // 룰 체크의 '경기 수 부족'·'양보 위반'과 같은 기준
+    const TY = wkSchTypes(doc.schedule); const slotOn = []; const slotW = [], slotM = []; if (isFinite(n)) for (let i = 0; i < n; i++) { const av = att.filter((p) => avOk(p.id, i)); const wn = av.filter((p) => p.gender === 'F').length; slotW[i] = wn; slotM[i] = av.length - wn; slotOn[i] = typeCap(wn, av.length - wn, courtsAtSlot(s, i), TY) >= 1; } const avail = (id) => { let c = 0; const fe = att.find((p) => p.id === id)?.gender === 'F'; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i) && typeSeat(fe, slotW[i], slotM[i], TY)) c++; return c; }; const maxG = Math.max(0, ...att.map((p) => games[p.id] || 0)); const topEq = topEqOf(att, (p) => games[p.id] || 0, (p) => X.Eq[p.id] || 0, maxG); const nyAtt = att.filter((p) => !p.guest && !p.yield); const maxM = Math.max(0, ...att.filter((p) => !p.yield).map((p) => games[p.id] || 0)); const isLow = (p, gN) => gN < avail(p.id) && gN < Math.max(p.yield ? 0 : Math.min(avail(p.id), maxM - 1), hardFloorOf(X.Eq[p.id] || 0, avail(p.id), maxG, topEq)); const isHi = (p, gN) => { if (!p.yield) return false; const ref = nyAtt.filter((q) => avail(q.id) >= avail(p.id)).map((q) => games[q.id] || 0); return ref.length > 0 && gN > 0 && gN >= Math.min(...ref); }; // 룰 체크의 '경기 수 부족'·'양보 위반'과 같은 기준
     const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && isHi(p, gN) ? 'hi' : ''} ${!p.guest && isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b>${p.yield ? ' <span class="ymark">양보</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>${oppHtml}</div>`;
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && isHi(p, gN) ? 'hi' : ''} ${isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b>${p.yield ? ' <span class="ymark">양보</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>${oppHtml}</div>`;
   }
   // ================= 코트 예약 현황 (data/courts.json — 월별 표, 누구나 보기 · 수정은 대진표 비밀번호 또는 관리자) =================
   // ---- 아래 두 함수는 tools/gas-proxy/Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
@@ -2524,6 +2600,8 @@
     if (t.closest('#wk-gen')) { await wkGenerate('full'); return; }
     if (t.closest('#wk-regen-left')) { await wkGenerate('left'); return; }
     if (t.closest('#wk-reshuffle')) { await wkGenerate('reshuffle'); return; }
+    if (t.closest('#wk-types-toggle')) { W.typesOpen = !(W.typesOpen ?? !!(W.doc && wkTypesOf(W.doc))); renderWeeklyView(); return; }
+    { const b = t.closest('[data-wk-type]'); if (b && W.doc) { const ty = wkTypesOf(W.doc); const on = WK_TYPES.map(([c]) => c).filter((c) => !ty || ty[c]); const c = b.dataset.wkType; const next = on.includes(c) ? on.filter((x) => x !== c) : WK_TYPES.map(([k]) => k).filter((k) => k === c || on.includes(k)); if (!next.length) { toast('경기 종류를 하나 이상 남겨 주세요'); return; } if (W.typesOpen == null) W.typesOpen = true; wkTypesSave(W.doc, next); renderWeeklyView(); return; } }
     const fb = t.closest('[data-wk-filter]'); if (fb) { W.filter = fb.dataset.wkFilter; renderWeeklyView(); return; }
     if (t.closest('#wk-adjust')) { if (W.adjust) { W.adjust = false; W.pick = null; renderWeeklyView(); return; } if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; if (!(await wkRequireAuth())) return; W.adjust = true; W.pick = null; renderWeeklyView(); return; } // 비밀번호 한 번 → 여러 조를 고친 뒤 '조정 완료'
     if (t.closest('[data-wk-pick-close]')) { W.pick = null; renderWeeklyView(); return; }
@@ -2571,9 +2649,10 @@
   async function wkDeleteSession(id) {
     if (!SESSION_RE.test(id)) return;
     const d = W.id === id ? W.doc : (W.cache[id] || null); const n = d ? Object.keys(d.attendance || {}).length : null;
-    if (!confirm(`${fmtDate(id)} 모임을 목록에서 뺄까요?${n ? `\n참석 ${n}명의 체크·대진·완료 기록은 저장소 파일에 그대로 남고, 같은 날짜를 다시 만들면 되살아납니다.` : ''}`)) return;
-    const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 목록에서 제외`);
-    if (!ok) return; // 세션 파일(기록)은 지우지 않는다 — 목록에서만 빠지고, 이력 반영에서도 제외. 같은 날짜를 다시 만들면 기존 파일을 그대로 쓴다
+    if (!confirm(`${fmtDate(id)} 모임을 목록에서 뺄까요?${n ? `\n참석 ${n}명의 체크·대진·완료 기록은 저장소 파일에 그대로 남습니다. 같은 날짜를 다시 만들면 새로 비웁니다.` : ''}`)) return;
+    const day = id.slice(0, 10), today = ymdOf(); const played = (st) => { if (day < today) return true; if (day > today) return false; if (!st) return true; const now = new Date(); return now.getHours() * 60 + now.getMinutes() >= toMin(st); }; // 이미 한 모임만 과거 대진으로 남긴다 (오늘이라도 시작 전이면 취소). 시작 시각은 목록 항목에서 읽는다 (화면에 안 불러온 모임도 같게)
+    const ok = await dataAdminUpdate('weekly/index.json', (cur) => { const idx = cur && typeof cur === 'object' ? cur : { v: 1, sessions: [] }; const ent = (idx.sessions || []).find((x) => x.id === id); idx.sessions = (idx.sessions || []).filter((x) => x.id !== id); if (played(ent?.startTime || (d ? wkSettings(d).startTime : ''))) idx.past = [...new Set([...(idx.past || []), id])].sort().slice(-WK_HIST_MAX * 3); idx.updatedAt = new Date().toISOString(); return idx; }, `정기 모임 ${id} 목록에서 제외`);
+    if (!ok) return; // 세션 파일(기록)은 지우지 않는다 — 목록에서만 빠진다. 이미 한 모임이면 past 에 남겨 다음 대진이 과거 대진으로 참조한다 (아직 안 한 모임을 빼는 건 취소라 남기지 않음)
     delete wkFresh[`weekly/sessions/${id}.json`]; await wkProxyRefresh(id);
     delete W.cache[id]; if (W.id === id) { W.id = null; W.doc = null; W.srvRev = -1; } toast(`${fmtDate(id)} 모임을 목록에서 뺐습니다 (기록은 남음)`); await weeklyRefresh();
   }
@@ -2613,8 +2692,8 @@
     } finally { btn.disabled = false; btn.innerHTML = label; }
   });
   /** 레벨 산출: NTRP(관리자 키로 복호화된 값), 여성은 −0.5 보정. 누구나 대진을 만들 수 있으려면 이 값이 공개 파일(index.json)에 있어야 한다 — 화면에는 표시하지 않는다 */
-  const WK_GUEST_NTRP = 3.5; // 레벨을 모르는 참석자(게스트·NTRP 미입력)는 3.5 로 간주 (여성은 −0.5 → 3.0)
-  const wkLevelOf = (p) => { const v = W.index?.levels?.[p.id]; if (Number.isFinite(v)) return v; const raw = Number.isFinite(p.lv) ? p.lv : WK_GUEST_NTRP; return raw - (p.gender === 'F' ? 0.5 : 0); }; // 회원: 레벨 갱신값(이미 여성 −0.5) · 게스트: 참석 입력 NTRP(없으면 3.5) 에서 여성 −0.5
+  const WK_GUEST_NTRP = 3.5; // 레벨을 모르는 참석자(게스트·구력 모름)는 3.5 로 간주 (여성은 −0.5 → 3.0)
+  const wkLevelOf = (p) => { const v = W.index?.levels?.[p.id]; if (Number.isFinite(v)) return v; const raw = Number.isFinite(p.lv) ? p.lv : WK_GUEST_NTRP; return raw - (p.gender === 'F' ? 0.5 : 0); }; // 회원: 레벨 갱신값(이미 여성 −0.5) · 게스트: 입력한 구력을 환산한 값(lv, 없으면 3.5) 에서 여성 −0.5
   function wkLevelsFromPlayers() {
     const out = {};
     for (const p of state.players) { const v = parseFloat(ntrp.get(p.id)); if (!Number.isFinite(v) || v <= 0) continue; out[p.id] = Math.round((v - (p.gender === 'F' ? 0.5 : 0)) * 100) / 100; }
