@@ -2,6 +2,15 @@
  "v": 1,
  "sessions": [
   {
+   "id": "2026-11-13",
+   "date": "2026-11-13",
+   "courts": 2,
+   "matchMinutes": 30,
+   "startTime": "20:00",
+   "endTime": "22:00",
+   "courtsLabel": "코트 2면"
+  },
+  {
    "id": "2026-11-12",
    "date": "2026-11-12",
    "courts": 3,
@@ -12,7 +21,7 @@
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-11-07T01:25:37.935Z",
+ "updatedAt": "2026-11-07T01:25:49.379Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
