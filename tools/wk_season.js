@@ -9,7 +9,7 @@ const { T, analyze, nSlots, avail } = require('./wk_harness.js');
 const ROOT = path.join(__dirname, '..'); const arg = (k, d) => { const i = process.argv.indexOf(k); return i >= 0 ? process.argv[i + 1] : d; }; const has = (k) => process.argv.includes(k);
 const useHist = !has('--nohist'), asbuilt = has('--asbuilt'); const gens = String(arg('--gens', '1')).split(',').map(Number); const from = arg('--from', '2026-10-01');
 const levels = JSON.parse(fs.readFileSync(path.join(ROOT, 'data/weekly/index.json'), 'utf8')).levels || {};
-const docs = fs.readdirSync(path.join(ROOT, 'data/weekly/sessions')).filter((f) => f.endsWith('.json')).sort().map((f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data/weekly/sessions', f), 'utf8'))).filter((d) => d.date >= from && d.schedule?.matches?.length && Object.keys(d.attendance || {}).length >= 4);
+const docs = fs.readdirSync(path.join(ROOT, 'data/weekly/sessions')).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).sort() /* 정기 모임만 (대회 <날짜>t.json 제외) */.map((f) => JSON.parse(fs.readFileSync(path.join(ROOT, 'data/weekly/sessions', f), 'utf8'))).filter((d) => d.date >= from && d.schedule?.matches?.length && Object.keys(d.attendance || {}).length >= 4);
 const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const mem = (x) => !x.startsWith('g:'); const days = (a, b) => (Date.parse(a) - Date.parse(b)) / 86400000;
 function levelOf(d, id) { const v = levels[id]; if (Number.isFinite(v)) return v; const a = d.attendance[id]; return (Number.isFinite(a?.lv) ? a.lv : 3.5) - (a?.g === 'F' ? 0.5 : 0); }
 function measure(chain) {

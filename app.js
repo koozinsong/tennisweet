@@ -107,7 +107,7 @@
   function updateCover() {
     const live = liveTournament(); const s = state.settings;
     $('#cover-name').textContent = live ? (s.name || '테니스윗 대회') : '테니스윗';
-    $('#cover-meta').textContent = live ? [s.date, `${state.schedule.matches.filter((m) => !m.bye).length}경기`, modeLabel()].filter(Boolean).join(' · ') : (T.index?.events?.length ? `지난 대회 ${T.index.events.length}회` : '');
+    $('#cover-meta').textContent = live ? [s.date, `${(state.schedule?.matches || []).filter((m) => !m.bye).length}경기`, modeLabel()].filter(Boolean).join(' · ') : coverTourMeta();
     const tb = $('#cover-tour'); if (tb) { tb.dataset.go = live ? 'schedule' : 'tournament'; $('#cover-tour-text').textContent = live ? '경기 일정표' : '대회'; tb.querySelector('use')?.setAttribute('href', live ? '#i-court' : '#i-trophy'); }
     wkUpdateCover();
   }
@@ -116,10 +116,10 @@
   $('#cover')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-go]'); if (!b) return;
     if (b.dataset.go === 'admin') { adminLogin(); return; }
-    showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + b.dataset.go);
+    showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + (b.dataset.go === 'tournament' && T.open ? 'tournament/' + T.open : b.dataset.go)); // 열어 둔 대회가 있으면 링크 복사·새로고침이 그 대회로
   });
   /** 다른 사람에게 보낼 주소: 지금 보는 탭까지 담고, 관리자 페이지·검색어·공유 스냅샷은 뺀다 (홈 화면 앱은 주소창이 없어 이 버튼으로만 복사할 수 있다) */
-  function shareLinkUrl() { const u = new URL(location.href); u.search = ''; u.pathname = u.pathname.replace(/(admin|index|app)\.html$/, ''); u.hash = /^#(weekly|courts|tournament|schedule|standings|players)$/.test(location.hash) && !document.body.classList.contains('cover-on') ? location.hash : ''; return u.href; }
+  function shareLinkUrl() { const u = new URL(location.href); u.search = ''; u.pathname = u.pathname.replace(/(admin|index|app)\.html$/, ''); u.hash = /^#(weekly|courts|tournament|schedule|standings|players|tournament\/\d{4}-\d{2}-\d{2}t)$/.test(location.hash) && !document.body.classList.contains('cover-on') ? location.hash : ''; return u.href; }
   async function copyShareLink() { const url = shareLinkUrl(); let ok = false; try { await navigator.clipboard.writeText(url); ok = true; } catch { try { const ta = document.createElement('textarea'); ta.value = url; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, url.length); ok = document.execCommand('copy'); ta.remove(); } catch {} } if (ok) toast(`링크를 복사했습니다 · ${url.replace(/^https?:\/\//, '')}`); else prompt('아래 주소를 길게 눌러 복사하세요', url); } // 클립보드 권한이 없으면 예전 방식으로, 그것도 안 되면 직접 복사하도록 보여 준다
   document.addEventListener('click', (e) => { if (e.target.closest?.('[data-copy-link]')) copyShareLink(); });
   $('#btn-home')?.addEventListener('click', () => { showCover(true); history.replaceState(null, '', location.pathname); });
@@ -131,6 +131,8 @@
   function showTab(name) {
     $$('.tabs button').forEach((b) => { const on = b.dataset.tab === name || TAB_GROUP[name] === b.dataset.tab; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $$('.tab').forEach((t) => t.classList.toggle('active', t.id === 'tab-' + name));
+    if (name === 'weekly' && W.kind === 'tour') wkUse('weekly'); // 정기 모임 화면을 정기 모임 탭으로 되돌린다
+    if (name === 'tournament' && T.open) wkUse('tour', T.open); // 열어 둔 대회가 있으면 그 화면을 대회 탭으로
     render();
     if (name === 'weekly') weeklyRefresh(); if (name === 'tournament') tournamentRefresh(); if (name === 'courts') courtsRefresh();
   }
@@ -452,7 +454,7 @@
     return (from == null || from <= t0) && (until == null || until >= t1);
   }
   /** 팀전: 시간대마다 코트별로 팀 대 팀 복식 1경기. 대전 횟수 적은 팀끼리, 경기 수 적은 선수부터, 파트너 중복 최소 */
-  function generateTeam(s, teams, seed = newSeed()) {
+  function generateTeam(s, teams, seed = newSeed(), opts = null) { // opts (정기 모임식 대회): { fromSlot, fixed:[{ slot, court, aId, bId, aPlayers, bPlayers }], hist:{ 'a|b': 지난 대회 같은 조 무게 } }
     seedRng(seed);
     if (teams.length < 2) throw new Error('팀이 2개 이상 필요합니다.');
     const n = maxSlots(s); if (!isFinite(n)) throw new Error('팀전은 종료 시각이 필요합니다 (대회 설정).');
@@ -460,12 +462,17 @@
     const played = {}, lastPlayed = {}, partner = {}, opp = {}, meet = {}, fmCnt = {}, mmCnt = {}, playedSlots = {};
     const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
     teams.forEach((t) => t.playerIds.forEach((id) => { played[id] = 0; lastPlayed[id] = -1; fmCnt[id] = 0; mmCnt[id] = 0; playedSlots[id] = new Set(); }));
-    let ffDone = 0; const minFF = s.minWomenDoubles || 0;
+    let ffDone = 0; const minFF = s.minWomenDoubles || 0; const maxFF = Number.isInteger(s.maxWomenDoubles) ? s.maxWomenDoubles : null; const hp = opts?.hist || null;
+    for (const m of opts?.fixed || []) { // 이미 시작한 시간대의 경기: 카운터에만 반영 (결과에는 넣지 않음)
+      const A = m.aPlayers, B = m.bPlayers; if (!A || !B || A.length !== 2 || B.length !== 2 || ![...A, ...B].every((id) => id in played)) continue;
+      meet[key(m.aId, m.bId)] = (meet[key(m.aId, m.bId)] || 0) + 1; [A, B].forEach(([x, y]) => { partner[key(x, y)] = (partner[key(x, y)] || 0) + 1; }); for (const u of A) for (const v of B) opp[key(u, v)] = (opp[key(u, v)] || 0) + 1;
+      const tpm = pairType(A[0], A[1]); if (tpm === 'FF') ffDone++; [...A, ...B].forEach((id) => { played[id]++; lastPlayed[id] = Math.max(lastPlayed[id], m.slot); playedSlots[id].add(m.slot); if (tpm === 'FM') fmCnt[id]++; else if (tpm === 'MM') mmCnt[id]++; });
+    }
     const matches = [];
-    for (let slot = 0; slot < n; slot++) {
+    for (let slot = opts?.fromSlot | 0; slot < n; slot++) {
       const usedP = new Set(); const usedT = {};
       const availOf = (t) => t.playerIds.filter((id) => !usedP.has(id) && playerById(id) && playerAvailable(playerById(id), s, slot));
-      for (let c = 1; c <= s.courts; c++) {
+      for (let c = 1; c <= courtsAtSlot(s, slot); c++) {
         // 각 팀의 후보 조(경기 수 적은 선수 우선, 파트너 중복 벌점) → 남복/여복/혼복 종류가 같은 조합만 허용
         const restedLast = (id) => slot > 0 && lastPlayed[id] < slot - 1 && playerAvailable(playerById(id), s, slot - 1); // 직전 시간대 휴식 → 최우선
         const twoInRow = (id) => slot >= 2 && playedSlots[id].has(slot - 1) && playedSlots[id].has(slot - 2); // 3연속 방지
@@ -477,7 +484,7 @@
             const tp = pairType(cand[i], cand[j]);
             // 남복·혼복 골고루: 이 종류를 이미 많이 한 남성이면 벌점, 적게 했으면 가점
             const mix = [cand[i], cand[j]].filter((id) => gOf(id) === 'M').reduce((c, id) => c + (tp === 'FM' ? fmCnt[id] - mmCnt[id] : tp === 'MM' ? mmCnt[id] - fmCnt[id] : 0), 0) * 4;
-            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 40 + mix + (twoInRow(cand[i]) ? 10 : 0) + (twoInRow(cand[j]) ? 10 : 0) - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) });
+            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * 40 + (hp ? (hp[key(cand[i], cand[j])] || 0) * 60 : 0) + mix + (twoInRow(cand[i]) ? 10 : 0) + (twoInRow(cand[j]) ? 10 : 0) - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) }); // hp: 지난 대회에서 같은 조였던 짝은 피한다
           }
           return out;
         };
@@ -490,7 +497,7 @@
             if (x.type !== y.type) continue;
             const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 25; // NTRP 균형(기본)
             let oppCost = 0; for (const u of x.p) for (const v of y.p) oppCost += 30 * (opp[key(u, v)] || 0); // 같은 상대 반복 회피
-            const cost = teamCost + x.cost + y.cost + balCost + oppCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0); // 여복 부족하면 여복 우선
+            const cost = teamCost + x.cost + y.cost + balCost + oppCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0) + (x.type === 'FF' && maxFF != null && ffDone >= maxFF ? 500 : 0); // 여복 부족하면 여복 우선, 여복 경기 수를 채웠으면 여복은 다른 방법이 없을 때만
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
         }
@@ -655,6 +662,7 @@
     const st = state.settings, nSl = maxSlots(st); let cap = 0; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) cap += hookCap(activePlayers().filter((p) => playerAvailable(p, st, sl)), courtsAtSlot(st, sl)); // 코트 수 상한 (시도 간 상수) → 경기 수가 적은 판은 크게 불리
     const missing = Math.max(0, cap - sch.matches.length);
     const ffCnt = sch.matches.filter((m) => [...ids(m.aIds || [m.aId]), ...ids(m.bIds || [m.bId])].every((x) => gOf(x) === 'F')).length; const ffShort = Math.max(0, (st.minWomenDoubles || 0) - ffCnt); // 여복 최소 미달
+    const ffOver = GEN_HOOK && GEN_HOOK.ffMax != null ? Math.max(0, ffCnt - GEN_HOOK.ffMax) : 0; // 대회: 입력한 여복 경기 수를 넘는 여복 (빈 코트·경기 수 공정·도착 우선보다는 아래)
     let spread, loss = 0, guestLoss = 0, memFar = 0, devL1 = 0, yieldOver = 0, gapOver = 0; if (GEN_HOOK) { // 정기 모임: 전원 경기 수를 같게 (일찍 와서 더 뛴 사람은 공유 시간대에서 양보). 참석 시간대를 다 뛴 사람은 상한이라 제외
       const ps = activePlayers(); const g = (p) => games[p.id] || 0;
       const playable = []; if (isFinite(nSl)) for (let sl = 0; sl < nSl; sl++) playable[sl] = hookCap(ps.filter((p) => playerAvailable(p, st, sl)), courtsAtSlot(st, sl)) >= 1; // 코트가 서는 시간대 (4명 이상 + 코트 1면 이상)
@@ -685,7 +693,7 @@
     let typeVar = 0, mixShort = 0; if (GEN_HOOK && !SCORE_LIGHT) { const bits = (b) => ((b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1)) || 1; const kF = bits(tgF), kM = bits(tgM); for (const x in tcnt) { const r = tcnt[x]; const g = r[0] + r[1] + r[2]; const k = gOf(x) === 'F' ? kF : kM; typeVar += Math.max(0, Math.max(r[0], r[1], r[2]) - Math.ceil(g / k)); if (gOf(x) !== 'F' && (tgM & 2)) mixShort += Math.max(0, Math.ceil(g / 2) - r[1]); } } // mixShort: 남자마다 섞인 경기(혼복·잡복)가 경기 수의 절반에 못 미치는 만큼 — 여성이 적은 날은 잡복으로 흩어서라도 채운다 (잡복 1000 보다 작지만 사람 수만큼 쌓인다) // 종류 골고루: 한 사람이 한 종류(여복·혼복·남복·잡복)에 몰린 경기 수 — 그 성별이 이 판에서 실제로 하는 종류 수로 나눈 몫을 넘는 만큼 (소프트)
     let banned = 0; const TY = GEN_HOOK && GEN_HOOK.types; if (TY) for (const m of sch.matches) { const A = ids(m.aIds), B = ids(m.bIds); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (!TY[wa + wb === 4 ? 'FF' : wa + wb === 0 ? 'MM' : wa === 1 && wb === 1 ? 'FM' : 'MIX']) banned++; } // 뺀 경기 종류: 어떤 규칙보다 앞선다 (이미 시작한 시간대의 경기는 시도 간 상수)
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return banned * 1e7 + (GEN_HOOK ? menBad * (300 + HUP / 3) : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * (300 + HUP) + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + gapOver * 6e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 + 4.5 * HUP : 150) + rep(oc) * (100 + 0.3 * HUP) + rep(pc) * ((GEN_HOOK ? 300 : 100) + 0.7 * HUP) + histCost + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * (3000 + 2.5 * HUP) + ntrpDiff * 120 + fm15 * 6 * HUP + same15 * 6 * HUP + sameBig * (800 + 2.5 * HUP) + fmBig * (400 + HUP / 2) + topMiss * (1500 + 2.5 * HUP) + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return banned * 1e7 + (GEN_HOOK ? menBad * (300 + HUP / 3) : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * (300 + HUP) + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + ffOver * 2.5e4 + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + gapOver * 6e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 + 4.5 * HUP : 150) + rep(oc) * (100 + 0.3 * HUP) + rep(pc) * ((GEN_HOOK ? 300 : 100) + 0.7 * HUP) + histCost + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * (3000 + 2.5 * HUP) + ntrpDiff * 120 + fm15 * 6 * HUP + same15 * 6 * HUP + sameBig * (800 + 2.5 * HUP) + fmBig * (400 + HUP / 2) + topMiss * (1500 + 2.5 * HUP) + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   /** 그 시간대 사람들로 세울 수 있는 코트 수: 기본은 인원 ÷ 4, 경기 종류를 뺐으면 그 종류로 담을 수 있는 만큼 */
@@ -826,7 +834,8 @@
           for (let t = forceFF ? 4 : 0; t <= Wav.length; t++) { if (need - t < 0 || need - t > Mav.length) continue;
             for (const asFF of (ffPossible && t >= 4 ? [false, true] : [false])) { const plan = typePlan(t, kSel, TYPES, asFF); if (!plan || (asFF && !plan.ff) || (forceFF && !plan.ff)) continue;
               const M = Mav.slice(0, need - t).map((p) => p.id); const sum = Wav.slice(0, t).reduce((a, p) => a + score(p), 0) + M.reduce((a, id) => a + score(playerById(id)), 0);
-              cands.push({ t, asFF, M, plan, sum: sum - (asFF ? (forceFF ? 1e9 : 150) : 0) + (TYPES.FM && t % 2 ? 300 : 0) + plan.mix3 * 60, dist: Math.abs(t - ideal) }); } }
+              const ffEx = GEN_HOOK.ffMax != null ? Math.max(0, ffDone + plan.ff - GEN_HOOK.ffMax) : 0; // 대회: 여복 경기 수를 넘기는 분할은 다른 방법이 없을 때만
+              cands.push({ t, asFF, M, plan, sum: sum - (asFF ? (forceFF ? 1e9 : 150) : 0) + (TYPES.FM && t % 2 ? 300 : 0) + plan.mix3 * 60 + ffEx * 3000, dist: Math.abs(t - ideal) }); } }
         } else
         for (let t = ffForce ? 4 : 0; t <= Wav.length; t += mixOk ? 1 : 2) {
           if (need - t < 0 || need - t > Mav.length) continue;
@@ -1664,10 +1673,78 @@
       for (const e of list) { const m = e && next.find((x) => x.id === e.id); if (!m || ![e.aIds, e.bIds].every((a) => Array.isArray(a) && a.length === 2 && a.every(okId))) return { code: 'INVALID' }; if (new Set([...e.aIds, ...e.bIds]).size !== 4) return { code: 'INVALID' }; m.aIds = [e.aIds[0], e.aIds[1]]; m.bIds = [e.bIds[0], e.bIds[1]]; }
       for (const e of list) { const m = next.find((x) => x.id === e.id); const seen = new Set(); for (const x of next) { if (x.slot !== m.slot) continue; for (const id of [...x.aIds, ...x.bIds]) { if (seen.has(id)) return { code: 'INVALID' }; seen.add(id); } } }
       doc.schedule.matches = next; doc.results = doc.results || {}; for (const e of list) delete doc.results[e.id]; // 조가 바뀐 경기의 점수는 지운다 (완료 표시는 그대로)
+    } else if (op.op === 'tour-set') { // 대회 정보 수정 (대진표 비밀번호): 이름·방식·팀 수·팀 이름·회식·팀 구성·시간·코트. 시간·코트·방식·팀 수가 바뀌면 대진·완료·점수를 비운다 (팀 구성·이름·회식만 바꾸면 그대로)
+      if (!TOUR_ID_RE.test(String(doc.id || '')) || !doc.tour || typeof doc.tour !== 'object') return { code: 'INVALID' };
+      if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
+      const v = op.value; if (!v || typeof v !== 'object' || Array.isArray(v)) return { code: 'INVALID' };
+      const cur = doc.tour; const has = (k) => Object.prototype.hasOwnProperty.call(v, k); const pick = (k) => (has(k) ? v[k] : cur[k]);
+      const sameShape = pick('mode') === cur.mode && (cur.mode === 'rotation' || pick('teamCount') === cur.teamCount); // 방식·팀 수가 그대로면 팀 구성을 유지 (개인전은 팀 수를 보지 않는다)
+      const meta = tourMeta({ name: pick('name'), mode: pick('mode'), teamCount: pick('teamCount'), teamNames: pick('teamNames'), venue: pick('venue'), teams: has('teams') ? v.teams : sameShape ? cur.teams : null }); if (!meta) return { code: 'INVALID' };
+      let st = doc.settings || {}; if (has('settings')) { st = tourSettings(v.settings); if (!st) return { code: 'INVALID' }; }
+      const shape = (s) => [s.startTime, s.endTime, s.matchMinutes, s.courts, JSON.stringify(s.courtsByHour || null)].join('|');
+      const reset = !sameShape || shape(st) !== shape(doc.settings || {});
+      doc.tour = meta; doc.settings = st; if (reset) { doc.schedule = null; doc.done = {}; doc.results = {}; }
+    } else if (op.op === 'tour-archive') { // 결과 보관 (대진표 비밀번호): true = 대회를 닫아 점수·참가·대진을 더 고칠 수 없게, false = 보관 취소. 둘 다 대회 후 7일 안 (closed 규칙)
+      if (!TOUR_ID_RE.test(String(doc.id || '')) || !doc.tour || typeof doc.tour !== 'object' || typeof op.value !== 'boolean' || doc.deleted) return { code: 'INVALID' }; // 목록에서 뺀 대회(deleted)는 보관·취소 불가
+      if ((op.base | 0) !== (doc.rev | 0)) return { code: 'STALE' };
+      if (op.value && !(doc.schedule && Array.isArray(doc.schedule.matches) && doc.schedule.matches.length)) return { code: 'INVALID' }; // 대진이 있어야 보관
+      doc.status = op.value ? 'closed' : 'open'; if (op.value) doc.archivedAt = new Date().toISOString(); else delete doc.archivedAt;
     } else return { code: 'INVALID' };
     doc.rev = (doc.rev | 0) + 1; doc.updatedAt = new Date().toISOString();
     return { ok: true };
   }
+  // ---- 대회: 정기 모임과 같은 세션 파일에 대회 정보(doc.tour)를 더한 것. 아래 함수들은 Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
+  const TOUR_ID_RE = /^\d{4}-\d{2}-\d{2}t$/; // 대회 id = 날짜 + 't' (같은 날 정기 모임 파일과 겹치지 않게)
+  const TOUR_VENUE_LIM = { name: 60, time: 40, addr: 120, phone: 30, menu: 60, note: 200 }; // 회식 장소 칸별 길이
+  const tourNames = wkCleanCourtNames, tourNamesByHour = wkCleanCourtNamesByHour;
+  /** 회식 장소 정리 */
+  function tourVenue(v) { const o = {}; for (const k of Object.keys(TOUR_VENUE_LIM)) o[k] = v && typeof v[k] === 'string' ? v[k].trim().slice(0, TOUR_VENUE_LIM[k]) : ''; return o; }
+  /** 대회 시간·코트 설정 정리 { startTime, endTime, matchMinutes 10~180, breakMinutes 0, courts 1~8, minWomenDoubles(여복 경기 수) 0~20, courtsByHour?, courtNames? | courtNamesByHour? } — 형식이 틀리면 null */
+  function tourSettings(st) {
+    if (!st || typeof st !== 'object' || Array.isArray(st)) return null;
+    const mins = (t) => { const m = /^(\d{2}):(\d{2})$/.exec(String(t || '')); return m && +m[1] <= 23 && +m[2] <= 59 ? +m[1] * 60 + +m[2] : NaN; };
+    if (!(mins(st.startTime) < mins(st.endTime))) return null;
+    const okInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+    if (!okInt(st.matchMinutes, 10, 180) || !okInt(st.courts, 1, 8) || !okInt(st.minWomenDoubles, 0, 20)) return null;
+    const out = { startTime: st.startTime, endTime: st.endTime, matchMinutes: st.matchMinutes, breakMinutes: 0, courts: st.courts, minWomenDoubles: st.minWomenDoubles };
+    if (st.courtsByHour != null) {
+      if (typeof st.courtsByHour !== 'object' || Array.isArray(st.courtsByHour)) return null;
+      const cb = {}; for (const h of Object.keys(st.courtsByHour).slice(0, 24)) { const v = st.courtsByHour[h]; if (!/^\d{1,2}$/.test(h) || +h > 23 || !okInt(v, 0, 8)) return null; cb[String(+h)] = v; }
+      if (Object.keys(cb).length) out.courtsByHour = cb;
+    }
+    const slots = Math.floor((mins(st.endTime) - mins(st.startTime)) / st.matchMinutes); const most = Math.max(st.courts, ...Object.values(out.courtsByHour || {})); if (slots * most > 64) return null; // 대진은 64경기까지 저장된다 (시간대 수 × 가장 많은 코트 수)
+    const cn = tourNames(st.courtNames), cnh = cn ? null : tourNamesByHour(st.courtNamesByHour); if (cn) out.courtNames = cn; else if (cnh) out.courtNamesByHour = cnh;
+    return out;
+  }
+  /** 대회 정보 정리 { name 1~40자, mode 'rotation'(개인전)|'team'(팀전), teamCount 2~4, teamNames, venue, teams: null | [[참가자 id…] × teamCount] (한 사람은 한 팀에만) } — 틀리면 null */
+  function tourMeta(t) {
+    if (!t || typeof t !== 'object') return null;
+    const name = typeof t.name === 'string' ? t.name.trim().slice(0, 40) : ''; if (!name) return null;
+    const mode = t.mode === 'team' ? 'team' : t.mode === 'rotation' ? 'rotation' : ''; if (!mode) return null;
+    const n = t.teamCount == null ? 2 : t.teamCount; if (!Number.isInteger(n) || n < 2 || n > 4) return null;
+    const teamNames = []; for (let i = 0; i < n; i++) { const x = Array.isArray(t.teamNames) && typeof t.teamNames[i] === 'string' ? t.teamNames[i].trim().slice(0, 12) : ''; teamNames.push(x || (i + 1) + '팀'); }
+    let teams = null;
+    if (t.teams != null) {
+      if (!Array.isArray(t.teams) || t.teams.length !== n) return null; const seen = {}; teams = [];
+      for (const list of t.teams) { if (!Array.isArray(list) || list.length > 40) return null; const ids = []; for (const id of list) { if (typeof id !== 'string' || !ID_RE.test(id) || seen[id]) return null; seen[id] = 1; ids.push(id); } teams.push(ids); }
+    }
+    return { name: name, mode: mode, teamCount: n, teamNames: teamNames, venue: tourVenue(t.venue), teams: teams };
+  }
+  /** 새 대회 문서. prevRev = 같은 파일이 있었으면 그 rev (멤버 화면의 rev 가 뒤로 가지 않게 이어 간다) */
+  function tourNewDoc(id, date, meta, st, prevRev, now) { return { v: 1, id: id, date: date, status: 'open', rev: (prevRev | 0) + 1, tour: meta, settings: st, attendance: {}, schedule: null, done: {}, results: {}, createdAt: now }; }
+  /** 대회 목록(index.json 의 tours) 항목 (archived = 결과 보관으로 닫힘) */
+  function tourIndexEntry(doc) { const s = doc.settings || {}; return { id: doc.id, date: doc.date, name: doc.tour.name, mode: doc.tour.mode, teamCount: doc.tour.teamCount, startTime: s.startTime, endTime: s.endTime, courts: s.courts | 0, archived: doc.status === 'closed' }; }
+  /** 대회 목록 갱신: entry 를 넣거나 바꾸고(removeId 면 그 항목을 뺀다) 다른 칸(sessions·past·levels·proxy)은 그대로 둔다. onlyListed 면 이미 목록에 있는 항목만 바꾼다(수정·보관이 목록에서 뺀 대회를 되살리지 않게). 바뀐 게 없으면 null */
+  function tourIndexPut(idx, entry, removeId, now, onlyListed) {
+    const cur = idx && typeof idx === 'object' && !Array.isArray(idx) ? idx : { v: 1, sessions: [] };
+    const list = (Array.isArray(cur.tours) ? cur.tours : []).filter((x) => x && typeof x === 'object' && TOUR_ID_RE.test(String(x.id || '')));
+    const id = entry ? entry.id : removeId; const old = list.find((x) => x.id === id);
+    if (entry ? (!old && onlyListed) || (!!old && JSON.stringify(old) === JSON.stringify(entry)) : !old) return null;
+    const next = list.filter((x) => x.id !== id); if (entry) next.push(entry);
+    next.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    cur.v = cur.v || 1; cur.tours = next.slice(0, 60); cur.updatedAt = now; return cur;
+  }
+  // ---- /tour shared ----
   /** 외부에서 온 세션 문서 검증·정리 (화면 속성에 들어가므로 형식을 강제) */
   function assertWeekly(doc) {
     if (!doc || typeof doc !== 'object' || !SESSION_RE.test(String(doc.id || '')) || !/^\d{4}-\d{2}-\d{2}$/.test(String(doc.date || ''))) throw new Error('세션 형식 오류');
@@ -1686,6 +1763,8 @@
     st.courtNamesByHour = wkCleanCourtNamesByHour(st.courtNamesByHour); if (!st.courtNamesByHour) delete st.courtNamesByHour; // 시간대마다 코트가 다를 때
     if (st.courtsByHour && typeof st.courtsByHour === 'object') { const cb = {}; for (const [h, v] of Object.entries(st.courtsByHour)) if (/^\d{1,2}$/.test(h) && Number.isInteger(v) && v >= 0 && v <= 8) cb[h] = v; st.courtsByHour = Object.keys(cb).length ? cb : undefined; } else delete st.courtsByHour;
     doc.settings = st;
+    if (TOUR_ID_RE.test(doc.id)) { const t = doc.tour && typeof doc.tour === 'object' ? doc.tour : {}; doc.tour = tourMeta(t) || tourMeta({ ...t, teams: null }) || tourMeta({ name: '대회', mode: t.mode === 'team' ? 'team' : 'rotation', teamCount: t.teamCount, teamNames: t.teamNames, venue: t.venue }) || tourMeta({ name: '대회', mode: 'rotation' }); } else delete doc.tour; // 대회 정보 (형식이 틀린 칸은 버리고 기본값)
+    if (doc.deleted === true && doc.tour) doc.status = 'closed'; else delete doc.deleted; // 목록에서 뺀 대회 (파일은 닫혀 남는다)
     return doc;
   }
   // ---- 저장소 접근: 로컬은 모의(localStorage), 운영은 Pages 정적 파일 + 프록시 ----
@@ -1712,7 +1791,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
-  const PROXY_VERSION_NEED = 7; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv)
+  const PROXY_VERSION_NEED = 8; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv), 8 = 대회(tour-create·tour-set·tour-archive·tour-del, index.json 의 tours)
   const WK_PW_HASH = '121986baa49d856d62d3d3b3596650f8b7bad4d0c66f3cdece9adeaa0597985b'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
   const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
@@ -1726,7 +1805,7 @@
   async function wkRequireAuth(what) { // what = 'courts' 면 코트 예약 수정용 안내 (비밀번호는 대진표와 같은 하나)
     if (adminKey || wkAuthKey()) return true;
     const modal = $('#wkpw-modal'), form = $('#wkpw-form'), inp = $('#wkpw-input'), errEl = $('#wkpw-err'); if (!modal) return false;
-    { const tt = $('#wkpw-title'), hh = $('#wkpw-hint'); if (tt) tt.textContent = what === 'courts' ? '🎾 수정 비밀번호' : '🎾 대진표 비밀번호'; if (hh) hh.textContent = what === 'courts' ? '코트 예약을 고치려면 비밀번호가 필요합니다 — 대진 생성·조 조정에 쓰는 비밀번호와 같습니다. 보기는 누구나 할 수 있고, 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.' : '대진 생성·다시 섞기·조 조정은 비밀번호가 필요합니다 (코트 예약 수정도 같은 비밀번호). 참석 체크와 완료 표시는 누구나 할 수 있습니다. 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.'; }
+    { const tt = $('#wkpw-title'), hh = $('#wkpw-hint'); if (tt) tt.textContent = what === 'courts' ? '🎾 수정 비밀번호' : what === 'tour' ? '🏆 대회 비밀번호' : '🎾 대진표 비밀번호'; if (hh) hh.textContent = what === 'tour' ? '대회 만들기·수정·팀 나누기·대진 생성은 비밀번호가 필요합니다 — 대진표 비밀번호와 같습니다. 참가 신청과 점수 기록은 누구나 할 수 있고, 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.' : what === 'courts' ? '코트 예약을 고치려면 비밀번호가 필요합니다 — 대진 생성·조 조정에 쓰는 비밀번호와 같습니다. 보기는 누구나 할 수 있고, 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.' : '대진 생성·다시 섞기·조 조정은 비밀번호가 필요합니다 (코트 예약 수정도 같은 비밀번호). 참석 체크와 완료 표시는 누구나 할 수 있습니다. 한 번 맞추면 이 기기에서는 다시 묻지 않습니다.'; }
     return new Promise((resolve) => {
       const opener = document.activeElement; errEl.textContent = ''; inp.value = ''; modal.hidden = false; inp.focus();
       const onKey = (e) => { if (e.key === 'Escape') done(false); };
@@ -1737,19 +1816,24 @@
     });
   }
   const wkCanWrite = () => WK_MOCK || !!adminKey || !!W.index?.proxy; // 저장 수단: 로컬 모의 / 관리자 토큰 / 프록시
+  /** 대진표 비밀번호(열쇠)가 필요한 작업: 대진 생성·조 조정·대회 정보 수정·대회의 코트 번호 (Code.gs doPost 와 같은 기준) */
+  const wkNeedsKey = (op) => op.op === 'generate' || op.op === 'edit' || op.op === 'tour-set' || op.op === 'tour-archive' || (op.op === 'set' && op.path === 'courtNames' && TOUR_ID_RE.test(String(op.session || '')));
   const WK_DONE_GRACE_DAYS = 7; // 완료 표시는 모임 후 7일까지 (기록이 그날 밤에 끝나지 않으므로)
   const wkDayStart = (doc) => (/^\d{4}-\d{2}-\d{2}$/.test(doc?.date || '') ? Date.parse(doc.date + 'T00:00:00+09:00') : NaN);
   const wkClosed = (doc) => doc?.status === 'closed' || (isFinite(wkDayStart(doc)) && wkDayStart(doc) + 86400000 <= Date.now());
   const wkDoneOpen = (doc) => doc?.status !== 'closed' && !(isFinite(wkDayStart(doc)) && wkDayStart(doc) + 86400000 * (1 + WK_DONE_GRACE_DAYS) <= Date.now()); // 완료 표시 가능 (Code.gs closed() 와 동일 규칙)
-  const wkOpAllowed = (doc, op) => (op?.op === 'set' && /^(done|results)\./.test(String(op.path || '')) ? wkDoneOpen(doc) : !wkClosed(doc)); // 완료 표시·점수는 7일 유예 // 모임 다음날 0시(KST)부터 읽기 전용
+  const wkArchOpen = (doc) => !(isFinite(wkDayStart(doc)) && wkDayStart(doc) + 86400000 * (1 + WK_DONE_GRACE_DAYS) <= Date.now()); // 대회 결과 보관·보관 취소: 대회 후 7일까지 (닫힌 대회도 보관 취소는 가능)
+  const wkOpAllowed = (doc, op) => (op?.op === 'tour-archive' ? wkArchOpen(doc) : op?.op === 'set' && /^(done|results)\./.test(String(op.path || '')) ? wkDoneOpen(doc) : !wkClosed(doc)); // 완료 표시·점수는 7일 유예 // 모임 다음날 0시(KST)부터 읽기 전용
   /** 멤버 쓰기: 프록시에 작업 1건 전송 (로컬은 모의 저장소에 직접 적용) */
   async function proxySend(op) {
     if (WK_MOCK) {
       const path = `weekly/sessions/${op.session}.json`; const doc = wkMock.get(path);
       if (!doc) return { ok: false, code: 'NOSESSION' }; if (!wkOpAllowed(doc, op)) return { ok: false, code: 'CLOSED', rev: doc.rev, doc };
-      if ((op.op === 'generate' || op.op === 'edit') && !(adminKey || op.key)) return { ok: false, code: 'AUTH', rev: doc.rev, doc }; // 프록시와 같은 검사 (열쇠가 있어야 함)
+      if (wkNeedsKey(op) && !(adminKey || op.key)) return { ok: false, code: 'AUTH', rev: doc.rev, doc }; // 프록시와 같은 검사 (열쇠가 있어야 함)
       const r = applyWeeklyOp(doc, op); if (!r.ok) return { ok: false, code: r.code, rev: doc.rev, doc };
-      wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200)); return { ok: true, rev: doc.rev, doc };
+      wkMock.set(path, doc); await new Promise((res) => setTimeout(res, 200));
+      if ((op.op === 'tour-set' || op.op === 'tour-archive') && doc.tour) { const nx = tourIndexPut(wkMock.get('weekly/index.json'), tourIndexEntry(doc), null, new Date().toISOString(), true); if (nx) wkMock.set('weekly/index.json', nx); return { ok: true, rev: doc.rev, doc, index: nx || wkMock.get('weekly/index.json') }; } // 프록시와 같게 대회 목록도 맞춘다
+      return { ok: true, rev: doc.rev, doc };
     }
     const url = W.index?.proxy;
     if (url) { // 프록시가 있으면 관리자도 프록시로 (프록시 캐시가 최신을 유지하도록). 프록시 장애 시 관리자는 자기 토큰으로
@@ -1774,14 +1858,15 @@
     if (fail) return fail; if (!ok || !result) return { ok: false, code: 'GITHUB' };
     wkFresh[`weekly/sessions/${op.session}.json`] = { v: JSON.parse(JSON.stringify(result)), t: Date.now() };
     await wkProxyRefresh(op.session); // 프록시 캐시(6시간)에 관리자 저장분을 반영 (멤버 화면이 묵지 않도록)
-    return { ok: true, rev: result.rev, doc: result };
+    let index = null; if ((op.op === 'tour-set' || op.op === 'tour-archive') && result.tour) { const now = new Date().toISOString(); await dataAdminUpdate('weekly/index.json', (cur) => { const nx = tourIndexPut(cur, tourIndexEntry(result), null, now, true); if (nx) index = nx; return nx; }, `대회 ${op.session} 목록 갱신`); } // 이름·방식·시간·코트가 바뀌었으면 목록도 (Code.gs 와 같게)
+    return index ? { ok: true, rev: result.rev, doc: result, index } : { ok: true, rev: result.rev, doc: result };
   }
-  const wkCommitMsg = (op) => { const who = op.by ? ` by ${String(op.by).slice(0, 20)}` : ''; if (op.op === 'edit') return `정기 모임 ${op.session} 조 조정 ${(Array.isArray(op.value) ? op.value : [op.value]).map((e) => e && e.id).join(',')}${who}`; return op.op === 'set' ? `정기 모임 ${op.session} ${op.path}${op.value == null ? ' 삭제' : ''}${who}` : `정기 모임 ${op.session} 대진 ${op.value ? '#' + (op.value.seed | 0) : '삭제'}${who}`; };
+  const wkCommitMsg = (op) => { const who = op.by ? ` by ${String(op.by).slice(0, 20)}` : ''; const pre = `${TOUR_ID_RE.test(String(op.session)) ? '대회' : '정기 모임'} ${op.session}`; if (op.op === 'tour-set') return `${pre} 대회 정보 ${Object.keys(op.value || {}).join(',')}${who}`; if (op.op === 'tour-archive') return `${pre} 결과 보관${op.value ? '' : ' 취소'}${who}`; if (op.op === 'edit') return `${pre} 조 조정 ${(Array.isArray(op.value) ? op.value : [op.value]).map((e) => e && e.id).join(',')}${who}`; return op.op === 'set' ? `${pre} ${op.path}${op.value == null ? ' 삭제' : ''}${who}` : `${pre} 대진 ${op.value ? '#' + (op.value.seed | 0) : '삭제'}${who}`; };
   // ---- 상태 ----
-  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, adjust: null, pick: null, busy: false, pending: [], failed: [], srvRev: -1, lastMsg: '', cache: {}, typesOpen: null, typesMem: {} };
+  const W = { index: null, indexErr: '', id: null, doc: null, docErr: '', me: localStorage.getItem('tennisweet.me') || '', edit: null, filter: null, adjust: null, pick: null, busy: false, pending: [], failed: [], srvRev: -1, lastMsg: '', cache: {}, typesOpen: null, typesMem: {}, kind: 'weekly', wid: null, teamEdit: false }; // kind: 지금 화면이 정기 모임('weekly')인지 대회('tour')인지 — 같은 화면(#wk-view)과 상태를 함께 쓴다. wid = 대회를 보는 동안 기억해 두는 정기 모임 id
   const wkUnsent = () => [...W.pending, ...W.failed].filter((op) => op.session === W.id); // 아직 서버가 확인하지 않은 이 모임의 변경 (순서대로)
   /** 서버 문서를 받아들이되, 아직 확인되지 않은 내 변경은 그 위에 다시 얹는다 (화면이 되돌아가지 않도록) */
-  function wkAdopt(raw, rev) { let d; try { d = assertWeekly(raw); } catch { return false; } if (d.id !== W.id) return false; const r = rev != null ? rev | 0 : d.rev | 0; W.srvRev = W.doc ? Math.max(W.srvRev, r) : r; for (const op of wkUnsent()) { const c = JSON.parse(JSON.stringify(d)); const r = applyWeeklyOp(c, op.op === 'generate' || op.op === 'edit' ? { ...op, base: c.rev } : op); if (r.ok) d = c; else if (op.op === 'edit') { W.failed = W.failed.filter((x) => x !== op); W.pending = W.pending.filter((x) => x !== op); } } W.doc = d; return true; } // 서버 문서와 어긋난 조 조정은 버린다 // 지금 보고 있는 모임의 문서만 채택 (다른 모임 응답·전환 경합 방지)
+  function wkAdopt(raw, rev) { let d; try { d = assertWeekly(raw); } catch { return false; } if (d.id !== W.id) return false; const r = rev != null ? rev | 0 : d.rev | 0; W.srvRev = W.doc ? Math.max(W.srvRev, r) : r; for (const op of wkUnsent()) { const c = JSON.parse(JSON.stringify(d)); const r = applyWeeklyOp(c, op.op === 'generate' || op.op === 'edit' || op.op === 'tour-set' || op.op === 'tour-archive' ? { ...op, base: c.rev } : op); if (r.ok) d = c; else if (op.op === 'edit') { W.failed = W.failed.filter((x) => x !== op); W.pending = W.pending.filter((x) => x !== op); } } W.doc = d; return true; } // 서버 문서와 어긋난 조 조정은 버린다 // 지금 보고 있는 모임의 문서만 채택 (다른 모임 응답·전환 경합 방지)
   const ymdOf = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fmtDate = (ymd) => { const d = new Date(ymd + 'T00:00:00'); return isNaN(d) ? ymd : `${d.getMonth() + 1}/${d.getDate()}(${'일월화수목금토'[d.getDay()]})`; };
   const isToday = (ymd) => ymd === ymdOf();
@@ -1807,17 +1892,27 @@
   const wkAttendees = (doc) => Object.entries(doc?.attendance || {}).map(([id, a]) => ({ id, name: a.n, gender: a.g, from: a.from, until: a.until, guest: !!a.guest, yield: !!a.y, lv: Number.isFinite(a.lv) ? a.lv : null, active: true })).sort((x, y) => (x.id < y.id ? -1 : 1));
   const wkName = (doc, id) => doc?.attendance?.[id]?.n || playerById(id)?.name || id;
   function wkStatus(msg, bad) { const el = $('#wk-status'); if (!el) return; el.textContent = msg || ''; el.classList.toggle('bad', !!bad); const rb = $('#wk-retry'); if (rb) rb.hidden = !W.failed.length; }
-  function wkCoverMeta() { const s = wkSessions().find((x) => x.id === W.id); if (!s) return '예정된 모임 없음'; const st = W.doc ? wkSettings(W.doc) : null; const n = W.doc ? Object.keys(W.doc.attendance).length : null; return `${fmtDate(s.date)}${st ? ` ${st.startTime.slice(0, 2)}~${st.endTime.slice(0, 2)}시` : ''}${n != null ? ` · 참석 ${n}명` : ''}${W.doc?.schedule ? ' · 대진 있음' : ''}`; }
+  function wkCoverMeta() { const wid = W.kind === 'tour' ? (W.wid && wkSessions().some((x) => x.id === W.wid) ? W.wid : wkDefaultId()) : W.id; const s = wkSessions().find((x) => x.id === wid); if (!s) return '예정된 모임 없음'; const doc = W.kind === 'weekly' && W.doc?.id === wid ? W.doc : null; const st = doc ? wkSettings(doc) : null; const n = doc ? Object.keys(doc.attendance).length : null; return `${fmtDate(s.date)}${st ? ` ${st.startTime.slice(0, 2)}~${st.endTime.slice(0, 2)}시` : ''}${n != null ? ` · 참석 ${n}명` : ''}${doc?.schedule ? ' · 대진 있음' : ''}`; }
   function wkUpdateCover() { const el = $('#cover-weekly'); if (el) el.textContent = wkCoverMeta(); }
+  /** 목록 파일의 대회 항목 정리 (날짜 내림차순) */
+  const wkCleanTours = (list) => (Array.isArray(list) ? list : []).filter((t) => t && TOUR_ID_RE.test(String(t.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ''))).map((t) => ({ id: String(t.id), date: String(t.date), name: String(t.name || '대회').slice(0, 40), mode: t.mode === 'team' ? 'team' : 'rotation', teamCount: Math.min(4, Math.max(2, t.teamCount | 0)), startTime: TIME_RE.test(String(t.startTime || '')) ? t.startTime : '', endTime: TIME_RE.test(String(t.endTime || '')) ? t.endTime : '', courts: Math.max(0, t.courts | 0), archived: t.archived === true })).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  /** 대회를 만들거나 고친 뒤: 서버가 돌려준 목록(없으면 문서로 만든 항목)을 화면에 바로 반영하고, Pages 반영(약 1분)까지는 읽기보다 이 목록을 우선 */
+  function tourIndexLocal(index, doc) {
+    if (index && typeof index === 'object' && !Array.isArray(index)) { if (!WK_MOCK) wkFresh['weekly/index.json'] = { v: JSON.parse(JSON.stringify(index)), t: Date.now() }; if (W.index) W.index.tours = wkCleanTours(index.tours); }
+    else if (doc && W.index && doc.tour) { const list = (W.index.tours || []).filter((t) => t.id !== doc.id); list.push(...wkCleanTours([tourIndexEntry(doc)])); W.index.tours = wkCleanTours(list); }
+  }
   // ---- 읽기 ----
-  async function weeklyRefresh() {
-    const idx = await dataRead('weekly/index.json');
+  /** 목록 파일(weekly/index.json) → W.index (정기 모임 목록·지난 모임·레벨·저장 서버 주소·대회 목록) */
+  function wkSetIndex(idx) {
     if (idx && typeof idx === 'object') {
       const lv = {}; if (idx.levels && typeof idx.levels === 'object') for (const [k, v] of Object.entries(idx.levels)) if (ID_RE.test(k) && Number.isFinite(Number(v))) lv[k] = Number(v);
-      W.index = { v: 1, levels: lv, levelsAt: String(idx.levelsAt || '').slice(0, 30), proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', past: (Array.isArray(idx.past) ? idx.past : []).filter((x) => SESSION_RE.test(String(x))), sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0, courtsLabel: String(s.courtsLabel || '').slice(0, 60) })) }; W.indexErr = '';
-    } else { W.index = { v: 1, proxy: '', sessions: [] }; W.indexErr = WK_MOCK ? '' : (document.body.classList.contains('editor') ? '아직 모임 목록 파일이 없습니다. 위에서 첫 모임을 만들면 생깁니다 (데이터 저장소 tennisweet-data 와 GitHub Pages 가 준비되어 있어야 합니다 — README 참고).' : '아직 만들어진 정기 모임이 없습니다.'); }
-    if (!W.id || !wkSessions().some((s) => s.id === W.id)) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.srvRev = -1; }
-    renderWeeklyView();
+      W.index = { v: 1, levels: lv, levelsAt: String(idx.levelsAt || '').slice(0, 30), proxy: PROXY_RE.test(String(idx.proxy || '')) ? String(idx.proxy) : '', past: (Array.isArray(idx.past) ? idx.past : []).filter((x) => SESSION_RE.test(String(x))), sessions: (Array.isArray(idx.sessions) ? idx.sessions : []).filter((s) => s && SESSION_RE.test(String(s.id || '')) && !TOUR_ID_RE.test(String(s.id)) && /^\d{4}-\d{2}-\d{2}$/.test(String(s.date || ''))).map((s) => ({ id: String(s.id), date: String(s.date), courts: s.courts | 0, matchMinutes: s.matchMinutes | 0, courtsLabel: String(s.courtsLabel || '').slice(0, 60) })), tours: wkCleanTours(idx.tours) }; W.indexErr = '';
+    } else { W.index = { v: 1, proxy: '', sessions: [], tours: [] }; W.indexErr = WK_MOCK ? '' : (document.body.classList.contains('editor') ? '아직 모임 목록 파일이 없습니다. 위에서 첫 모임을 만들면 생깁니다 (데이터 저장소 tennisweet-data 와 GitHub Pages 가 준비되어 있어야 합니다 — README 참고).' : '아직 만들어진 정기 모임이 없습니다.'); }
+  }
+  async function weeklyRefresh() {
+    wkSetIndex(await dataRead('weekly/index.json'));
+    if (W.kind === 'weekly' && (!W.id || !wkSessions().some((s) => s.id === W.id))) { W.id = wkDefaultId(); W.doc = null; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.srvRev = -1; } // 대회를 보는 중이면 그 대회를 그대로 둔다
+    renderWeeklyView(); renderTournament(); updateCoverTour();
     if (W.id) await wkLoadDoc(W.id); else wkUpdateCover();
   }
   /** 세션 읽기: 프록시가 있으면 프록시 캐시(저장 직후 최신), 없거나 실패하면 Pages 정적 파일 */
@@ -1828,17 +1923,26 @@
   }
   async function wkLoadDoc(id, { quiet = false } = {}) {
     const raw = await wkReadSession(id); if (W.id !== id) return;
-    if (!raw) { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일을 찾지 못했습니다.'; renderWeeklyView(); } return; }
+    if (!raw) { if (!quiet) { W.doc = null; W.docErr = TOUR_ID_RE.test(id) ? '대회 파일을 아직 읽지 못했습니다 · 방금 만든 대회는 잠시 뒤 ↻ 새로고침' : '이 날짜의 파일을 찾지 못했습니다.'; renderWeeklyView(); } return; }
     let d; try { d = assertWeekly(raw); } catch { if (!quiet) { W.doc = null; W.docErr = '이 날짜의 파일 형식이 올바르지 않습니다.'; renderWeeklyView(); } return; }
-    if (!W.doc || (d.rev | 0) > W.srvRev) { const had = !!W.doc; wkAdopt(d, d.rev); W.docErr = ''; renderWeeklyView(); wkUpdateCover(); if (quiet && had) toast('정기 모임 내용이 갱신되었습니다'); }
+    if (!W.doc || (d.rev | 0) > W.srvRev) { const had = !!W.doc; wkAdopt(d, d.rev); W.docErr = ''; renderWeeklyView(); wkUpdateCover(); if (quiet && had) toast(TOUR_ID_RE.test(id) ? '대회 내용이 갱신되었습니다' : '정기 모임 내용이 갱신되었습니다'); }
   }
-  function wkSelect(id) { if (W.id === id) return; W.id = id; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; W.cnByHour = false; W.srvRev = -1; renderWeeklyView(); wkLoadDoc(id); }
-  setInterval(() => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit && !W.busy && !W.pending.length) wkLoadDoc(W.id, { quiet: true }); }, 20000); // 탭이 보일 때만 20초마다 (전송 중에는 건너뜀)
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && $('#tab-weekly')?.classList.contains('active') && W.id && !W.edit) wkLoadDoc(W.id, { quiet: true }); });
+  function wkSelect(id) { if (W.id === id) return; W.id = id || null; W.doc = null; W.docErr = ''; W.edit = null; W.filter = null; W.adjust = null; W.pick = null; W.score = null; W.cnEdit = false; W.cnByHour = false; W.teamEdit = false; W.srvRev = -1; renderWeeklyView(); if (id) wkLoadDoc(id); else wkUpdateCover(); }
+  /** 정기 모임 화면(#wk-view)을 정기 모임 탭과 대회 탭 사이에서 옮겨 쓴다 (대회 = 같은 화면에 대회 정보를 더한 것). kind = 'weekly' | 'tour', id = 대회 id */
+  function wkUse(kind, id) {
+    const n = $('#wk-view'); const host = kind === 'tour' ? $('#tour-session-host') : $('#tab-weekly'); if (n && host && n.parentElement !== host) host.appendChild(n); // 정기 모임 탭에서는 원래 자리(마지막 자식)로
+    if (kind === W.kind && (kind === 'weekly' || W.id === id)) return;
+    if (W.kind === 'weekly') W.wid = W.id; // 정기 모임으로 돌아올 때 보던 날짜
+    W.kind = kind; const next = kind === 'tour' ? id : W.wid && wkSessions().some((x) => x.id === W.wid) ? W.wid : wkDefaultId();
+    W.id = '\u0000'; wkSelect(next); // 같은 id 라도 상태를 비우고 새로 읽는다
+  }
+  const wkViewActive = () => !!$('#wk-view')?.closest('.tab')?.classList.contains('active'); // 화면이 들어 있는 탭이 보이는가
+  setInterval(() => { if (!document.hidden && wkViewActive() && W.id && !W.edit && !W.busy && !W.pending.length && !document.activeElement?.matches?.('[data-team-of]')) wkLoadDoc(W.id, { quiet: true }); }, 20000); // 탭이 보일 때만 20초마다 (전송 중·팀 칸을 고르는 중에는 건너뜀)
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && wkViewActive() && W.id && !W.edit) wkLoadDoc(W.id, { quiet: true }); });
   // ---- 쓰기 (낙관적 반영 → 순서대로 전송) ----
   let wkQueue = Promise.resolve();
   const editKey = (op) => (Array.isArray(op.value) ? op.value : [op.value]).map((e) => e && e.id).sort().join(',');
-  const wkSameTarget = (nw, old) => old.session === nw.session && (nw.op === 'set' ? old.op === 'set' && old.path === nw.path : nw.op === 'edit' ? old.op === 'edit' && editKey(old) === editKey(nw) : old.op === 'generate'); // 같은 대상(참석 한 사람·완료 한 경기·대진)의 옛 변경은 새 변경이 대체
+  const wkSameTarget = (nw, old) => old.session === nw.session && (nw.op === 'set' ? old.op === 'set' && old.path === nw.path : nw.op === 'edit' ? old.op === 'edit' && editKey(old) === editKey(nw) : nw.op === 'tour-set' ? old.op === 'tour-set' && Object.keys(old.value || {}).sort().join() === Object.keys(nw.value || {}).sort().join() : nw.op === 'tour-archive' ? old.op === 'tour-archive' : old.op === 'generate'); // 대회 정보는 같은 칸들을 고친 옛 변경만 대체 // 같은 대상(참석 한 사람·완료 한 경기·대진)의 옛 변경은 새 변경이 대체
   function wkSend(op) {
     const full = { v: 1, club: 'tennisweet', session: W.id, by: W.me || '', ...op };
     W.failed = W.failed.filter((x) => !wkSameTarget(full, x)); // 옛 실패분이 나중에 다시 얹히거나 재전송돼 최신 편집을 되돌리지 않도록
@@ -1848,9 +1952,9 @@
   }
   async function wkSendNow(op) {
     W.busy = true; wkStatus('저장 중…');
-    if ((op.op === 'generate' || op.op === 'edit') && W.failed.some((x) => x !== op && x.session === op.session)) { W.busy = false; W.pending = W.pending.filter((x) => x !== op); W.failed.push(op); wkStatus(`저장하지 못한 변경 ${W.failed.length}건 · 다시 시도를 누르세요`, true); renderWeeklyView(); return false; } // 앞선 실패분이 있으면 순서를 지켜 함께 재시도
-    if ((op.op === 'generate' || op.op === 'edit') && op.session === W.id && W.srvRev >= 0) op.base = W.srvRev; // 앞선 변경이 실패해 큐에서 빠졌어도 서버 기준 rev 로 보낸다
-    if (op.op === 'generate' || op.op === 'edit') { op.auth = WK_PW_HASH; const k = wkAuthKey(); if (k) op.key = k; else delete op.key; } // key = 대진표 비밀번호에서 만든 열쇠 (서버 v5 가 해시로 확인). auth 는 옛 서버(v4 이하)용
+    if ((op.op === 'generate' || op.op === 'edit' || op.op === 'tour-set' || op.op === 'tour-archive') && W.failed.some((x) => x !== op && x.session === op.session)) { W.busy = false; W.pending = W.pending.filter((x) => x !== op); W.failed.push(op); wkStatus(`저장하지 못한 변경 ${W.failed.length}건 · 다시 시도를 누르세요`, true); renderWeeklyView(); return false; } // 앞선 실패분이 있으면 순서를 지켜 함께 재시도
+    if ((op.op === 'generate' || op.op === 'edit' || op.op === 'tour-set' || op.op === 'tour-archive') && op.session === W.id && W.srvRev >= 0) op.base = W.srvRev; // 앞선 변경이 실패해 큐에서 빠졌어도 서버 기준 rev 로 보낸다
+    if (wkNeedsKey(op)) { op.auth = WK_PW_HASH; const k = wkAuthKey(); if (k) op.key = k; else delete op.key; } // key = 대진표 비밀번호에서 만든 열쇠 (서버 v5 가 해시로 확인). auth 는 옛 서버(v4 이하)용
     let res = await proxySend(op);
     for (let k = 0; k < 2 && res.code === 'STALE' && op.op === 'edit' && op.prev && res.doc; k++) { // 그사이 다른 변경(완료 표시 등)이 있어도 내가 고친 경기가 그대로면 최신 rev 로 다시 보낸다
       const cur = res.doc.schedule && res.doc.schedule.matches || []; const same = Object.entries(op.prev).every(([id, [a, b]]) => { const m = cur.find((x) => x.id === id); return m && m.aIds.join() === a.join() && m.bIds.join() === b.join(); });
@@ -1859,9 +1963,10 @@
     W.busy = false;
     W.pending = W.pending.filter((x) => x !== op);
     const mine = op.session === W.id; // 다른 모임의 응답 문서는 화면에 채택하지 않는다
-    if (res.ok) { if (op.op === 'generate' && op.value) wkTypesSave({ id: op.session, schedule: op.value }, null); /* 고르던 경기 종류는 이제 대진에 기록돼 있다 (거절되면 남겨 둔다) */ if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
-    if (res.code === 'AUTH') { wkForgetKey(); W.adjust = false; W.pick = null; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
-    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : '지난 모임은 수정할 수 없습니다', NOSESSION: '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
+    if (res.ok) { if (op.op === 'generate' && op.value) wkTypesSave({ id: op.session, schedule: op.value }, null); /* 고르던 경기 종류는 이제 대진에 기록돼 있다 (거절되면 남겨 둔다) */ if ((op.op === 'tour-set' || op.op === 'tour-archive') && res.doc) tourIndexLocal(res.index, res.doc); if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
+    if (res.code === 'AUTH') { wkForgetKey(); W.adjust = false; W.pick = null; W.teamEdit = false; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
+    const tourOp = TOUR_ID_RE.test(String(op.session));
+    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : tourOp ? '지난 대회는 수정할 수 없습니다' : '지난 모임은 수정할 수 없습니다', NOSESSION: tourOp ? '대회 파일을 찾지 못했습니다' : '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: tourOp ? '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 대회를 아직 못 받습니다 — 관리자가 Apps Script 새 버전 배포)' : '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
     if (retryable && !W.pending.some((x) => wkSameTarget(x, op))) W.failed.push(op); // 재시도 대기 (같은 대상의 더 새로운 변경이 이미 큐에 있으면 옛 실패분은 버린다 — 새 변경이 그 내용을 포함)
     if (mine) { if (res.doc) wkAdopt(res.doc, res.rev); else if (!retryable) await wkLoadDoc(W.id, { quiet: true }); } // 거부된 변경은 서버 문서로 되돌린다 (현재 모임일 때만)
@@ -1937,36 +2042,133 @@
     return `<div class="wk-weather" id="wk-weather" data-date="${esc(date)}" data-start="${esc(startTime)}" data-end="${esc(endTime)}">${wxHtml(date, startTime, endTime)}</div>`;
   }
 
+  // ---- 대회 화면: 정기 모임 화면(#wk-view)을 대회 탭으로 옮겨 쓰고, 그 위·아래에 대회 정보·팀 구성·순위·회식 장소를 더한다 ----
+  /** 대회 제목 카드 (이름·방식·여복 경기 수 · 수정/삭제는 대진표 비밀번호) */
+  function tourHeadHtml(doc, s) {
+    const t = doc.tour; const past = wkClosed(doc); const canEdit = !past && wkCanWrite(); const archived = doc.status === 'closed' && !doc.deleted; const archOk = wkCanWrite() && wkArchOpen(doc) && !doc.deleted; const canArch = archOk && !archived && !!doc.schedule?.matches?.length;
+    if (doc.deleted) return `<div class="tour-hero archived"><div class="tour-hero-top"><b class="tour-name">🏆 ${esc(t.name)}</b><span class="tag">목록에서 뺀 대회</span></div><div class="sub">이 대회는 목록에서 빠졌습니다 · 기록만 남아 있고 더 바꿀 수 없습니다</div></div>`;
+    const btns = [canEdit ? '<button type="button" class="small" id="tour-edit"><svg class="ic"><use href="#i-edit"/></svg>대회 수정</button>' : '', canArch ? '<button type="button" class="small primary" id="tour-arch-on" title="점수·참가·대진을 잠그고 지난 대회로 옮깁니다 (대진표 비밀번호)">📦 결과 보관</button>' : '', archived && archOk ? '<button type="button" class="small" id="tour-arch-off" title="대회 후 7일 안에는 다시 열 수 있습니다 (대진표 비밀번호)">보관 취소</button>' : '', canEdit || (past && adminKey) ? '<button type="button" class="small danger-text" id="tour-del">대회 삭제</button>' : ''].filter(Boolean);
+    return `<div class="tour-hero ${archived ? 'archived' : ''}"><div class="tour-hero-top"><b class="tour-name">🏆 ${esc(t.name)}</b><span class="tag type ${t.mode === 'team' ? 'mm' : 'fm'}">${t.mode === 'team' ? `팀전 ${t.teamCount}팀` : '개인전'}</span>${archived ? '<span class="tag arch">📦 결과 보관</span>' : past ? '<span class="tag">지난 대회</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>
+      <div class="sub">${archived ? `결과를 보관했습니다${doc.archivedAt ? ` (${esc(new Date(doc.archivedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }))})` : ''} · 점수·참가·대진은 더 바뀌지 않습니다` : `${t.mode === 'team' ? '팀 대 팀 복식 (양쪽 같은 종류) · 팀 순위와 개인 기록' : '파트너를 바꿔 가며 복식 · 개인 순위'} · 여복 ${s.minWomenDoubles || 0}경기 · 잡복 없음 · 지난 대회와 같은 조는 되도록 피함`}</div>
+      ${btns.length ? `<div class="row">${btns.join('')}</div>` : ''}</div>`;
+  }
+  /** 팀 구성 (팀전): 팀별 참가자, 팀 없는 참가자, [팀 나누기] [팀 조정] — 조정 중에는 사람마다 팀을 고르는 칸 */
+  function tourTeamsHtml(doc, closed) {
+    const t = doc.tour; const att = wkAttendees(doc); const P = {}; att.forEach((p) => (P[p.id] = p)); const teams = t.teams;
+    const inTeam = new Set((teams || []).flat()); const loose = att.filter((p) => !inTeam.has(p.id)); const editing = !!W.teamEdit && !closed && wkCanWrite();
+    const person = (id, ti) => { const p = P[id]; if (!p) return ''; const nm = `${p.guest ? '<span class="gmark">G</span>' : ''}<span class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</span><small>${esc(wkShort(p.from))}~${esc(wkShort(p.until))}</small>`;
+      return editing ? `<label class="chip team-pick">${nm}<select data-team-of="${esc(id)}" aria-label="${esc(p.name)} 님의 팀">${Array.from({ length: t.teamCount }, (_, i) => `<option value="${i}" ${i === ti ? 'selected' : ''}>${esc(tourTeamName(t, i))}</option>`).join('')}<option value="-1" ${ti < 0 ? 'selected' : ''}>팀 없음</option></select></label>` : `<span class="chip">${nm}</span>`; };
+    let html = `<div class="tour-teams"><h3>팀 구성 <span class="sub">${teams ? `${t.teamCount}팀` : '아직 나누지 않았습니다'}${teams && loose.length ? ` · 팀 없는 참가자 ${loose.length}명` : ''}</span></h3>`;
+    if (teams) html += `<div class="team-cards">${teams.map((ids, i) => { const live = ids.filter((id) => P[id]); return `<div class="team-card tc${i}"><div class="team-card-head"><b>${esc(tourTeamName(t, i))}</b><span class="sub">${live.length}명 · 여 ${live.filter((id) => P[id].gender === 'F').length}</span></div><div class="chips">${live.map((id) => person(id, i)).join('') || '<span class="tbd">아직 없음</span>'}</div></div>`; }).join('')}</div>`;
+    if (teams && loose.length) html += `<div class="chips team-loose"><span class="sub">팀 없음</span>${loose.map((p) => person(p.id, -1)).join('')}</div>`;
+    if (!closed && wkCanWrite()) html += `<div class="row"><button type="button" class="small ${teams ? '' : 'primary'}" id="tour-teams-auto" ${att.length < 4 ? 'disabled' : ''}>${teams ? '팀 다시 나누기' : '팀 나누기'}</button>${teams ? `<button type="button" class="small ${editing ? 'on' : ''}" id="tour-teams-edit">${editing ? '팀 조정 완료' : '팀 조정'}</button>` : ''}<span class="hint">${editing ? '사람마다 팀을 고르면 바로 저장됩니다.' : '도착 시각·성별·실력이 고르게, 지난 대회에서 같은 팀·같은 조였던 사람은 되도록 다른 팀으로 나눕니다 (대진표 비밀번호). 대진을 만들 때 팀이 없는 참가자는 자동으로 들어갑니다.'}</span></div>`;
+    return html + '</div>';
+  }
+  /** 대회 순위: 점수를 넣은 경기로 개인 승패(팀전은 팀 승패도). 개인은 승률 → 경기당 평균 득실 → 승수 → 득게임, 팀은 승수 → 득실 → 득게임. 개인 전체 표는 관리자에게만 (지금까지의 대회 순위 공개 방식과 같게) */
+  function tourStandingsHtml(doc) {
+    const t = doc.tour; const ms = doc.schedule?.matches || []; if (!ms.length) return '';
+    const rows = {}, trows = {}; const row = (o, id) => (o[id] ??= { id, p: 0, w: 0, l: 0, d: 0, gf: 0, ga: 0 }); const put = (r, gf, ga) => { r.p++; r.gf += gf; r.ga += ga; if (gf > ga) r.w++; else if (ga > gf) r.l++; else r.d++; };
+    const teamOf = {}; (t.teams || []).forEach((ids, i) => ids.forEach((id) => (teamOf[id] = i))); let scored = 0;
+    for (const m of ms) {
+      const rs = doc.results?.[m.id]; if (!rs) continue; scored++; const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2));
+      A.forEach((id) => put(row(rows, id), rs.a, rs.b)); B.forEach((id) => put(row(rows, id), rs.b, rs.a));
+      if (t.mode === 'team') { const ta = teamOf[A[0]], tb = teamOf[B[0]]; if (ta != null && tb != null && ta === teamOf[A[1]] && tb === teamOf[B[1]] && ta !== tb) { put(row(trows, ta), rs.a, rs.b); put(row(trows, tb), rs.b, rs.a); } }
+    }
+    let html = `<div class="tour-stand"><h3>순위 <span class="sub">점수를 넣은 경기 ${scored}/${ms.length}</span></h3>`;
+    if (!scored) return html + '<p class="hint">경기 카드의 점수 버튼으로 게임 수를 넣으면 순위가 나옵니다.</p></div>';
+    const medal = ['🥇', '🥈', '🥉'];
+    if (t.mode === 'team') { const list = Object.values(trows).sort((x, y) => y.w - x.w || (y.gf - y.ga) - (x.gf - x.ga) || y.gf - x.gf); html += `<div class="table-wrap"><table class="stand tour-team-stand"><thead><tr><th>순위</th><th>팀</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">득실</th></tr></thead><tbody>${list.map((r, i) => `<tr class="${i === 0 ? 'rank1' : ''}"><td>${medal[i] || i + 1}</td><td><b>${esc(tourTeamName(t, r.id))}</b></td><td class="num">${r.p}</td><td class="num"><b>${r.w}</b></td><td class="num">${r.l}</td><td class="num">${r.d || '-'}</td><td class="num">${r.gf - r.ga >= 0 ? '+' : ''}${r.gf - r.ga}</td></tr>`).join('')}</tbody></table></div>`; }
+    const ind = Object.values(rows).sort(fairCmp); const tn = (id) => (t.mode === 'team' && teamOf[id] != null ? ` <span class="sub">${esc(tourTeamName(t, teamOf[id]))}</span>` : '');
+    html += `<h4>${t.mode === 'team' ? '개인 기록 상위 3' : '개인 순위 상위 3'} <span class="sub">(승률 → 경기당 평균 득실 → 승수)</span></h4><ol class="podium">${ind.slice(0, 3).map((r, i) => `<li class="p${i + 1}"><span class="medal">${medal[i]}</span><span class="pname">${esc(wkName(doc, r.id))}${tn(r.id)}</span><span class="pstat">${r.w}승 ${r.l}패${r.d ? ` ${r.d}무` : ''} · 승률 ${pct(r)} · 평균 득실 ${avgStr(r)}</span></li>`).join('')}</ol>`;
+    if (document.body.classList.contains('editor')) html += `<details class="tour-full"><summary>개인 전체 순위 (관리자)</summary><div class="table-wrap"><table class="stand"><thead><tr><th>순위</th><th>이름</th><th class="num">경기</th><th class="num">승</th><th class="num">패</th><th class="num">무</th><th class="num">승률</th><th class="num">평균 득실</th><th class="num">득</th><th class="num">실</th></tr></thead><tbody>${ind.map((r, i) => `<tr class="${i === 0 ? 'rank1' : ''}"><td>${i + 1}</td><td>${esc(wkName(doc, r.id))}${tn(r.id)}</td><td class="num">${r.p}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.d || '-'}</td><td class="num">${pct(r)}</td><td class="num">${avgStr(r)}</td><td class="num">${r.gf}</td><td class="num">${r.ga}</td></tr>`).join('')}</tbody></table></div></details>`;
+    return html + '</div>';
+  }
+  /** 경기 결과: 점수를 넣은 경기를 시간순으로 (이긴 쪽 강조). 팀전은 맨 위에 팀별 이긴 경기 수 */
+  function tourResultsHtml(doc, s) {
+    const t = doc.tour; const ms = (doc.schedule?.matches || []).filter((m) => doc.results?.[m.id]).sort((a, b) => a.slot - b.slot || a.court - b.court); if (!ms.length) return '';
+    const teamOf = {}; (t.teams || []).forEach((ids, i) => ids.forEach((id) => (teamOf[id] = i))); const side = (ids) => { const i = teamOf[ids[0].slice(2)]; return t.mode === 'team' && i != null && i === teamOf[ids[1].slice(2)] ? i : null; };
+    const who = (ids) => ids.map((x) => { const a = doc.attendance[x.slice(2)]; return `<span class="${a?.guest ? 'gname' : 'pname'} ${a?.g === 'F' ? 'f' : 'm'}">${esc(wkName(doc, x.slice(2)))}</span>`; }).join(' · ');
+    const g = (x) => (doc.attendance[x.slice(2)]?.g === 'F' ? 'F' : 'M'); const typeOf = (m) => { const a = m.aIds.map(g).sort().join(''), b = m.bIds.map(g).sort().join(''); return a === b ? TYPE_LABEL[a] : '잡복'; };
+    let head = '';
+    if (t.mode === 'team') { const wins = Array(t.teamCount).fill(0); let draws = 0; for (const m of ms) { const rs = doc.results[m.id]; const ta = side(m.aIds), tb = side(m.bIds); if (ta == null || tb == null || ta === tb) continue; if (rs.a > rs.b) wins[ta]++; else if (rs.b > rs.a) wins[tb]++; else draws++; }
+      head = `<div class="tour-score">${wins.map((w, i) => `<span class="ts-team tc${i}"><span class="team-tag tc${i}">${esc(tourTeamName(t, i))}</span><b>${w}</b></span>`).join('<span class="ts-colon">:</span>')}${draws ? `<span class="sub">무 ${draws}</span>` : ''}<span class="sub">이긴 경기 수</span></div>`; }
+    const rows = ms.map((m) => { const rs = doc.results[m.id]; const wa = rs.a > rs.b, wb = rs.b > rs.a; const ta = side(m.aIds), tb = side(m.bIds); const tg = (i) => (i == null ? '' : `<span class="team-tag tc${i}">${esc(tourTeamName(t, i))}</span> `);
+      return `<div class="tour-result"><span class="tr-when">${hhmm(slotStartMin(s, m.slot))} · ${esc(wkCourtLabel(s, m.court, m.slot))}코트 · ${esc(typeOf(m))}</span><span class="tr-side a ${wa ? 'w' : ''}">${tg(ta)}${who(m.aIds)}</span><b class="tr-score"><span class="${wa ? 'w' : ''}">${rs.a}</span> : <span class="${wb ? 'w' : ''}">${rs.b}</span></b><span class="tr-side b ${wb ? 'w' : ''}">${tg(tb)}${who(m.bIds)}</span></div>`; }).join('');
+    return `<div class="tour-results"><h3>경기 결과 <span class="sub">${ms.length}/${doc.schedule.matches.length}경기 · 이긴 쪽 굵게</span></h3>${head}<div class="tour-result-list">${rows}</div></div>`;
+  }
+  /** 회식 장소는 #tour-venue-host 에 (대회 화면을 다시 그릴 때마다 지도가 새로 뜨지 않게, 내용이 바뀔 때만) */
+  function tourVenueSync(doc) { const h = $('#tour-venue-host'); if (!h) return; const html = doc && W.kind === 'tour' ? tourVenueHtml(doc) : ''; if (h.dataset.key !== html) { h.dataset.key = html; h.innerHTML = html; } }
+  const tourVenueHtml = (doc) => { const v = doc.tour.venue || {}; return v.name || v.addr || v.note ? `<div class="tour-venue"><h3>회식 장소</h3>${venueCardHtml(v)}</div>` : ''; };
+  /** 대회 화면 버튼: 대회 수정·삭제·팀 나누기·팀 조정. 처리하면 true */
+  async function tourViewClick(t) {
+    const doc = W.doc; if (!tourOf(doc)) return false;
+    if (t.closest('#tour-edit')) { if (!wkClosed(doc) && wkCanWrite() && (await wkRequireAuth('tour'))) tourOpenForm('edit'); return true; }
+    if (t.closest('#tour-del')) { await tourDelete(doc); return true; }
+    if (t.closest('#tour-arch-on') || t.closest('#tour-arch-off')) { const on = !!t.closest('#tour-arch-on'); if (!wkCanWrite() || !wkArchOpen(doc)) return true; if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 보관하세요'); return true; }
+      if (on) { const ms = doc.schedule?.matches || []; const left = ms.filter((m) => !doc.results?.[m.id]).length; if (!confirm(`'${doc.tour.name}' 결과를 보관할까요?\n보관하면 점수·참가·대진을 더 고칠 수 없고 지난 대회로 옮겨집니다${left ? `\n(점수가 없는 경기 ${left}개는 결과에서 빠집니다)` : ''}.\n대회 후 7일 안에는 비밀번호로 보관을 취소할 수 있습니다.`)) return true; }
+      if (!(await wkRequireAuth('tour'))) return true; W.adjust = false; W.pick = null; W.score = null; W.teamEdit = false; W.edit = null; tourCloseForm();
+      const ok = await wkSend({ op: 'tour-archive', base: doc.rev, value: on }); if (ok) { toast(on ? '결과를 보관했습니다 · 지난 대회 목록에서 볼 수 있습니다' : '보관을 취소했습니다 · 다시 고칠 수 있습니다', 5000); renderTournament(); updateCoverTour(); } return true; }
+    if (t.closest('#tour-teams-edit')) { if (W.teamEdit) { W.teamEdit = false; renderWeeklyView(); return true; } if (wkClosed(doc) || !wkCanWrite() || !(await wkRequireAuth('tour'))) return true; W.teamEdit = true; renderWeeklyView(); return true; }
+    if (t.closest('#tour-teams-auto')) { await tourTeamsAuto(); return true; }
+    return false;
+  }
+  /** 팀 조정: 사람마다 고른 팀으로 옮긴다 (바로 저장). 처리하면 true */
+  function tourViewChange(el) { const id = el?.dataset?.teamOf; if (id == null || !tourOf(W.doc)) return false; tourMovePerson(id, parseInt(el.value, 10)); return true; }
+  async function tourMovePerson(id, ti) {
+    const doc = W.doc; const t = tourOf(doc); if (!t || wkClosed(doc) || !wkCanWrite()) return;
+    if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 팀을 고치세요'); renderWeeklyView(); return; }
+    const from = (t.teams || []).findIndex((ids) => ids.includes(id)); if (from === ti) return;
+    if (from >= 0 && Object.keys(doc.results || {}).length) { toast('점수가 들어간 뒤에는 팀을 옮길 수 없습니다 (지난 경기의 팀 기록이 바뀝니다) · 팀이 없는 참가자만 넣을 수 있습니다', 5000); renderWeeklyView(); return; }
+    const teams = Array.from({ length: t.teamCount }, (_, i) => (t.teams?.[i] || []).filter((x) => x !== id)); if (ti >= 0 && ti < t.teamCount) teams[ti].push(id);
+    if (doc.schedule?.matches?.some((m) => [...m.aIds, ...m.bIds].includes('p:' + id)) && !confirm(`${wkName(doc, id)} 님은 이미 대진에 들어 있습니다.\n팀을 옮기면 지금 대진과 맞지 않게 되어 다시 섞어야 합니다. 옮길까요?`)) { renderWeeklyView(); return; }
+    await wkSend({ op: 'tour-set', base: doc.rev, value: { teams } });
+  }
+  async function tourTeamsAuto() {
+    const doc = W.doc; const t = tourOf(doc); if (!t || wkClosed(doc) || !wkCanWrite()) return;
+    if (wkAttendees(doc).length < 4) { toast('참가자가 4명 이상이면 팀을 나눌 수 있습니다'); return; }
+    if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 팀을 나누세요'); return; }
+    if (t.teams && Object.keys(doc.results || {}).length) { toast('점수가 들어간 뒤에는 팀을 다시 나눌 수 없습니다 (지난 경기의 팀 기록이 바뀝니다)', 5000); return; }
+    if (!(await wkRequireAuth('tour'))) return;
+    if (t.teams && !confirm(`팀을 처음부터 다시 나눌까요?${doc.schedule ? '\n이미 만든 대진은 남아 있지만 새 팀과 맞지 않으니 다시 섞어야 합니다.' : ''}`)) return;
+    wkStatus('팀을 나누는 중…'); const ht = await Promise.race([tourHistory(doc), new Promise((r) => setTimeout(() => r(null), 6000))]);
+    if (W.doc?.id !== doc.id) return; const teams = tourBuildTeams(W.doc, ht, null); W.teamEdit = false;
+    const ok = await wkSend({ op: 'tour-set', base: W.doc.rev, value: { teams } });
+    if (ok) toast(ht?.n ? `팀을 나눴습니다 · 지난 대회 ${ht.n}회에서 같은 팀·같은 조였던 사람은 되도록 갈랐습니다` : ht ? '팀을 나눴습니다 (참고할 지난 대회 없음)' : '팀을 나눴습니다 · 지난 대회 기록은 읽지 못했습니다', 5000);
+  }
   function renderWeeklyView() {
     const box = $('#wk-view'); if (!box) return;
     const editor = document.body.classList.contains('editor'); const list = wkSessions(); const doc = W.doc;
     const ls = $('#wk-levels-status'); if (ls) { const n = Object.keys(W.index?.levels || {}).length; ls.textContent = !W.index ? '' : n ? `${n}명 반영${W.index.levelsAt ? ' · ' + new Date(W.index.levelsAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}` : '아직 반영 안 됨 — 대진에 NTRP 가 고려되지 않습니다'; }
     const pi = $('#wk-form-proxy [name=proxy]'); if (pi && !pi.value && W.index?.proxy && document.activeElement !== pi) pi.value = W.index.proxy; // 현재 주소를 미리 채움 (빈 칸으로 저장돼 주소가 지워지는 사고 방지)
     const al = $('#wk-admin-list'); if (al) { al.innerHTML = list.length ? `<div class="wk-admin-rows">${list.map((s) => `<div class="wk-admin-row"><b>${esc(fmtDate(s.date))}</b><span class="sub">${esc(s.date)} · ${esc(s.courtsLabel || `코트 ${s.courts}면`)} · ${s.matchMinutes}분${W.id === s.id && W.doc ? ` · 참석 ${Object.keys(W.doc.attendance).length}명${W.doc.schedule ? ' · 대진 있음' : ''}` : ''}</span><button class="small wk-del" data-wk-del="${esc(s.id)}">🗑 삭제</button></div>`).join('')}</div>` : '<p class="hint">만든 모임이 없습니다.</p>'; const pi = $('#wk-form-proxy [name=proxy]'); if (pi && document.activeElement !== pi) pi.value = W.index?.proxy || ''; }
+    const tourView = W.kind === 'tour'; // 대회 탭에서 보는 중: 날짜 칩 대신 대회 제목
     if (!W.index) { box.innerHTML = '<p class="hint">불러오는 중…</p>'; return; }
-    if (W.indexErr && !list.length) { box.innerHTML = `<p class="hint">${esc(W.indexErr)}</p>`; return; }
-    if (!list.length) { box.innerHTML = `<p class="hint">아직 만들어진 모임 날짜가 없습니다.${editor ? ' 위에서 날짜를 만드세요.' : ' 관리자가 날짜를 만들면 여기서 참석을 체크할 수 있습니다.'}</p>`; return; }
-    let html = `<div class="chips wk-sessions">${list.slice(-10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
+    if (!tourView && W.indexErr && !list.length) { box.innerHTML = `<p class="hint">${esc(W.indexErr)}</p>`; return; }
+    if (!tourView && !list.length) { box.innerHTML = `<p class="hint">아직 만들어진 모임 날짜가 없습니다.${editor ? ' 위에서 날짜를 만드세요.' : ' 관리자가 날짜를 만들면 여기서 참석을 체크할 수 있습니다.'}</p>`; return; }
+    let html = tourView ? '' : `<div class="chips wk-sessions">${list.slice(-10).map((s) => `<button class="chip ${s.id === W.id ? 'on' : ''}" data-wk-session="${esc(s.id)}">${esc(fmtDate(s.date))}</button>`).join('')}</div>`;
     if (!doc) { box.innerHTML = html + `<p class="hint">${esc(W.docErr || '불러오는 중…')}</p>`; return; }
     const s = wkSettings(doc); const closed = wkClosed(doc) || !wkCanWrite(); const att = wkAttendees(doc); const hours = wkHours(s); // 저장 수단이 없는 방문자는 보기 전용
+    const tour = tourOf(doc); if (tour) html += tourHeadHtml(doc, s);
     const cnt = (h) => att.filter((p) => toMin(p.from) < (h + 1) * 60 && toMin(p.until) > h * 60).length; // 그 시각대에 한 경기라도 뛸 수 있는 사람 (20:30 도착도 20시에 포함)
     const hoursAll = wkHours(s); const perHour = !!(s.courtsByHour || s.courtNamesByHour); const hasCn = !!(s.courtNames?.length || s.courtNamesByHour); const cntAt = (h) => (s.courtsByHour && Number.isInteger(s.courtsByHour[String(h)]) ? s.courtsByHour[String(h)] : s.courts);
     const namesAt = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || String(i + 1)); // 그 시각의 코트 라벨 (없으면 1, 2, …)
     let cnText = ''; if (hasCn) { if (!perHour) cnText = `코트 번호 ${namesAt(hoursAll[0] ?? 0).join('·')}`; else { const parts = []; let i = 0; while (i < hoursAll.length) { const lab = namesAt(hoursAll[i]).join('·'); let j = i; while (j + 1 < hoursAll.length && namesAt(hoursAll[j + 1]).join('·') === lab) j++; if (lab) parts.push(`${hoursAll[i]}~${hoursAll[j] + 1}시 ${lab}`); i = j + 1; } cnText = `코트 번호 ${parts.join(' · ')}`; } }
-    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${hasCn ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
+    html += `<div class="wk-head"><span class="wk-date">${esc(fmtDate(doc.date))}</span><span class="sub">${esc(s.startTime)}~${esc(s.endTime)} · ${esc(wkCourtsLabel(s))} · ${s.matchMinutes}분 경기${cnText ? ' · ' + esc(cnText) : ''}</span>${closed ? '' : `<button type="button" class="small wk-cn-btn ${W.cnEdit ? 'on' : ''}" id="wk-cn-edit" title="실제 코트 번호 입력">${hasCn ? '코트 번호 ✎' : '코트 번호 입력'}</button>`}${tour ? '' : closed ? '<span class="tag">지난 모임</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>`;
     html += wxSlot(doc.date, s.startTime, s.endTime);
     if (!closed && W.cnEdit) { const cur = (h) => Array.from({ length: cntAt(h) }, (_, i) => s.courtNamesByHour?.[String(h)]?.[i] || s.courtNames?.[i] || '').join(', ').replace(/(, )+$/, '');
       html += `<form class="row wk-cn-form" id="wk-cn-form"><span class="sub">배정받은 실제 코트 번호를 쉼표로 (대진표의 1·2·… 코트 순서대로, 예: 5, 7). ${perHour ? '시간대마다 코트가 다르면 줄마다 따로 적으세요.' : '시간대마다 다르면 [시간대별로]를 누르세요.'}</span>${perHour || W.cnByHour ? wkCourtBlocks(s, (h) => cntAt(h) + '|' + cur(h)).filter((b) => cntAt(b.from) > 0).map((b) => `<label class="inline">${b.from}~${b.to}시 <small>(${cntAt(b.from)}면)</small> <input name="cnh_${b.key}" maxlength="80" value="${esc(cur(b.from))}" placeholder="${Array.from({ length: cntAt(b.from) }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(84, cntAt(b.from) * 44)}px"></label>`).join('') : `<label class="inline">코트 <input name="cn_all" maxlength="80" value="${esc((s.courtNames || []).join(', '))}" placeholder="${Array.from({ length: s.courts }, (_, i) => i + 1).join(', ')}" style="width:${Math.max(96, s.courts * 44)}px"></label><button type="button" class="small" id="wk-cn-byhour">시간대별로</button>`}<button type="submit" class="small primary">저장</button><button type="button" class="small" id="wk-cn-cancel">취소</button></form>`; }
     const members = [...state.players].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
     const chip = (id, name, a, guest) => `<button class="chip wk-chip ${a ? 'on ' + (a.g === 'F' ? 'f' : 'm') : ''} ${guest ? 'guest' : ''} ${W.edit?.id === id ? 'sel' : ''} ${W.me === id ? 'me' : ''}" data-wk-chip="${esc(id)}" ${closed ? 'disabled' : ''}>${guest ? '<span class="gmark">G</span>' : ''}${a?.y ? '<span class="ymark">양보</span>' : ''}${esc(name)}${a ? `<small>${esc(wkShort(a.from))}~${esc(wkShort(a.until))}</small>` : ''}</button>`;
     const guests = att.filter((p) => p.guest);
-    html += `<h3>참석 ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
-      <p class="hint">${wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
+    html += `<h3>${tour ? '참가' : '참석'} ${att.length}명 <span class="sub">(남 ${att.filter((p) => p.gender !== 'F').length} · 여 ${att.filter((p) => p.gender === 'F').length})${att.length ? ' · ' + hours.map((h) => `${h}시 ${cnt(h)}`).join(' · ') : ''}</span></h3>
+      <p class="hint">${tour ? (wkClosed(doc) ? '지난 대회의 참가 기록입니다.' : closed ? '참가 신청은 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참가 신청이 저장됩니다 (누구나). 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.') : wkClosed(doc) ? '지난 모임의 참석 기록입니다.' : closed ? '참석·대진은 관리자가 입력합니다. 참석 여부는 관리자에게 알려 주세요.' : '이름을 누르고 도착·퇴장 시각을 고르면 참석이 저장됩니다. 클럽 명단에 없는 분은 [+ 게스트]로 추가하세요.'}</p>
       <div class="chips wk-chips">${members.map((p) => chip(p.id, p.name, doc.attendance[p.id], false)).join('')}${guests.map((p) => chip(p.id, p.name, doc.attendance[p.id], true)).join('')}${closed ? '' : `<button class="chip wk-chip add ${W.edit?.guest && !W.edit.id ? 'sel' : ''}" id="wk-guest-add">+ 게스트</button>`}</div>`;
     if (W.edit && !closed) html += wkPanelHtml(s);
+    if (tour?.mode === 'team') html += tourTeamsHtml(doc, closed);
     html += `<div class="wk-status-row"><span id="wk-status" class="sub"></span><button id="wk-retry" class="small" hidden>다시 시도</button></div>`;
     html += wkScheduleHtml(doc, s, closed);
-    box.innerHTML = html;
+    if (tour) html += tourResultsHtml(doc, s) + tourStandingsHtml(doc);
+    box.innerHTML = html; tourVenueSync(tour ? doc : null); // 지도(iframe)는 바뀔 때만 다시 그린다
     wkStatus(W.busy ? '저장 중…' : W.failed.length ? `저장하지 못한 변경 ${W.failed.length}건 · 다시 시도를 누르세요` : W.lastMsg || '', !!W.failed.length);
     const ni = $('#wk-guest-name'); if (ni && W.edit?.guest && !W.edit.id && !W.edit.name) ni.focus();
   }
@@ -2004,10 +2206,10 @@
     if (ok && e.guest && Number.isFinite(e.lv) && W.doc?.attendance?.[id] && !Number.isFinite(W.doc.attendance[id].lv)) toast('⚠ 게스트 구력이 저장되지 않았습니다 — 저장 서버(Code.gs)가 옛 버전(v7 미만)입니다. Apps Script 를 새 버전으로 배포해 주세요');
     if (ok && !e.guest && !W.me) { W.me = id; localStorage.setItem('tennisweet.me', id); renderWeeklyView(); }
   }
-  $('#tab-weekly')?.addEventListener('click', async (e) => {
+  $('#wk-view')?.addEventListener('click', async (e) => {
     const t = e.target;
     const ses = t.closest('[data-wk-session]'); if (ses) { wkSelect(ses.dataset.wkSession); return; }
-    if (t.closest('#wk-cn-edit')) { W.cnEdit = !W.cnEdit; renderWeeklyView(); if (W.cnEdit) $('#wk-cn-form input')?.focus(); return; }
+    if (t.closest('#wk-cn-edit')) { if (!W.cnEdit && tourOf(W.doc) && !(await wkRequireAuth('tour'))) return; W.cnEdit = !W.cnEdit; renderWeeklyView(); if (W.cnEdit) $('#wk-cn-form input')?.focus(); return; } // 대회의 코트 번호는 대진표 비밀번호
     if (t.closest('#wk-cn-cancel')) { W.cnEdit = false; W.cnByHour = false; renderWeeklyView(); return; }
     if (t.closest('#wk-cn-byhour')) { W.cnByHour = true; renderWeeklyView(); return; }
     const chip = t.closest('[data-wk-chip]'); if (chip && !chip.disabled) { wkOpen(chip.dataset.wkChip); return; }
@@ -2020,17 +2222,18 @@
     if (t.closest('#wk-save')) { await wkSaveEdit(); return; }
     if (t.closest('#wk-absent') && W.edit) { const { id, name, guest } = W.edit; W.edit = null; if (confirm(guest ? `게스트 ${name} 님을 이 모임에서 삭제할까요?` : `${name} 님을 불참으로 바꿀까요?`)) await wkSend({ op: 'set', path: 'attendance.' + id, value: null }); else renderWeeklyView(); return; }
     if (t.closest('#wk-retry') && W.failed.length) { const ops = W.failed; W.failed = []; W.pending.push(...ops); for (const op of ops) wkQueue = wkQueue.then(() => wkSendNow(op)).catch(() => {}); return; } // 실패분을 순서대로 다시 전송
-    const del = t.closest('[data-wk-del]'); if (del) { await wkDeleteSession(del.dataset.wkDel); return; }
+    if (await tourViewClick(t)) return; // 대회 화면의 팀 구성·수정·삭제
     await wkScheduleClick(t);
   });
-  $('#tab-weekly')?.addEventListener('input', (e) => { if (e.target.id === 'wk-guest-name' && W.edit) W.edit.name = e.target.value; });
-  $('#tab-weekly')?.addEventListener('change', (e) => { if (e.target.id === 'wk-me') { W.me = e.target.value || ''; if (W.me) localStorage.setItem('tennisweet.me', W.me); else localStorage.removeItem('tennisweet.me'); renderWeeklyView(); } });
-  $('#tab-weekly')?.addEventListener('submit', async (e) => { const f = e.target; if (f.id !== 'wk-cn-form') return; e.preventDefault(); if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; const fd = new FormData(f); const keyOf = {}; f.querySelectorAll('input[name^="cnh_"]').forEach((i) => { const k = +i.name.slice(4); keyOf[k] = i.name; }); const starts = Object.keys(keyOf).map(Number).sort((a, b) => a - b); const inputOf = (h) => { let pick = null; for (const k of starts) if (k <= h) pick = k; return pick == null ? null : keyOf[pick]; }; // 그 시각이 속한 구간의 입력칸 (구간 시작이 h 이하인 것 중 마지막)
+  $('#wk-admin-list')?.addEventListener('click', async (e) => { const del = e.target.closest('[data-wk-del]'); if (del) await wkDeleteSession(del.dataset.wkDel); });
+  $('#wk-view')?.addEventListener('input', (e) => { if (e.target.id === 'wk-guest-name' && W.edit) W.edit.name = e.target.value; });
+  $('#wk-view')?.addEventListener('change', (e) => { if (tourViewChange(e.target)) return; if (e.target.id === 'wk-me') { W.me = e.target.value || ''; if (W.me) localStorage.setItem('tennisweet.me', W.me); else localStorage.removeItem('tennisweet.me'); renderWeeklyView(); } });
+  $('#wk-view')?.addEventListener('submit', async (e) => { const f = e.target; if (f.id !== 'wk-cn-form') return; e.preventDefault(); if (!W.doc || wkClosed(W.doc) || !wkCanWrite()) return; if (TOUR_ID_RE.test(W.doc.id) && !(await wkRequireAuth('tour'))) return; /* 대회의 코트 번호는 비밀번호 */ const fd = new FormData(f); const keyOf = {}; f.querySelectorAll('input[name^="cnh_"]').forEach((i) => { const k = +i.name.slice(4); keyOf[k] = i.name; }); const starts = Object.keys(keyOf).map(Number).sort((a, b) => a - b); const inputOf = (h) => { let pick = null; for (const k of starts) if (k <= h) pick = k; return pick == null ? null : keyOf[pick]; }; // 그 시각이 속한 구간의 입력칸 (구간 시작이 h 이하인 것 중 마지막)
     const value = wkCourtNamesFromForm(wkHours(wkSettings(W.doc)), (h) => { const n = inputOf(h); return n ? fd.get(n) : null; }, fd.get('cn_all')); W.cnEdit = false; W.cnByHour = false; await wkSend({ op: 'set', path: 'courtNames', value }); }); // 코트 번호 저장 (누구나): 공통이면 배열, 시간대별이면 { 시: [번호] }
-  $('#tab-weekly')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
+  $('#wk-view')?.addEventListener('keydown', (e) => { if (e.target.id === 'wk-guest-name' && e.key === 'Enter') { e.preventDefault(); $('#wk-save')?.click(); } if (e.key === 'Enter' && e.target.closest?.('.wk-score-ed')) { e.preventDefault(); e.target.closest('.wk-score-ed').querySelector('[data-wk-score-save]')?.click(); } });
   // ---- 대진 생성: 기존 개인전 생성기를 참석자·세션 설정으로 잠시 바꿔 호출 (NTRP = 레벨로 균형만, 특별 규칙·개인 선호 없음). 이력·고정 경기는 GEN_HOOK 으로 주입 ----
   function wkFromSlot(doc, s) { if (!isToday(doc.date)) return 0; const now = new Date(); const cur = now.getHours() * 60 + now.getMinutes(); const n = maxSlots(s); for (let i = 0; i < n; i++) if (slotStartMin(s, i) > cur) return i; return n; } // 아직 시작하지 않은 첫 시간대
-  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}${p.lv != null ? 'L' + p.lv : ''}`).join(',')).toString(36);
+  const wkInputHash = (doc) => fnv1a(wkAttendees(doc).map((p) => `${p.id}:${p.from}-${p.until}${p.yield ? 'y' : ''}${p.lv != null ? 'L' + p.lv : ''}`).join(',') + (doc.tour?.mode === 'team' ? `|T${doc.tour.teamCount}:${(doc.tour.teams || []).map((t) => t.join('.')).join('/')}` : '')).toString(36); // 팀전 대회는 팀 구성이 바뀌어도 '다시 짜기' 대상
   const WK_TYPES = [['FF', '여복', 'f'], ['MM', '남복', 'm'], ['FM', '혼복', 'x'], ['MIX', '잡복', 'j']]; // 생성할 때 고르는 경기 종류 (기본 전부)
   const WK_TYPES_KEY = 'tennisweet.wk.types';
   /** 대진을 만들 때 뺀 종류: 저장 서버(Code.gs)가 모르는 칸을 버리므로 inputHash 뒤에 '~글자들'로 붙여 함께 저장한다. 뺀 종류가 없으면 아무것도 붙지 않는다. 반환 { FF, MM, FM, MIX } (참이면 허용), 전부 허용이면 null */
@@ -2042,7 +2245,7 @@
   /** 고르는 중인 값 저장 (지금 대진과 같아지면 지운다). next = null 이면 지운다. 저장소를 못 쓰는 기기에서도 페이지가 열려 있는 동안은 동작한다 */
   function wkTypesSave(doc, next) { const id = doc.id; const sch = wkSchTypes(doc.schedule); const same = !next || WK_TYPES.every(([c]) => next.includes(c) === (!sch || !!sch[c])); if (same) delete W.typesMem[id]; else W.typesMem[id] = next; let all = {}; try { const p = JSON.parse(localStorage.getItem(WK_TYPES_KEY) || '{}'); if (p && typeof p === 'object' && !Array.isArray(p)) all = p; } catch {} if (same) delete all[id]; else all[id] = next; for (const k of Object.keys(all).sort().slice(0, -8)) delete all[k]; try { localStorage.setItem(WK_TYPES_KEY, JSON.stringify(all)); } catch {} }
   function wkTypesHtml(doc) { const ty = wkTypesOf(doc); const off = WK_TYPES.filter(([c]) => ty && !ty[c]).map(([, l]) => l); return `<div class="row wk-types" role="group" aria-label="만들 경기 종류"><span class="sub">경기 종류</span>${WK_TYPES.map(([c, l]) => `<button type="button" class="chip ${!ty || ty[c] ? 'on' : ''}" aria-pressed="${!ty || ty[c] ? 'true' : 'false'}" data-wk-type="${c}">${l}</button>`).join('')}${off.length ? `<span class="hint">${off.join('·')} 없이 만듭니다${(doc.schedule?.matches || []).some((m) => { const f = (x) => doc.attendance[x.slice(2)]?.g === 'F'; const wa = m.aIds.filter(f).length, wb = m.bIds.filter(f).length; return !ty[wa + wb === 4 ? 'FF' : wa + wb === 0 ? 'MM' : wa === 1 && wb === 1 ? 'FM' : 'MIX']; }) ? ' · 지금 대진에는 아직 들어 있어 다시 섞어야 빠집니다' : ''}</span>` : ''}</div>`; }
-  function generateWeeklySchedule(doc, hist, fromSlot, gen, types) { // types: 뺀 종류가 있을 때 { FF, MM, FM, MIX } (참이면 허용), 전부 허용이면 null
+  function generateWeeklySchedule(doc, hist, fromSlot, gen, types, extra) { // types: 뺀 종류가 있을 때 { FF, MM, FM, MIX } (참이면 허용), 전부 허용이면 null. extra.ffMax = 여복 경기 수 상한 (대회)
     const ps = wkAttendees(doc); const s = wkSettings(doc); const ty = types && WK_TYPES.some(([c]) => !types[c]) ? types : null;
     const fixed = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
     const inputHash = wkInputHash(doc); const seed = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}${ty ? '|' + WK_TYPES.filter(([c]) => ty[c]).map(([c]) => c).join('') : ''}`) % 1000000; // 같은 참석 상태·같은 경기 종류면 어느 기기에서 눌러도 같은 판
@@ -2050,7 +2253,7 @@
     state.players = ps; state.settings = s; ntrp.clear();
     ps.forEach((p) => ntrp.set(p.id, String(wkLevelOf(p)))); // 레벨(관리자가 갱신: NTRP, 여성 −0.5)로 균형. 게스트·미입력은 3.5 로 간주
     { const menLv = ps.filter((p) => p.gender !== 'F').map((p) => wkLevelOf(p)); s.sameNtrpGame = menLv.length >= 4 && (!ty || ty.MM) ? String(Math.max(...menLv)) : ''; if (ty && !ty.FF) s.minWomenDoubles = 0; } // 상위 남복 1경기: 참석 남자 최고 레벨 4명 (모자라면 다음 등급 포함 상위 4명) — 대회의 '동일 NTRP 남복' 장치 재사용
-    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true, types: ty };
+    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true, types: ty, ffMax: extra && Number.isInteger(extra.ffMax) ? extra.ffMax : null };
     try {
       const sch = generateRotation(s, seed);
       const matches = sch.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })).sort((a, b) => a.slot - b.slot || a.court - b.court);
@@ -2058,45 +2261,165 @@
       return { seed, gen, fromSlot, inputHash: ty ? `${inputHash}~${WK_TYPES.filter(([c]) => ty[c]).map(([, , k]) => k).join('')}` : inputHash, at: new Date().toISOString(), by: W.me || '', matches };
     } finally { GEN_HOOK = null; state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
   }
+  // ---- 대회 대진: 개인전 = 정기 모임 생성기(잡복 없이, 여복 경기 수 지정), 팀전 = 팀전 생성기(팀 대 팀, 양쪽 같은 종류라 잡복이 없다). 지난 대회의 같은 조·같은 팀은 되도록 다시 묶지 않는다 ----
+  const TOUR_TYPES = { FF: true, MM: true, FM: true, MIX: false }; // 대회는 잡복 없이
+  const tourOf = (doc) => (doc && TOUR_ID_RE.test(String(doc.id || '')) && doc.tour ? doc.tour : null);
+  const tourTeamName = (tour, i) => tour?.teamNames?.[i] || `${i + 1}팀`;
+  const TOUR_HIST_MAX = 6; // 참고하는 지난 대회 수 (가장 최근 1, 그 전 0.5, 0.25 …)
+  /** 지난 대회들(만든 대회 + 옛 보관본)에서 사람 쌍별 같은 조(partner)·상대(opp)·같은 팀(mate) 무게. 날짜가 이 대회보다 앞선 것만, 파일 하나를 못 읽어도 나머지로 */
+  async function tourHistory(doc) {
+    const H = { partner: {}, opp: {}, mate: {}, n: 0, failed: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
+    let events = T.index?.events; if (!events) { try { const raw = await archRead('archive/index.json'); events = Array.isArray(raw?.events) ? raw.events : []; } catch { events = []; } }
+    const list = [...(W.index?.tours || []).filter((t) => t.id !== doc.id && t.date < doc.date).map((t) => ({ ses: true, id: t.id, date: t.date })), ...events.filter((e) => e && ARCH_RE.test(String(e.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) && e.date < doc.date).map((e) => ({ ses: false, id: e.id, date: e.date }))].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, TOUR_HIST_MAX);
+    const docs = await Promise.all(list.map(async (x) => { const late = new Promise((r) => setTimeout(() => r(null), 5000)); try { if (x.ses) { if (W.cache[x.id]) return W.cache[x.id]; let d = await Promise.race([dataRead(`weekly/sessions/${x.id}.json`), late]); if (d) { d = assertWeekly(d); W.cache[x.id] = d; } return d; } const d = await Promise.race([archRead(`archive/${x.id}.json`), late]); return d ? assertArchive(d) : null; } catch { return null; } }));
+    let rank = 0;
+    for (const d of docs) {
+      if (!d) { H.failed++; continue; } if (!d.schedule?.matches?.length) continue; const w = Math.pow(0.5, rank++); H.n++;
+      const units = {}; for (const u of d.units || []) units[u.id] = u;
+      for (const m of d.schedule.matches) { const A = recSide(m, 'a', units), B = recSide(m, 'b', units); for (const S of [A, B]) if (S.length === 2) add(H.partner, key(S[0], S[1]), w); for (const x of A) for (const y of B) add(H.opp, key(x, y), w); }
+      const teams = d.tour ? (d.tour.mode === 'team' ? d.tour.teams : null) : d.settings?.mode === 'team' ? (d.units || []).map((u) => u.playerIds) : null; // 팀전이었으면 같은 팀
+      for (const t of teams || []) for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) add(H.mate, key(t[i], t[j]), w);
+    }
+    return H;
+  }
+  /** 개인전 대회의 이력 = 정기 모임 이력(직전 모임 등) + 지난 대회. 지난 대회에서 같은 조였던 쌍은 '가장 최근 조합'과 같은 무게로 피하고(실력 균형보다 먼저, 그 전 대회는 절반), 상대는 가볍게 */
+  function tourMergeHist(hw, ht) {
+    const H = hw ? { ...hw, partner: { ...hw.partner }, opp: { ...hw.opp }, recentP: { ...(hw.recentP || {}) }, recentO: { ...(hw.recentO || {}) }, fmWomen: { ...(hw.fmWomen || {}) } } : { partner: {}, opp: {}, fmWomen: {}, recentP: {}, recentO: {}, sessions: 0, failed: 0 };
+    if (!ht) return H;
+    for (const [k, v] of Object.entries(ht.partner)) { H.partner[k] = (H.partner[k] || 0) + v; H.recentP[k] = Math.max(H.recentP[k] || 0, Math.min(1, v)); }
+    for (const [k, v] of Object.entries(ht.opp)) H.opp[k] = (H.opp[k] || 0) + v * 0.5;
+    H.sessions = (H.sessions || 0) + ht.n; H.failed = (H.failed || 0) + ht.failed; H.tours = ht.n; return H;
+  }
+  /** 팀 나누기 (팀전 대회). keep 이 있으면 그 팀은 그대로 두고 팀이 없는 참가자만 넣는다(빠진 사람은 뺀다). 없으면 기존 팀전 배정(도착 구간·실력·성별 균형)을 여러 번 만들어
+   *  같은 도착 시각끼리 맞바꾸며 팀별 여성 수 차이(가장 무겁게: 팀 대 팀은 양쪽 같은 종류라 여성 수가 다르면 경기가 비거나 몰린다) · '지난 대회에서 같은 팀(1)·같은 조(0.5)였던 쌍' · 팀 실력 합 차이를 줄인 것을 고른다 */
+  function tourBuildTeams(doc, ht, keep) {
+    const n = doc.tour.teamCount; const att = wkAttendees(doc); const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
+    const pw = (a, b) => (ht ? (ht.mate[key(a, b)] || 0) + 0.5 * (ht.partner[key(a, b)] || 0) : 0);
+    const lv = {}, P = {}; for (const p of att) { lv[p.id] = wkLevelOf(p); P[p.id] = p; }
+    const sumLv = (t) => t.reduce((a, id) => a + lv[id], 0); const avgAll = att.length ? att.reduce((a, p) => a + lv[p.id], 0) / att.length : 0;
+    if (keep) { // 이미 나눈 팀원은 그대로 둔다 (불참으로 바뀐 사람도 — 지난 경기의 팀 기록이 바뀌지 않게, 대진에서는 빠진다)
+      const teams = Array.from({ length: n }, (_, i) => [...(keep[i] || [])]); const has = new Set(teams.flat()); const live = (t) => t.filter((id) => P[id]);
+      for (const p of att.filter((q) => !has.has(q.id)).sort((a, b) => toMin(a.from) - toMin(b.from) || lv[b.id] - lv[a.id] || (a.id < b.id ? -1 : 1))) {
+        let bt = 0, bc = Infinity; teams.forEach((t0, i) => { const t = live(t0); const c = t.length * 1e4 + t.filter((id) => P[id].gender === p.gender).length * 1e3 + t.reduce((a, id) => a + pw(p.id, id), 0) * 500 + sumLv(t) * 10; if (c < bc) { bc = c; bt = i; } }); teams[bt].push(p.id);
+      }
+      return teams;
+    }
+    const fShare = att.length ? att.filter((p) => p.gender === 'F').length / att.length : 0; const fOf = (t) => t.filter((id) => P[id].gender === 'F').length;
+    const blocks = [...new Set(att.map((p) => p.from))]; const blkOff = (teams) => { let o = 0; for (const b of blocks) { const c = teams.map((t) => t.filter((id) => P[id].from === b).length); const avg = c.reduce((a, x) => a + x, 0) / n; for (const x of c) o += Math.max(0, Math.abs(x - avg) - 0.5); } return o; }; // 도착 시각별로 팀마다 고르게
+    const cost = (teams) => { let rep = 0, bal = 0, fem = 0; for (const t of teams) { for (let i = 0; i < t.length; i++) for (let j = i + 1; j < t.length; j++) rep += pw(t[i], t[j]); bal += Math.abs(sumLv(t) - avgAll * t.length); fem += Math.max(0, Math.abs(fOf(t) - fShare * t.length) - 0.5); } return fem * 5000 + blkOff(teams) * 2000 + rep * 1000 + bal * 150; }; // 여성 수는 반올림 차이(0.5)까지 허용
+    const saved = { players: state.players, settings: state.settings, units: state.units, nt: new Map(ntrp) }; const base = fnv1a(`${doc.id}|${wkInputHash(doc)}|teams`);
+    let best = null, bestC = Infinity;
+    try {
+      state.players = att; state.settings = { ...state.settings, mode: 'team' }; ntrp.clear(); att.forEach((p) => ntrp.set(p.id, String(lv[p.id])));
+      for (let k = 0; k < 24; k++) {
+        seedRng((base + k * 7919) % 1000000); autoBuild(n); const teams = state.units.map((u) => [...u.playerIds]); while (teams.length < n) teams.push([]);
+        for (let guard = 0; guard < att.length; guard++) { // 인원 맞추기: 기존 배정은 두 명씩 넣어 6·4 처럼 벌어질 수 있다 → 큰 팀에서 작은 팀으로 한 명씩 (비용이 가장 덜 오르는 사람)
+          const sz = teams.map((t) => t.length); const big = sz.indexOf(Math.max(...sz)), small = sz.indexOf(Math.min(...sz)); if (sz[big] - sz[small] <= 1) break;
+          let pick = -1, pc = Infinity; teams[big].forEach((id, i) => { teams[big].splice(i, 1); teams[small].push(id); const c = cost(teams); teams[small].pop(); teams[big].splice(i, 0, id); if (c < pc) { pc = c; pick = i; } }); teams[small].push(teams[big].splice(pick, 1)[0]);
+        }
+        for (let guard = 0; guard < 80; guard++) { // 맞바꾸기: 인원·도착 구간 구성은 그대로라 시간대별 인원에 영향이 없다 (바뀌는 몫만 계산)
+          const S = teams.map(sumLv), F = teams.map(fOf); const off = (x, v) => Math.abs(v - avgAll * teams[x].length); const foff = (x, v) => Math.max(0, Math.abs(v - fShare * teams[x].length) - 0.5); let pick = null, gain = 1e-9;
+          for (let x = 0; x < n; x++) for (let y = x + 1; y < n; y++) for (let i = 0; i < teams[x].length; i++) for (let j = 0; j < teams[y].length; j++) {
+            const a = teams[x][i], b = teams[y][j]; if (P[a].from !== P[b].from) continue;
+            let rep = 0; for (const u of teams[x]) if (u !== a) rep += pw(b, u) - pw(a, u); for (const v of teams[y]) if (v !== b) rep += pw(a, v) - pw(b, v);
+            const d = lv[b] - lv[a]; const bal = off(x, S[x] + d) + off(y, S[y] - d) - off(x, S[x]) - off(y, S[y]);
+            const df = (P[b].gender === 'F' ? 1 : 0) - (P[a].gender === 'F' ? 1 : 0); const fem = df ? foff(x, F[x] + df) + foff(y, F[y] - df) - foff(x, F[x]) - foff(y, F[y]) : 0;
+            const delta = fem * 5000 + rep * 1000 + bal * 150; // 같은 도착 시각끼리라 도착 시각별 구성(blkOff)은 그대로
+            if (-delta > gain) { gain = -delta; pick = [x, i, y, j]; }
+          }
+          if (!pick) break; const [x, i, y, j] = pick; [teams[x][i], teams[y][j]] = [teams[y][j], teams[x][i]];
+        }
+        const c0 = cost(teams);
+        if (c0 < bestC - 1e-9) { bestC = c0; best = teams.map((t) => [...t]); }
+      }
+    } finally { state.players = saved.players; state.settings = saved.settings; state.units = saved.units; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
+    return best || Array.from({ length: n }, () => []);
+  }
+  /** 팀전 판 점수 (작을수록 좋음): 경기 수(코트 채우기) → 같은 팀 안 경기 수 공정(머무는 시간대가 같은 사람끼리 2경기 이상 차이 금지) → 여복 경기 수 → 지난 대회 같은 조 → 이번 대회 안 같은 조·상대 반복 → 양 팀 실력 차 */
+  function tourTeamScore(all, s, ps, teams, hp, lvOf) {
+    const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const g = {}, pc = {}, oc = {}; let ff = 0, bal = 0, past = 0; const isF = (id) => ps.find((p) => p.id === id)?.gender === 'F';
+    for (const m of all) {
+      for (const x of [...m.A, ...m.B]) g[x] = (g[x] || 0) + 1; for (const S of [m.A, m.B]) { const k = key(S[0], S[1]); pc[k] = (pc[k] || 0) + 1; past += hp[k] || 0; } for (const a of m.A) for (const b of m.B) oc[key(a, b)] = (oc[key(a, b)] || 0) + 1;
+      if ([...m.A, ...m.B].every(isF)) ff++; const d = Math.abs(lvOf(m.A[0]) + lvOf(m.A[1]) - lvOf(m.B[0]) - lvOf(m.B[1])); bal += d >= 1.5 ? 2000 : d >= 1 ? 600 : d >= 0.5 ? 60 : 0;
+    }
+    const n = maxSlots(s); let gap = 0;
+    for (const t of teams) { const byAv = {}; for (const id of t.playerIds) { const p = ps.find((q) => q.id === id); if (!p) continue; let av = 0; for (let i = 0; i < n; i++) if (playerAvailable(p, s, i)) av++; (byAv[av] ??= []).push(g[id] || 0); } for (const arr of Object.values(byAv)) gap += Math.max(0, Math.max(...arr) - Math.min(...arr) - 1); }
+    let rep = 0; for (const v of Object.values(pc)) rep += Math.max(0, v - 1) * 200; for (const v of Object.values(oc)) rep += Math.max(0, v - 1) * 40;
+    return -all.length * 1e5 + gap * 2e4 + Math.abs(ff - (s.minWomenDoubles || 0)) * 5000 + past * 800 + rep + bal;
+  }
+  /** 팀전 대회 대진: 팀 대 팀(코트마다 각 팀 2명, 양쪽 같은 종류). 여러 번 짜서 판 점수가 가장 좋은 것 — 같은 참석·팀이면 어느 기기에서 눌러도 같은 판 */
+  function generateTourTeamSchedule(doc, fromSlot, gen, ht) {
+    const tour = doc.tour; const ps = wkAttendees(doc); const s0 = wkSettings(doc); const s = { ...s0, maxWomenDoubles: s0.minWomenDoubles };
+    const teamOf = {}; (tour.teams || []).forEach((t, i) => t.forEach((id) => (teamOf[id] = i)));
+    const teams = (tour.teams || []).map((t, i) => ({ id: 'T' + i, name: tourTeamName(tour, i), playerIds: t.filter((id) => doc.attendance[id]) })).filter((t) => t.playerIds.length >= 2);
+    if (teams.length < 2) throw new Error('참가자가 2명 이상인 팀이 둘 이상 있어야 합니다.');
+    const hp = { ...(ht?.partner || {}) };
+    const old = fromSlot > 0 ? (doc.schedule?.matches || []).filter((m) => m.slot < fromSlot) : [];
+    const fixed = old.map((m) => { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); return { slot: m.slot, court: m.court, aId: 'T' + teamOf[A[0]], bId: 'T' + teamOf[B[0]], aPlayers: A, bPlayers: B }; });
+    const inputHash = wkInputHash(doc); const seed0 = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}|team`) % 1000000;
+    const saved = { players: state.players, settings: state.settings, nt: new Map(ntrp) }; let best = null, bestC = Infinity, err = null;
+    try {
+      state.players = ps; state.settings = s; ntrp.clear(); ps.forEach((p) => ntrp.set(p.id, String(wkLevelOf(p))));
+      for (let k = 0; k < 40; k++) {
+        let sch; try { sch = generateTeam(s, teams, (seed0 + k * 7919) % 1000000, { fromSlot, fixed, hist: hp }); } catch (e) { err = e; continue; }
+        const all = [...fixed.map((m) => ({ A: m.aPlayers, B: m.bPlayers })), ...sch.matches.map((m) => ({ A: m.aPlayers, B: m.bPlayers }))];
+        const c = tourTeamScore(all, s, ps, teams, hp, ntrpOf); if (c < bestC) { bestC = c; best = sch; }
+      }
+    } finally { state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
+    if (!best) throw err || new Error('배정 가능한 경기가 없습니다.');
+    const matches = [...old.map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })), ...best.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aPlayers.map((x) => 'p:' + x), bIds: m.bPlayers.map((x) => 'p:' + x) }))].sort((a, b) => a.slot - b.slot || a.court - b.court);
+    return { seed: seed0, gen, fromSlot, inputHash, at: new Date().toISOString(), by: W.me || '', matches };
+  }
   /** 지난 모임 문서들 → 사람 쌍별 같은 팀·상대·혼복 여성 상대 횟수 (가장 최근 모임이 가장 무겁다: 모임 순서마다 절반). 완료 표시는 일부만 하는 경우가 많아 편성 전체를 센다. 게스트도 이름이 같으면 id 가 같아 그대로 이어진다. 여자끼리 상대는 여자 수가 적어 구조적으로 반복되므로 opp 에 넣지 않고 fmWomen 으로만 센다 (넣으면 혼복을 피해 잡복으로 흩어진다) */
   function wkHistoryFrom(docs, curDate) {
     const H = { partner: {}, opp: {}, fmWomen: {}, recentP: {}, recentO: {}, sessions: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v); const cur = Date.parse(curDate);
-    const past = docs.filter((d) => { if (!d?.schedule?.matches?.length) return false; const days = (cur - Date.parse(d.date)) / 86400000; return days > 0 && days <= WK_HIST_DAYS; }).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); let rank = 0;
+    const past = docs.filter((d) => { if (!d?.schedule?.matches?.length) return false; const days = (cur - Date.parse(d.date)) / 86400000; return days > 0 && days <= WK_HIST_DAYS; }).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); let rank = 0, wr = 0;
     for (const d of past) {
-      const ms = d.schedule.matches; const rw = rank === 0 ? 1 : rank === 1 ? WK_RECENT_2ND : 0; const w = Math.pow(WK_HIST_RATIO, rank++); H.sessions++; const mark = (o, k) => { if (rw > (o[k] || 0)) o[k] = rw; };
+      const isT = TOUR_ID_RE.test(String(d.id || '')); const ms = d.schedule.matches; const rw = isT ? 0 : wr === 0 ? 1 : wr === 1 ? WK_RECENT_2ND : 0; if (!isT) wr++; /* '직전 두 모임'(최근 조합)은 정기 모임끼리만 센다 — 대회는 감쇠 무게로만 (대회의 짝은 tourMergeHist 가 따로 챙긴다) */ const w = Math.pow(WK_HIST_RATIO, rank++); H.sessions++; const mark = (o, k) => { if (rw > (o[k] || 0)) o[k] = rw; };
       for (const m of ms) { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); for (const T of [A, B]) if (T.length === 2) { add(H.partner, key(T[0], T[1]), w); mark(H.recentP, key(T[0], T[1])); } const g = (x) => d.attendance?.[x]?.g; for (const x of A) for (const y of B) if (!(g(x) === 'F' && g(y) === 'F')) { add(H.opp, key(x, y), w); mark(H.recentO, key(x, y)); } const wa = A.filter((x) => g(x) === 'F'), wb = B.filter((x) => g(x) === 'F'); if (wa.length === 1 && wb.length === 1) add(H.fmWomen, key(wa[0], wb[0]), w); }
     }
     return H;
   }
   /** 이번 모임 이전 모임들의 이력. 끝난 모임은 보통 목록(sessions)에서 빠지므로 index.past 까지 합쳐 찾는다. 목록에 있는 모임은 대진이 또 바뀔 수 있어 매번 새로 읽고, 목록에서 빠진 모임만 캐시를 쓴다. 파일 하나를 못 읽어도 나머지로 진행하고, 못 읽은 수를 failed 로 돌려준다 */
   async function wkHistory(curId) {
-    const cur = wkSessions().find((x) => x.id === curId); if (!cur) return { partner: {}, opp: {}, fmWomen: {}, recentP: {}, recentO: {}, sessions: 0, failed: 0 };
-    const listed = new Set(wkSessions().map((x) => x.id));
-    const ids = [...new Set([...(W.index?.past || []), ...listed])].filter((id) => id.slice(0, 10) < cur.date && (Date.parse(cur.date) - Date.parse(id.slice(0, 10))) / 86400000 <= WK_HIST_DAYS).sort().slice(-WK_HIST_MAX); // 8주 안, 가까운 16회까지
+    const cur = wkSessions().find((x) => x.id === curId) || (W.index?.tours || []).find((x) => x.id === curId) || (W.doc?.id === curId ? { id: curId, date: W.doc.date } : null); if (!cur) return { partner: {}, opp: {}, fmWomen: {}, recentP: {}, recentO: {}, sessions: 0, failed: 0 };
+    const listed = new Set([...wkSessions().map((x) => x.id), ...(W.index?.tours || []).map((x) => x.id)]); // 대회도 지난 대진에 넣는다
+    const ids = [...new Set([...(W.index?.past || []), ...listed])].filter((id) => id !== curId && id.slice(0, 10) < cur.date && (Date.parse(cur.date) - Date.parse(id.slice(0, 10))) / 86400000 <= WK_HIST_DAYS).sort().slice(-WK_HIST_MAX); // 8주 안, 가까운 16회까지
     let failed = 0;
     const docs = await Promise.all(ids.map(async (id) => { if (W.id === id && W.doc) return W.doc; const cached = W.cache[id]; if (cached && !listed.has(id)) return cached;
       let d = await Promise.race([dataRead(`weekly/sessions/${id}.json`), new Promise((r) => setTimeout(() => r(null), 5000))]); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (!d) { if (cached) return cached; failed++; return null; } if (!listed.has(id)) W.cache[id] = d; return d; }));
     return { ...wkHistoryFrom(docs, cur.date), failed };
   }
   async function wkGenerate(mode) {
-    const doc = W.doc; if (!doc || wkClosed(doc) || !wkCanWrite()) return; const s = wkSettings(doc); const att = wkAttendees(doc);
+    const doc = W.doc; if (!doc || wkClosed(doc) || !wkCanWrite()) return; const s = wkSettings(doc); const att = wkAttendees(doc); const tour = tourOf(doc); const team = tour?.mode === 'team';
     if (att.length < 4) { toast('4명 이상 참석해야 대진을 만들 수 있습니다'); return; }
     if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 대진을 만드세요'); return; }
-    if (!(await wkRequireAuth())) return; // 대진 생성·다시 섞기는 대진표 비밀번호
-    const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1; const ty = wkTypesOf(doc); const offTypes = WK_TYPES.filter(([c]) => ty && !ty[c]).map(([, l]) => l).join('·');
+    if (!(await wkRequireAuth(tour ? 'tour' : undefined))) return; // 대진 생성·다시 섞기는 대진표 비밀번호
+    const hasDone = Object.keys(doc.done).length > 0; let fromSlot = 0, gen = 1; const ty = tour ? TOUR_TYPES : wkTypesOf(doc); const offTypes = tour ? '' : WK_TYPES.filter(([c]) => ty && !ty[c]).map(([, l]) => l).join('·'); // 대회는 늘 잡복 없이
     if (mode === 'left') { fromSlot = wkFromSlot(doc, s); gen = doc.schedule?.gen || 1; if (fromSlot === 0 && hasDone && !confirm('아직 시작 전이라 전체를 다시 만듭니다. 완료 표시가 지워질 수 있습니다. 계속할까요?')) return; }
     else if (mode === 'reshuffle') { if (!confirm(`${hasDone ? '완료 표시된 경기가 있습니다. 전체를 새로 섞으면 완료 표시도 지워집니다. 계속할까요?' : '대진을 새로 섞을까요? 다른 분들 화면도 함께 바뀝니다.'}${offTypes ? `\n(${offTypes} 제외)` : ''}`)) return; gen = (doc.schedule?.gen || 0) + 1; }
     $$('#wk-gen, #wk-regen-left, #wk-reshuffle, #wk-adjust').forEach((b) => { b.disabled = true; }); wkStatus('대진 만드는 중…');
     const busy = $('#wk-busy'); const busyText = (t) => { const b = busy?.querySelector('b'); if (b) b.textContent = t; };
     if (busy) { busyText('지니가 대진을 짜는 중…'); busy.hidden = false; } // 생성 중 표시 (계산은 5~10초 동안 화면을 멈추므로, 표시가 먼저 그려진 뒤 시작한다)
     try {
-      const hist = await Promise.race([wkHistory(doc.id), new Promise((r) => setTimeout(() => r(null), 6000))]); await Promise.race([new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60))), new Promise((r) => setTimeout(r, 400))]);
-      const sch = generateWeeklySchedule(doc, hist, fromSlot, gen, ty);
-      const sending = wkSend({ op: 'generate', base: doc.rev, value: sch }); // 새 대진은 이 시점에 화면에 그려진다 (낙관적 반영)
+      const late = () => new Promise((r) => setTimeout(() => r(null), 6000));
+      const [hw, ht] = await Promise.all([Promise.race([wkHistory(doc.id), late()]), tour ? Promise.race([tourHistory(doc), late()]) : null]); await Promise.race([new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60))), new Promise((r) => setTimeout(r, 400))]);
+      const hist = tour ? tourMergeHist(hw, ht) : hw; let sch;
+      if (team) { // 팀전: 팀이 없거나 팀 밖의 참가자가 있으면 먼저 팀에 넣는다 (이미 나눈 팀은 그대로, 지난 대회 중복을 피해)
+        for (let k = 0; k < 2; k++) { const d0 = W.doc; const t0 = tourOf(d0); const inTeam = new Set((t0?.teams || []).flat()); if (t0?.teams && wkAttendees(d0).every((p) => inTeam.has(p.id))) break;
+          const teams = tourBuildTeams(d0, ht, t0?.teams); const ok = await wkSend({ op: 'tour-set', base: d0.rev, value: { teams } }); // 팀이 서버에 저장된 뒤에만 대진을 만든다 (그사이 다른 변경으로 거절되면 최신 문서로 한 번 더)
+          if (!ok && k === 1) throw new Error('팀 구성을 저장하지 못했습니다. 잠시 후 다시 눌러 주세요.'); }
+        if (!tourOf(W.doc)?.teams) throw new Error('팀 구성을 저장하지 못했습니다. 잠시 후 다시 눌러 주세요.');
+        sch = generateTourTeamSchedule(W.doc, fromSlot, gen, ht);
+      } else sch = generateWeeklySchedule(doc, hist, fromSlot, gen, ty, tour ? { ffMax: s.minWomenDoubles } : null); // 개인전 대회: 여복 경기 수 = 입력값 (최소이자 상한)
+      const sending = wkSend({ op: 'generate', base: W.doc.rev, value: sch }); // 새 대진은 이 시점에 화면에 그려진다 (낙관적 반영)
+      const zeroT = team ? wkAttendees(W.doc).filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).map((p) => p.name) : []; // 팀전: 같은 팀에 함께 뛸 사람이 없거나 종류가 안 맞아 빠진 사람
       if (busy) busy.hidden = true; // 표시는 계산 동안만: 저장은 상태 줄('저장 중…')이 알리고, 신호가 약해 저장이 늦어도 화면을 막지 않는다
       { const parts = []; let warn = false; // 생성 결과 안내: 뺀 종류 때문에 코트가 비거나 경기 수 차이가 나면 먼저 알린다
-        if (offTypes) { let empty = 0; const n = maxSlots(s); for (let i = fromSlot; i < n; i++) empty += Math.max(0, Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => playerAvailable(p, s, i)).length / 4)) - sch.matches.filter((m) => m.slot === i).length); const gap = wkRuleCheck(doc, s, sch.matches, ty).issues.some((x) => x.startsWith('경기 수 부족')); const zero = att.filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).length; if (empty) { parts.push(`${offTypes} 없이 짜서 코트 ${empty}칸이 비었습니다`); warn = true; } else parts.push(`${offTypes} 없이 만들었습니다`); if (zero) { parts.push(`경기가 없는 사람이 ${zero}명입니다`); warn = true; } else if (gap) { parts.push('경기 수 차이가 나는 사람이 있습니다'); warn = true; } }
-        if (!hist || hist.failed) { parts.push(hist && hist.sessions ? `지난 모임 ${hist.failed}회를 읽지 못해 ${hist.sessions}회만 참고했습니다` : '지난 대진을 읽지 못해 이번 모임 안에서만 섞었습니다'); warn = true; } else if (hist.sessions) parts.push(`지난 모임 ${hist.sessions}회의 대진을 참고했습니다`);
+        if (offTypes || (tour && !team)) { let empty = 0; const n = maxSlots(s); for (let i = fromSlot; i < n; i++) empty += Math.max(0, Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => playerAvailable(p, s, i)).length / 4)) - sch.matches.filter((m) => m.slot === i).length); const gap = wkRuleCheck(doc, s, sch.matches, ty).issues.some((x) => x.startsWith('경기 수 부족')); const zero = att.filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).length; if (empty) { parts.push(`${tour ? '대회는 잡복 없이 짜므로' : offTypes + ' 없이 짜서'} 코트 ${empty}칸이 비었습니다`); warn = true; } else if (!tour) parts.push(`${offTypes} 없이 만들었습니다`); if (zero) { parts.push(`경기가 없는 사람이 ${zero}명입니다`); warn = true; } else if (gap) { parts.push('경기 수 차이가 나는 사람이 있습니다'); warn = true; } }
+        if (zeroT.length) { parts.push(`경기가 없는 사람: ${zeroT.slice(0, 4).join(', ')}${zeroT.length > 4 ? ` 외 ${zeroT.length - 4}명` : ''} — 팀 조정으로 옮겨 다시 짜세요`); warn = true; }
+        if (tour) { if (!ht) { parts.push('지난 대회 기록을 읽지 못했습니다'); warn = true; } else if (ht.n) parts.push(`지난 대회 ${ht.n}회의 짝${team ? '·팀' : ''} 구성은 되도록 피했습니다${ht.failed ? ` (${ht.failed}회는 읽지 못함)` : ''}`); if (hw?.sessions) parts.push(`지난 모임 ${hw.sessions}회도 참고`); }
+        else if (!hist || hist.failed) { parts.push(hist && hist.sessions ? `지난 모임 ${hist.failed}회를 읽지 못해 ${hist.sessions}회만 참고했습니다` : '지난 대진을 읽지 못해 이번 모임 안에서만 섞었습니다'); warn = true; } else if (hist.sessions) parts.push(`지난 모임 ${hist.sessions}회의 대진을 참고했습니다`);
         if (parts.length) toast(parts.join(' · '), warn ? 6000 : 3500); }
       await sending;
     } catch (err) { if (busy) busy.hidden = true; await new Promise((r) => setTimeout(r, 30)); alert('대진을 만들지 못했습니다: ' + err.message); renderWeeklyView(); }
@@ -2117,23 +2440,25 @@
       const gc = {}; for (const x of (doc.schedule?.matches || [])) for (const id of [...x.aIds, ...x.bIds]) gc[id] = (gc[id] || 0) + 1; // 경기 수: 쉬는 사람은 적은 순으로 (교체하면 경기 수가 옮겨가므로)
       const k2 = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const pcS = {}, ocS = {}; for (const x of (doc.schedule?.matches || [])) { if (x.id === m.id) continue; /* 이 경기 자체는 빼고 센다 (여기 들어오면 +1) */ pcS[k2(...x.aIds)] = (pcS[k2(...x.aIds)] || 0) + 1; pcS[k2(...x.bIds)] = (pcS[k2(...x.bIds)] || 0) + 1; for (const a of x.aIds) for (const b of x.bIds) ocS[k2(a, b)] = (ocS[k2(a, b)] || 0) + 1; }
       const mate = m[pk.side + 'Ids'].find((id) => id !== cur), opps = m[pk.side === 'a' ? 'bIds' : 'aIds']; const metOf = (id) => { const tm = pcS[k2(id, mate)] || 0, op = opps.reduce((t, o) => t + (ocS[k2(id, o)] || 0), 0); const mx = Math.max(tm, ...opps.map((o) => ocS[k2(id, o)] || 0)); return { tm, op, warn: mx >= 2 }; }; // 이 코트에 들어오면 같은 팀 +1·상대 +1 이 되므로, 이미 2회면 3회가 된다 → 경고
-      const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0, g: gc['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || (x.court ? x.court - y.court : x.g - y.g) || (x.a.n < y.a.n ? -1 : 1));
+      const tmOf = {}; if (doc.tour?.mode === 'team') (doc.tour.teams || []).forEach((ids, i) => ids.forEach((id) => (tmOf[id] = i))); const sameTeam = (id) => doc.tour?.mode !== 'team' || (tmOf[id] != null && tmOf[id] === tmOf[cur.slice(2)]); // 팀전: 같은 팀 사람끼리만
+      const cands = wkAttendees(doc).filter((p) => 'p:' + p.id !== cur && !m[pk.side + 'Ids'].includes('p:' + p.id) && toMin(p.from) <= t0 && toMin(p.until) >= t1 && sameTeam(p.id)).map((p) => ({ id: 'p:' + p.id, a: doc.attendance[p.id], court: inSlot['p:' + p.id] || 0, g: gc['p:' + p.id] || 0 })).sort((x, y) => (x.court === m.court ? 0 : x.court ? 1 : 2) - (y.court === m.court ? 0 : y.court ? 1 : 2) || (x.court ? x.court - y.court : x.g - y.g) || (x.a.n < y.a.n ? -1 : 1));
       picker = `<div class="wk-picker"><div class="sub">${esc(wkName(doc, cur.slice(2)))} (${gc[cur] || 0}경기) ↔ 자리 바꿀 사람</div><div class="chips">${cands.map((c) => `<button type="button" class="chip ${c.a?.g === 'F' ? 'f' : 'm'} ${c.a?.guest ? 'guest' : ''}" data-wk-swap="${esc(c.id.slice(2))}">${c.a?.guest ? '<span class="gmark">G</span>' : ''}${esc(wkName(doc, c.id.slice(2)))}<small>${c.court === m.court ? '같은 코트' : c.court ? wkCourtLabel(s, c.court, m.slot) + '코트' : '쉬는 중'} · ${c.g}경기${(() => { const mt = metOf(c.id); return mt.tm || mt.op ? ` · <span class="${mt.warn ? 'warn' : ''}">팀 ${mt.tm}·상대 ${mt.op}${mt.warn ? ' ⚠3회' : ''}</span>` : ''; })()}</small></button>`).join('')}<button type="button" class="chip" data-wk-pick-close="1">닫기</button></div></div>`;
     }
     const rs = doc.results?.[m.id] || null; const canScore = !adj && wkDoneOpen(doc) && wkCanWrite(); const editing = canScore && W.score === m.id; // 경기 기록(점수): 누구나 입력, 완료와 같은 7일 유예
+    const teamTag = (ids) => { if (doc.tour?.mode !== 'team') return ''; const i = (doc.tour.teams || []).findIndex((t) => t.includes(ids[0].slice(2))); return i >= 0 ? `<span class="team-tag tc${i}">${esc(tourTeamName(doc.tour, i))}</span>` : ''; }; // 팀전: 양쪽 팀 이름
     const winA = rs && rs.a > rs.b, winB = rs && rs.b > rs.a;
     const scoreEd = editing ? `<div class="wk-score-ed" data-wk-score-ed="${esc(m.id)}"><span class="sub">${esc(wkName(doc, m.aIds[0].slice(2)))}·${esc(wkName(doc, m.aIds[1].slice(2)))}</span><input type="number" inputmode="numeric" min="0" max="6" class="sc-a" value="${rs ? rs.a : ''}" aria-label="A 점수"><b>:</b><input type="number" inputmode="numeric" min="0" max="6" class="sc-b" value="${rs ? rs.b : ''}" aria-label="B 점수"><span class="sub">${esc(wkName(doc, m.bIds[0].slice(2)))}·${esc(wkName(doc, m.bIds[1].slice(2)))}</span><button type="button" class="small primary" data-wk-score-save="${esc(m.id)}">저장</button>${rs ? `<button type="button" class="small" data-wk-score-clear="${esc(m.id)}">지우기</button>` : ''}<button type="button" class="small" data-wk-score-close="1">닫기</button></div>` : '';
     return `<div class="mcard wk ${code ? 't-' + code : ''} ${done ? 'decided' : ''} ${gone ? 'conflict' : ''} ${adj ? 'adjusting' : ''} ${pk ? 'picking' : ''} ${editing ? 'scoring' : ''}" data-wk-done="${esc(m.id)}" role="button" tabindex="0" title="${adj ? '이름을 누르면 바꿀 사람을 고릅니다' : !(wkDoneOpen(doc) && wkCanWrite()) ? '' : done ? '완료 표시 취소' : '경기가 끝나면 눌러 완료 표시 (흐리게)'}">
       <div class="mhead"><b class="court">${esc(wkCourtLabel(s, m.court, m.slot))}<small>코트</small></b><span class="tag type ${code}">${esc(label)}</span>${gone ? '<span class="warn">⚠ 불참자 포함</span>' : ''}${rs ? `<span class="tag wk-score">${rs.a} : ${rs.b}</span>` : done ? '<span class="tag wk-done">✓ 완료</span>' : ''}${canScore ? `<button type="button" class="sc-btn ${editing ? 'on' : ''}" data-wk-score="${esc(m.id)}" title="${rs ? '점수 고치기' : '점수 기록'}">${rs ? '✎' : '점수'}</button>` : ''}</div>
-      <div class="mbody"><div class="side ${winA ? 'w' : ''}"><div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side ${winB ? 'w' : ''}"><div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${scoreEd}${picker}</div>`;
+      <div class="mbody"><div class="side ${winA ? 'w' : ''}">${teamTag(m.aIds)}<div><b>${nm(m.aIds[0], 'a', 0)}</b> · <b>${nm(m.aIds[1], 'a', 1)}</b></div></div><div class="vs" aria-hidden="true"></div><div class="side ${winB ? 'w' : ''}">${teamTag(m.bIds)}<div><b>${nm(m.bIds[0], 'b', 0)}</b> · <b>${nm(m.bIds[1], 'b', 1)}</b></div></div></div>${scoreEd}${picker}</div>`;
   }
   function wkScheduleHtml(doc, s, closed) {
-    let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date);
-    if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? (W.adjust && !closed ? '이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료' : !closed ? '카드를 누르면 완료 표시, 점수 버튼으로 기록 · 조 조정과 다시 섞기는 대진표 비밀번호' : wkDoneOpen(doc) && wkCanWrite() ? `지난 모임 · 완료 표시와 점수 기록은 모임 후 ${WK_DONE_GRACE_DAYS}일까지` : '지난 모임의 대진입니다') : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
+    let html = ''; const att = wkAttendees(doc); const sch = doc.schedule; const today = isToday(doc.date); const tour = tourOf(doc); const team = tour?.mode === 'team'; const word = tour ? '대회' : '모임';
+    if (sch || !closed) html += `<div class="wk-title"><svg class="genie" aria-hidden="true"><use href="#i-genie"/></svg><div><h3>대진표</h3><span class="sub">${sch ? (W.adjust && !closed ? (team ? '이름을 누르고 자리를 바꿀 같은 팀 사람을 고르세요 (다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료' : '이름을 누르고 자리를 바꿀 사람을 고르세요 (같은 코트 상대편 = 조 변경, 다른 코트 = 맞교환, 쉬는 사람 = 교체) · 끝나면 조정 완료') : !closed ? '카드를 누르면 완료 표시, 점수 버튼으로 기록 · 조 조정과 다시 섞기는 대진표 비밀번호' : wkDoneOpen(doc) && wkCanWrite() ? `지난 ${word} · 완료 표시와 점수 기록은 ${word} 후 ${WK_DONE_GRACE_DAYS}일까지` : `지난 ${word}의 대진입니다`) : team ? '참가자가 모이면 팀 대 팀으로 지니가 짜 드립니다' : '참석이 모이면 지니가 골고루 섞어 드립니다'}</span></div></div>`;
     if (!closed) {
       const stale = sch && wkSchHash(sch) !== wkInputHash(doc); const fromSlot = wkFromSlot(doc, s); const left = fromSlot < maxSlots(s); const tyNow = wkTypesOf(doc); const typesOpen = W.typesOpen ?? !!tyNow;
-      if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? '4명 이상 참석하면 만들 수 있습니다.' : '참석한 사람으로 시간대별 대진을 만듭니다. 참석과 경기 종류가 같으면 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>${att.length >= 4 ? wkTypesHtml(doc) : ''}`;
-      else html += `<div class="row wk-gen"><span class="sub">대진 #${sch.seed}${sch.gen > 1 ? ` (${sch.gen}번째)` : ''}${sch.by ? ' · ' + esc(wkName(doc, sch.by)) : ''}${sch.at ? ' · ' + new Date(sch.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>${stale ? '<span class="warn">참석이 바뀌었습니다</span>' : ''}${stale && left ? `<button id="wk-regen-left" class="primary">${fromSlot > 0 ? '남은 시간대 다시 짜기' : '대진 다시 만들기'}</button>` : ''}<button id="wk-adjust" class="small ${W.adjust ? 'on' : ''}"><svg class="ic"><use href="#i-edit"/></svg>${W.adjust ? '조정 완료' : '조 조정'}</button><button id="wk-reshuffle" class="small" ${W.adjust ? 'disabled' : ''}>다시 섞기</button>${W.adjust ? '' : `<button id="wk-types-toggle" class="small ${typesOpen ? 'on' : ''}" aria-expanded="${typesOpen ? 'true' : 'false'}">경기 종류${tyNow ? ` ${WK_TYPES.filter(([c]) => tyNow[c]).length}/${WK_TYPES.length}` : ''}</button>`}</div>${!W.adjust && typesOpen ? wkTypesHtml(doc) : ''}`;
+      if (!sch) html += `<div class="row wk-gen"><button id="wk-gen" class="primary big" ${att.length < 4 ? 'disabled' : ''}><svg class="ic"><use href="#i-ball"/></svg>대진 생성</button><span class="hint">${att.length < 4 ? `4명 이상 ${tour ? '참가' : '참석'}하면 만들 수 있습니다.` : tour ? `${team ? '팀 대 팀으로' : '파트너를 바꿔 가며'} 시간대별 대진을 만듭니다 (여복 ${s.minWomenDoubles || 0}경기 · 잡복 없음 · 지난 대회와 같은 조는 되도록 피함). 참가가 같으면 누가 눌러도 같은 판이 나옵니다.` : '참석한 사람으로 시간대별 대진을 만듭니다. 참석과 경기 종류가 같으면 누가 눌러도 같은 판이 나오고, 모두의 화면에 뜹니다.'}</span></div>${att.length >= 4 && !tour ? wkTypesHtml(doc) : ''}`;
+      else html += `<div class="row wk-gen"><span class="sub">대진 #${sch.seed}${sch.gen > 1 ? ` (${sch.gen}번째)` : ''}${sch.by ? ' · ' + esc(wkName(doc, sch.by)) : ''}${sch.at ? ' · ' + new Date(sch.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>${stale ? `<span class="warn">${team ? '참가·팀이 바뀌었습니다' : tour ? '참가가 바뀌었습니다' : '참석이 바뀌었습니다'}</span>` : ''}${stale && left ? `<button id="wk-regen-left" class="primary">${fromSlot > 0 ? '남은 시간대 다시 짜기' : '대진 다시 만들기'}</button>` : ''}<button id="wk-adjust" class="small ${W.adjust ? 'on' : ''}"><svg class="ic"><use href="#i-edit"/></svg>${W.adjust ? '조정 완료' : '조 조정'}</button><button id="wk-reshuffle" class="small" ${W.adjust ? 'disabled' : ''}>다시 섞기</button>${W.adjust || tour ? '' : `<button id="wk-types-toggle" class="small ${typesOpen ? 'on' : ''}" aria-expanded="${typesOpen ? 'true' : 'false'}">경기 종류${tyNow ? ` ${WK_TYPES.filter(([c]) => tyNow[c]).length}/${WK_TYPES.length}` : ''}</button>`}</div>${!W.adjust && typesOpen && !tour ? wkTypesHtml(doc) : ''}`;
     }
     if (sch) {
       const ms = [...sch.matches].sort((a, b) => a.slot - b.slot || a.court - b.court); const rc = wkRuleCheck(doc, s, ms);
@@ -2152,8 +2477,8 @@
       }
       if (!shown) html += `<p class="hint">${filter === 'me' ? (meId ? '내 경기가 없습니다.' : '위에서 이름을 고르면 내 경기만 보입니다.') : filter === 'left' ? '남은 대진이 없습니다. 모두 완료했습니다 🎾' : '경기가 없습니다.'}</p>`;
       html += wkSummaryHtml(doc, s, ms);
-      if (document.body.classList.contains('editor')) html += `<p class="hint wk-rules">${rc.issues.length ? `<b>⚠ 룰 체크 ${rc.issues.length}건</b><br>${rc.issues.map(esc).join('<br>')}${closed ? '' : '<br>조 조정으로 자리를 바꾸거나 다시 섞기로 해결할 수 있습니다.'}` : '✓ 룰 체크 통과 — 잡복 원칙(여자 쪽 합이 1.5 이상 부족 금지) · 시간대 중복 · 경기 수 차이 1 이내 · 도착 직후 휴식 없음 (잡복 0.5 부족·파트너≠최고 남자·혼복 남자 급·연속 휴식은 참고 줄)'}${rc.notes.length ? `<br><span class="sub">참고: ${rc.notes.map(esc).join(' / ')}</span>` : ''}</p>`; // 관리자 화면에만 (멤버 화면에 위반 표시는 두지 않음)
-    } else if (closed) html += `<p class="hint">${wkClosed(doc) ? '이 모임에는 대진이 없었습니다.' : '대진은 관리자가 만들면 여기에 표시됩니다.'}</p>`;
+      if (document.body.classList.contains('editor') && !team) html += `<p class="hint wk-rules">${rc.issues.length ? `<b>⚠ 룰 체크 ${rc.issues.length}건</b><br>${rc.issues.map(esc).join('<br>')}${closed ? '' : '<br>조 조정으로 자리를 바꾸거나 다시 섞기로 해결할 수 있습니다.'}` : '✓ 룰 체크 통과 — 잡복 원칙(여자 쪽 합이 1.5 이상 부족 금지) · 시간대 중복 · 경기 수 차이 1 이내 · 도착 직후 휴식 없음 (잡복 0.5 부족·파트너≠최고 남자·혼복 남자 급·연속 휴식은 참고 줄)'}${rc.notes.length ? `<br><span class="sub">참고: ${rc.notes.map(esc).join(' / ')}</span>` : ''}</p>`; // 관리자 화면에만 (멤버 화면에 위반 표시는 두지 않음)
+    } else if (closed) html += `<p class="hint">${wkClosed(doc) ? `이 ${word}에는 대진이 없었습니다.` : '대진은 관리자가 만들면 여기에 표시됩니다.'}</p>`;
     return html;
   }
   /** 정기 모임 룰 체크 — 생성·조 조정 뒤 판이 규칙을 지키는지: 잡복 원칙(여자−0.5+파트너 ≥ 상대 남자 합), 혼복 남자 NTRP, 같은 시간대 중복, 경기 수 차이 */
@@ -2244,7 +2569,8 @@
     const n = maxSlots(s); const avOk = (id, i) => { const a = doc.attendance[id]; const t0 = slotStartMin(s, i); return !!a && toMin(a.from) <= t0 && toMin(a.until) >= t0 + s.matchMinutes; }; const sx = seatsOfMatches(ms, (x) => !!doc.attendance[x]?.guest); const X = expectedGames(att.map((p) => ({ id: p.id, guest: !!p.guest, yield: !!p.yield })), isFinite(n) ? n : 0, avOk, sx.seatsAt, sx.guestSeatsAt); // 기대 경기 수 (머문 시간대마다 자리/인원 비율 누적)
     const TY = wkSchTypes(doc.schedule); const slotOn = []; const slotW = [], slotM = []; if (isFinite(n)) for (let i = 0; i < n; i++) { const av = att.filter((p) => avOk(p.id, i)); const wn = av.filter((p) => p.gender === 'F').length; slotW[i] = wn; slotM[i] = av.length - wn; slotOn[i] = typeCap(wn, av.length - wn, courtsAtSlot(s, i), TY) >= 1; } const avail = (id) => { let c = 0; const fe = att.find((p) => p.id === id)?.gender === 'F'; if (isFinite(n)) for (let i = 0; i < n; i++) if (slotOn[i] && avOk(id, i) && typeSeat(fe, slotW[i], slotM[i], TY)) c++; return c; }; const maxG = Math.max(0, ...att.map((p) => games[p.id] || 0)); const topEq = topEqOf(att, (p) => games[p.id] || 0, (p) => X.Eq[p.id] || 0, maxG); const nyAtt = att.filter((p) => !p.guest && !p.yield); const maxM = Math.max(0, ...att.filter((p) => !p.yield).map((p) => games[p.id] || 0)); const isLow = (p, gN) => gN < avail(p.id) && gN < Math.max(p.yield ? 0 : Math.min(avail(p.id), maxM - 1), hardFloorOf(X.Eq[p.id] || 0, avail(p.id), maxG, topEq)); const isHi = (p, gN) => { if (!p.yield) return false; const ref = nyAtt.filter((q) => avail(q.id) >= avail(p.id)).map((q) => games[q.id] || 0); return ref.length > 0 && gN > 0 && gN >= Math.min(...ref); }; // 룰 체크의 '경기 수 부족'·'양보 위반'과 같은 기준
     const tot = { FM: 0, MM: 0, FF: 0, MIX: 0 }; for (const m of ms) tot[typeOf(m)]++;
-    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && isHi(p, gN) ? 'hi' : ''} ${isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b>${p.yield ? ' <span class="ymark">양보</span>' : ''}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>${oppHtml}</div>`;
+    const teamOfP = (id) => { if (doc.tour?.mode !== 'team') return ''; const i = (doc.tour.teams || []).findIndex((t) => t.includes(id)); return i >= 0 ? ` <span class="team-tag tc${i}">${esc(tourTeamName(doc.tour, i))}</span>` : ''; };
+    return `<div class="wk-summary"><h3>인당 경기 수 <span class="sub">(최소 ${mn} · 최대 ${mx} · 총 ${ms.length}경기 = 혼복 ${tot.FM} · 남복 ${tot.MM} · 여복 ${tot.FF}${tot.MIX ? ` · 잡복 ${tot.MIX}` : ''})</span></h3><div class="table-wrap"><table class="stand summary"><thead><tr><th>이름</th><th>시간</th><th class="num">경기</th><th class="num" title="머문 시간대마다 (자리 ÷ 인원)을 더한 값 — 오래 있을수록 큼">기대</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th>${tot.MIX ? '<th class="num">잡복</th>' : ''}${scored ? '<th class="num">승-패</th>' : ''}</tr></thead><tbody>${rows.map((p) => { const t = tc[p.id] || {}; const gN = games[p.id] || 0; const e = X.E[p.id] || 0; return `<tr class="${!p.guest && isHi(p, gN) ? 'hi' : ''} ${isLow(p, gN) ? 'lo' : ''}"><td><b class="${p.guest ? 'gname' : 'pname'} ${p.gender === 'F' ? 'f' : 'm'}">${esc(p.name)}</b>${p.yield ? ' <span class="ymark">양보</span>' : ''}${teamOfP(p.id)}</td><td class="sub">${esc(p.from.slice(0, 2))}~${esc(p.until.slice(0, 2))}</td><td class="num"><b>${gN}</b></td><td class="num sub">${fmtE(e)}</td><td class="num">${t.FM || '-'}</td><td class="num">${t.MM || '-'}</td><td class="num">${t.FF || '-'}</td>${tot.MIX ? `<td class="num">${t.MIX || '-'}</td>` : ''}${scored ? `<td class="num">${wl[p.id] ? `${wl[p.id].w}-${wl[p.id].l}` : '—'}</td>` : ''}</tr>`; }).join('')}</tbody></table></div>${oppHtml}</div>`;
   }
   // ================= 코트 예약 현황 (data/courts.json — 월별 표, 누구나 보기 · 수정은 대진표 비밀번호 또는 관리자) =================
   // ---- 아래 두 함수는 tools/gas-proxy/Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
@@ -2528,8 +2854,8 @@
   const recSide = (m, side, units) => (m[side + 'Players'] ? m[side + 'Players'].filter(Boolean) : (m[side + 'Ids'] || (m[side + 'Id'] ? [m[side + 'Id']] : [])).flatMap((u) => units?.[u]?.playerIds || [String(u).replace(/^p:/, '')]));
   /** 세션·아카이브 문서 → 공통 기록 {src,id,date,name,people:{id:{n,g,guest}},matches:[{slot,court,A,B,done,type,score,win}]} */
   function recFromDoc(src, id, doc) {
-    const people = {};
-    if (src === 'weekly') for (const [pid, a] of Object.entries(doc.attendance || {})) people[pid] = { n: a.n, g: a.g === 'F' ? 'F' : 'M', guest: !!a.guest };
+    const people = {}; const ses = src === 'weekly' || !!doc.attendance; // 세션 파일(정기 모임·멤버가 만든 대회) vs 옛 대회 보관본
+    if (ses) for (const [pid, a] of Object.entries(doc.attendance || {})) people[pid] = { n: a.n, g: a.g === 'F' ? 'F' : 'M', guest: !!a.guest };
     else for (const p of doc.players || []) people[p.id] = { n: p.name, g: p.gender === 'F' ? 'F' : 'M', guest: false };
     const units = {}; for (const u of doc.units || []) units[u.id] = u;
     const nameOf = (pid) => people[pid]?.n || playerById(pid)?.name || pid; const gOf2 = (pid) => people[pid]?.g || (playerById(pid)?.gender === 'F' ? 'F' : 'M');
@@ -2537,14 +2863,15 @@
       const A = recSide(m, 'a', units), B = recSide(m, 'b', units); for (const pid of [...A, ...B]) if (!people[pid]) people[pid] = { n: nameOf(pid), g: gOf2(pid), guest: /^g:/.test(pid) };
       let type = 'ETC'; if (A.length === 2 && B.length === 2) { const ta = [gOf2(A[0]), gOf2(A[1])].sort().join(''), tb = [gOf2(B[0]), gOf2(B[1])].sort().join(''); type = ta === tb ? ta : 'MIX'; }
       let done = false, score = '', win = null; // win: 'a'|'b'|null (점수 있는 대회 경기만)
-      if (src === 'weekly') { done = !!doc.done?.[m.id]; const rs = doc.results?.[m.id]; if (rs) { done = true; score = `${rs.a}:${rs.b}`; win = rs.a > rs.b ? 'a' : rs.b > rs.a ? 'b' : null; } }
+      if (ses) { done = !!doc.done?.[m.id]; const rs = doc.results?.[m.id]; if (rs) { done = true; score = `${rs.a}:${rs.b}`; win = rs.a > rs.b ? 'a' : rs.b > rs.a ? 'b' : null; } }
       else { const sets = Array.isArray(doc.results?.[m.id]) ? doc.results[m.id].filter((x) => x && x.a !== '' && x.b !== '' && x.a != null && x.b != null) : []; if (sets.length) { done = true; score = sets.map((x) => `${x.a}:${x.b}`).join(' '); let wa = 0, wb = 0; for (const x of sets) { if (+x.a > +x.b) wa++; else if (+x.b > +x.a) wb++; } win = wa > wb ? 'a' : wb > wa ? 'b' : null; } }
       return { id: m.id, slot: m.slot | 0, court: m.court | 0, A, B, done, type, score, win };
     });
-    return { src, id, date: doc.date || id, name: src === 'weekly' ? `${fmtDate(doc.date || id)} 정기 모임` : (doc.name || id), people, matches: ms, settings: doc.settings || {} };
+    return { src, id, date: doc.date || id, name: src === 'weekly' ? `${fmtDate(doc.date || id)} 정기 모임` : (doc.tour?.name || doc.name || id), people, matches: ms, settings: doc.settings || {} };
   }
   async function recLoadAll() {
-    const out = []; const ids = wkSessions().map((x) => x.id).filter((id) => id < ymdOf()).slice(-REC_MAX_SESSIONS); // 오늘 이전(끝난) 정기 모임 최근 12회만 — 오늘 모임은 아직 진행 중이라 제외
+    const out = []; const ids = [...new Set([...(W.index?.past || []), ...wkSessions().map((x) => x.id)])].filter((id) => !TOUR_ID_RE.test(id) && id.slice(0, 10) < ymdOf()).sort().slice(-REC_MAX_SESSIONS); // 오늘 이전(끝난) 정기 모임 최근 12회만 — 오늘 모임은 아직 진행 중이라 제외. 끝난 모임은 보통 목록에서 빠져 past 에 있다
+    for (const t of (W.index?.tours || []).filter((x) => x.date < ymdOf())) { let d = W.cache[t.id]; if (!d) { d = await dataRead(`weekly/sessions/${t.id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[t.id] = d; } if (d?.schedule?.matches?.length) out.push(recFromDoc('tour', t.id, d)); } // 멤버가 만든 대회 (세션 파일)
     for (const id of ids) { let d = W.id === id && W.doc ? W.doc : W.cache[id]; if (!d) { d = await dataRead(`weekly/sessions/${id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[id] = d; } if (d?.schedule?.matches?.length) out.push(recFromDoc('weekly', id, d)); }
     const aidx = T.index || (await archRead('archive/index.json')); for (const e of (aidx?.events || [])) { if (!e?.id || !/^[A-Za-z0-9_-]{1,40}$/.test(e.id)) continue; const d = await archRead(`archive/${e.id}.json`); if (d?.schedule?.matches?.length) out.push(recFromDoc('tour', e.id, d)); }
     return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // 최근 순
@@ -2677,11 +3004,7 @@
   // ---- 관리자: 날짜 만들기 · 프록시 주소 ----
   $('#wk-form-session')?.addEventListener('submit', async (e) => {
     e.preventDefault(); const f = e.target; const fd = new FormData(f); const date = String(fd.get('date') || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
-    const st = { startTime: String(fd.get('startTime') || '18:00'), endTime: String(fd.get('endTime') || '22:00'), matchMinutes: Math.max(5, parseInt(fd.get('matchMinutes'), 10) || 30), breakMinutes: 0, courts: 2, minWomenDoubles: Math.max(0, parseInt(fd.get('minWomenDoubles'), 10) || 0) };
-    if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime) || toMin(st.startTime) >= toMin(st.endTime)) { alert('시작·종료 시각을 확인하세요.'); return; }
-    const blockOf = {}; for (const b of wkCourtBlocks(st)) for (const h of b.hours) blockOf[h] = b.key; // 시각 → 구간 입력칸
-    { const cb = {}; let mx = 0; for (const h of wkHours(st)) { const v = Math.max(Math.max(0, Math.min(8, parseInt(fd.get('c_' + blockOf[h]), 10) || 0)), wkParseCourtList(fd.get('n_' + blockOf[h])).length); cb[String(h)] = v; mx = Math.max(mx, v); } /* 번호를 코트 수보다 많이 적으면 코트 수를 거기에 맞춘다 */ if (!mx) { alert('코트 수를 입력하세요.'); return; } st.courts = mx; if (new Set(Object.values(cb)).size > 1) st.courtsByHour = cb; } // 시간대마다 코트 수가 다르면 저장
-    { const v = wkCourtNamesFromForm(wkHours(st), (h) => fd.get('n_' + blockOf[h]) ?? '', null); if (Array.isArray(v)) st.courtNames = v; else if (v) st.courtNamesByHour = v; } // 실제 코트 번호: 시간대마다 같으면 공통, 다르면 시간대별
+    const st = wkSettingsFromForm(fd); if (!st) return;
     const id = date; const btn = f.querySelector('button[type=submit]'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
       // 같은 날짜 파일이 이미 있으면(목록에 있든, 목록에서 뺐든) 새 설정으로 다시 만들지 묻는다 — 확인하면 참석·대진·완료·점수를 비우고 rev 만 이어 간다 (멤버 폰의 rev 가 뒤로 가지 않도록)
@@ -2724,22 +3047,31 @@
     const st = $('#wk-proxy-status'); if (st) st.textContent = '확인 중…';
     try { const r = await fetch(url, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: '2000-01-01', op: 'ping' }), redirect: 'follow' }); const j = await r.json(); const old = j.ok && (j.v | 0) < PROXY_VERSION_NEED; const msg = j.ok ? (old ? `⚠ 연결은 되지만 서버 코드가 옛 버전(v${j.v | 0}, 필요 v${PROXY_VERSION_NEED}) — Apps Script 편집기에 tools/gas-proxy/Code.gs 를 붙여 넣고 배포 관리 → 새 버전` : `✓ 연결됨 · 서버 v${j.v | 0} · 서버 시각 ${new Date(j.t).toLocaleTimeString('ko-KR')}`) : '응답은 왔지만 형식이 다릅니다'; toast(msg, old ? 8000 : undefined); if (st) st.textContent = msg; } catch (e) { toast('연결 실패: ' + e.message); if (st) st.textContent = '✗ 연결 실패: ' + e.message; }
   });
-  /** 정기 모임 생성 폼: 시작~종료 사이 매 시각의 코트 수 입력칸 (기본은 이전 값 또는 2) */
-  function wkRenderCourtInputs() {
-    const f = $('#wk-form-session'); const box = $('#wk-court-hours'); if (!f || !box) return;
+  /** 생성 폼(정기 모임·대회) → 시간·코트 설정: 시작·종료·경기 시간·여복·2시간 구간별 코트 수와 번호. 틀리면 알리고 null */
+  function wkSettingsFromForm(fd) {
+    const st = { startTime: String(fd.get('startTime') || '18:00'), endTime: String(fd.get('endTime') || '22:00'), matchMinutes: Math.max(5, parseInt(fd.get('matchMinutes'), 10) || 30), breakMinutes: 0, courts: 2, minWomenDoubles: Math.max(0, parseInt(fd.get('minWomenDoubles'), 10) || 0) };
+    if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime) || toMin(st.startTime) >= toMin(st.endTime)) { alert('시작·종료 시각을 확인하세요.'); return null; }
+    const blockOf = {}; for (const b of wkCourtBlocks(st)) for (const h of b.hours) blockOf[h] = b.key; // 시각 → 구간 입력칸
+    { const cb = {}; let mx = 0; for (const h of wkHours(st)) { const v = Math.max(Math.max(0, Math.min(8, parseInt(fd.get('c_' + blockOf[h]), 10) || 0)), wkParseCourtList(fd.get('n_' + blockOf[h])).length); cb[String(h)] = v; mx = Math.max(mx, v); } /* 번호를 코트 수보다 많이 적으면 코트 수를 거기에 맞춘다 */ if (!mx) { alert('코트 수를 입력하세요.'); return null; } st.courts = mx; if (new Set(Object.values(cb)).size > 1) st.courtsByHour = cb; } // 시간대마다 코트 수가 다르면 저장
+    { const v = wkCourtNamesFromForm(wkHours(st), (h) => fd.get('n_' + blockOf[h]) ?? '', null); if (Array.isArray(v)) st.courtNames = v; else if (v) st.courtNamesByHour = v; } // 실제 코트 번호: 시간대마다 같으면 공통, 다르면 시간대별
+    return st;
+  }
+  /** 생성 폼(정기 모임·대회): 시작~종료 사이 2시간 구간별 코트 수·번호 입력칸 (기본은 이전 값 또는 2) */
+  function wkRenderCourtInputs(f = $('#wk-form-session'), box = $('#wk-court-hours')) {
+    if (!f || !box) return;
     const st = { startTime: f.startTime.value || '18:00', endTime: f.endTime.value || '22:00' }; if (!TIME_RE.test(st.startTime) || !TIME_RE.test(st.endTime)) return;
     const prev = {}; box.querySelectorAll('input').forEach((i) => (prev[i.name] = i.value));
     box.innerHTML = wkCourtBlocks(st).map((b) => `<span class="wk-ch"><label class="inline">${b.from}~${b.to}시 <input name="c_${b.key}" type="number" min="0" max="8" value="${esc(prev['c_' + b.key] ?? '2')}" style="width:52px" aria-label="${b.from}~${b.to}시 코트 수">면</label><label class="inline">번호 <input name="n_${b.key}" maxlength="80" value="${esc(prev['n_' + b.key] ?? '')}" placeholder="예: 5, 7" style="width:92px" aria-label="${b.from}~${b.to}시 코트 번호"></label></span>`).join(''); // 코트는 2시간 단위로 예약하므로 구간마다 한 칸
   }
   $('#wk-form-session')?.addEventListener('change', (e) => { if (e.target.name === 'startTime' || e.target.name === 'endTime') wkRenderCourtInputs(); });
   /** 모임 생성 폼: 고른 날짜의 코트 예약 현황에서 시작·종료 시각과 2시간 구간별 코트 수·번호를 채운다 (예약자가 적힌 코트만). quiet = 예약이 없을 때 조용히 */
-  async function wkFillFromCourts({ quiet = false } = {}) {
-    const f = $('#wk-form-session'); const date = f?.date.value; if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) { if (!quiet) toast('날짜를 먼저 고르세요'); return false; }
+  async function wkFillFromCourts({ quiet = false, form = null, box = null } = {}) {
+    const f = form || $('#wk-form-session'); const cbox = box || $('#wk-court-hours'); const date = f?.date.value; if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(date || '')) { if (!quiet) toast('날짜를 먼저 고르세요'); return false; }
     const doc = courtsClean(await courtsRead()); if (f.date.value !== date) return false; // 읽는 사이 날짜를 바꿨으면 버린다
     const day = doc.res[date] || {}; const used = (t) => doc.courts.map((_, i) => i).filter((i) => (day[t] || [])[i]); const pad = (n) => String(n).padStart(2, '0');
     const starts = doc.times.filter((t) => /^\d{1,2}$/.test(t) && used(t).length).map(Number).sort((x, y) => x - y);
     if (!starts.length) { if (!quiet) toast(`${fmtDate(date)} 코트 예약이 없습니다 · 시간과 코트를 직접 넣거나 코트 예약 탭에서 먼저 넣으세요`, 5000); return false; }
-    f.startTime.value = `${pad(starts[0])}:00`; f.endTime.value = `${pad(Math.min(23, starts[starts.length - 1] + WK_COURT_BLOCK))}:00`; wkRenderCourtInputs(); const parts = [];
+    if (!f.isConnected) return false; f.startTime.value = `${pad(starts[0])}:00`; f.endTime.value = `${pad(Math.min(23, starts[starts.length - 1] + WK_COURT_BLOCK))}:00`; wkRenderCourtInputs(f, cbox); const parts = [];
     for (const b of wkCourtBlocks({ startTime: f.startTime.value, endTime: f.endTime.value })) { const idx = used(String(b.b)); const nums = idx.map((i) => doc.courts[i].replace(/번$/, '')).join(', '); const ci = f.querySelector(`[name="c_${b.key}"]`), ni = f.querySelector(`[name="n_${b.key}"]`); if (!ci || !ni) continue; ci.value = String(idx.length); ni.value = nums; parts.push(`${b.from}~${b.to}시 ${idx.length}면${nums ? `(${nums})` : ''}`); }
     toast(`${fmtDate(date)} 코트 예약을 불러왔습니다 · ${parts.join(' · ')}`, 5000); return true;
   }
@@ -2749,7 +3081,7 @@
 
   // ================= ⑧ 대회 페이지 (이번 대회 + 지난 대회 보관 — 대진과 참가자만, 점수·순위·NTRP 는 저장하지 않음) =================
   const ARCH_RE = /^[A-Za-z0-9_-]{1,30}$/;
-  const T = { index: null, indexErr: '', doc: null };
+  const T = { index: null, indexErr: '', doc: null, open: null, form: null }; // open = 지금 연 대회 id (멤버가 만든 대회), form = 'new'|'edit' 폼
   async function archRead(path) { // 코드 저장소 data/archive/… (정적 파일). 로컬은 모의 저장소에 있으면 그것을, 없으면 실제 파일
     if (WK_MOCK) { const m = wkMock.get('data/' + path); if (m) return m; }
     try { const r = await fetch('data/' + path + '?_=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return null; return await r.json(); } catch { return null; }
@@ -2848,48 +3180,133 @@
   }
   function renderTournament() {
     const box = $('#tour-view'); if (!box) return; const s = state.settings, sch = state.schedule; const editor = document.body.classList.contains('editor');
-    const n = sch ? sch.matches.filter((m) => !m.bye).length : 0; const live = liveTournament();
-    let html = '';
-    if (editor) {
-      html += `<h3>대회 생성</h3><div class="tour-card"><form id="tour-form-new" class="row" autocomplete="off"><label class="inline" style="flex:1 1 260px">대회명 <input name="name" maxlength="60" required placeholder="예: 2026년 4분기 테니스윗 대회"></label><label class="inline">날짜 <input name="date" type="date" style="width:auto"></label><button type="submit" class="primary">🆕 대회 만들기</button></form>
-        <p class="hint">만든 뒤 <b>대회 설정</b>(방식·코트·시간) → <b>선수</b> 탭에서 참가 체크 → 생성 → 게시 순서입니다. 진행 중인 대회가 있으면 먼저 지난 대회로 보관하세요.</p></div>`;
-      if (live) html += `<h3>진행 중인 대회</h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
+    const n = sch ? sch.matches.filter((m) => !m.bye).length : 0; const live = liveTournament(); const today = ymdOf();
+    if (T.open) { const t = (W.index?.tours || []).find((x) => x.id === T.open); box.innerHTML = `<div class="row tour-back"><button type="button" id="tour-back">← 대회 목록</button>${t ? `<span class="sub">${esc(fmtDate(t.date))} · ${esc(t.name)}</span>` : ''}</div>`; return; } // 대회 화면은 아래 #tour-session-host (정기 모임과 같은 화면)
+    if (T.doc) { box.innerHTML = (T.doc.id === LIVE_ID ? `<div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표 (전체)</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button></div>` : '') + archiveHtml(T.doc); return; } // 옛 보관본 보기
+    const tours = W.index?.tours || []; const up = tours.filter((x) => x.date >= today && !x.archived).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)); const pastT = tours.filter((x) => x.date < today || x.archived); // 결과를 보관한 대회는 날짜와 상관없이 지난 대회
+    let html = T.form === 'new' ? '' : `<div class="row tour-actions"><button type="button" class="primary big" id="tour-new" ${wkCanWrite() || !W.index ? '' : 'disabled'}><svg class="ic"><use href="#i-trophy"/></svg>대회 만들기</button><span class="hint">${!W.index || wkCanWrite() ? '대진표 비밀번호가 필요합니다 · 날짜를 고르면 그날 코트 예약에서 시간과 코트를 가져옵니다' : '저장 서버가 연결되지 않아 지금은 만들 수 없습니다'}</span></div>`;
+    html += '<h3>다가오는 대회</h3>' + (!W.index ? '<p class="hint">불러오는 중…</p>' : up.length ? `<div class="cards">${up.map(tourCardHtml).join('')}</div>` : '<p class="hint">예정된 대회가 없습니다. 위의 [대회 만들기]로 시작하세요.</p>');
+    if (editor && live) html += `<h3>진행 중인 대회 <span class="sub">(관리자 작업본 · 게시하기 방식)</span></h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
         <div class="row"><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>${sch ? '<button id="tour-archive" title="대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button>' : ''}</div></div>`;
-    }
     html += '<h3>지난 대회</h3>';
-    if (T.doc) html += (T.doc.id === LIVE_ID ? `<div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표 (전체)</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button></div>` : '') + archiveHtml(T.doc);
-    else {
-      const items = [];
-      if (live) items.push(`<button class="card tour-item live" data-arch="${LIVE_ID}"><b>${esc(s.name || '이번 대회')} <span class="tag type fm">진행 중</span></b><span class="sub">${esc(s.date || '')}${s.date ? ' · ' : ''}${modeLabel()} · ${n}경기 · 누르면 경기 기록, 전체 일정은 첫 화면의 경기 일정표</span></button>`);
-      if (!T.index) items.push(`<p class="hint">${esc(T.indexErr || '불러오는 중…')}</p>`);
-      else items.push(...T.index.events.map((ev) => `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>`));
-      html += items.length ? `<div class="cards">${items.join('')}</div>` : '<p class="hint">보관된 대회가 아직 없습니다.</p>';
-    }
+    const items = []; if (live) items.push({ date: s.date || '9999', html: `<button class="card tour-item live" data-arch="${LIVE_ID}"><b>${esc(s.name || '이번 대회')} <span class="tag type fm">진행 중</span></b><span class="sub">${esc(s.date || '')}${s.date ? ' · ' : ''}${modeLabel()} · ${n}경기 · 누르면 경기 기록, 전체 일정은 첫 화면의 경기 일정표</span></button>` });
+    items.push(...pastT.map((x) => ({ date: x.date, html: tourCardHtml(x) })));
+    if (T.index) items.push(...T.index.events.map((ev) => ({ date: ev.date, html: `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>` })));
+    items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    html += items.length ? `<div class="cards">${items.map((x) => x.html).join('')}</div>` : `<p class="hint">${T.index ? '지난 대회가 아직 없습니다.' : esc(T.indexErr || '불러오는 중…')}</p>`;
     box.innerHTML = html;
-    const f = $('#tour-form-new [name=date]'); if (f && !f.value) f.value = ymdOf();
   }
-  /** 새 대회 만들기: 이름·날짜를 넣고 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
-  function newTournament(name, date) {
-    if (state.schedule && liveTournament() && !confirm(`진행 중인 대회 '${state.settings.name || ''}' 의 일정표·점수가 이 브라우저 작업본에서 지워집니다 (게시본은 게시하기 전까지 그대로).\n아직 보관하지 않았다면 취소하고 먼저 "지난 대회로 보관"을 하세요. 계속할까요?`)) return;
-    state.schedule = null; state.results = {}; state.units = []; state.editMode = false; state.meFilter = undefined;
-    state.settings = { ...state.settings, name, date, mustFace: '', sameNtrpGame: '', avoidPairs: '', venue: { name: '', time: '', addr: '', phone: '', menu: '', note: '' } };
-    state.players.forEach((p) => { p.active = false; p.from = ''; p.until = ''; });
-    save(); showTab('setup'); toast(`'${name}' 대회를 만들었습니다 · 방식·코트·시간을 정한 뒤 선수 탭에서 참가를 체크하세요`, 6000);
+  // ---- 대회 탭: 목록(다가오는 대회·지난 대회) · 만들기/수정 폼 · 대회 열기 (대회 화면은 #wk-view 를 #tour-session-host 로 옮겨 그린다) ----
+  const tourCardHtml = (t) => { const today = ymdOf(); return `<button class="card tour-item ${t.date === today && !t.archived ? 'live' : ''}" data-tour-open="${esc(t.id)}"><b>🏆 ${esc(t.name)} <span class="tag type ${t.mode === 'team' ? 'mm' : 'fm'}">${t.mode === 'team' ? `팀전 ${t.teamCount}팀` : '개인전'}</span>${t.archived ? ' <span class="tag arch">📦 결과</span>' : t.date === today ? ' <span class="tag type fm">오늘</span>' : ''}</b><span class="sub">${esc(fmtDate(t.date))}${t.startTime ? ` · ${esc(t.startTime)}~${esc(t.endTime)}` : ''}${t.courts ? ` · 코트 ${t.courts}면` : ''}</span></button>`; };
+  function coverTourMeta() { const today = ymdOf(); const up = (W.index?.tours || []).filter((t) => t.date >= today && !t.archived).sort((a, b) => (a.date < b.date ? -1 : 1))[0]; return up ? `다음 대회 ${fmtDate(up.date)} · ${up.name}` : T.index?.events?.length || (W.index?.tours || []).length ? `지난 대회 ${(T.index?.events?.length || 0) + (W.index?.tours || []).length}회` : ''; }
+  function updateCoverTour() { if (liveTournament()) return; const el = $('#cover-meta'); if (el) el.textContent = coverTourMeta(); }
+  /** 대회 열기·닫기 (주소에 #tournament/<id> 를 남겨 링크 복사로 그 대회를 건넬 수 있게) */
+  function tourOpen(id) { if (!TOUR_ID_RE.test(String(id || ''))) return; T.open = id; T.doc = null; tourCloseForm(); if ($('#tab-tournament')?.classList.contains('active')) wkUse('tour', id); renderTournament(); /* 다른 탭으로 옮겨 갔으면 화면은 대회 탭을 열 때 옮긴다 */ if ($('#tab-tournament')?.classList.contains('active')) history.replaceState(null, '', '#tournament/' + id); window.scrollTo(0, 0); }
+  function tourClose() { T.open = null; tourCloseForm(); wkUse('weekly'); renderTournament(); if ($('#tab-tournament')?.classList.contains('active')) history.replaceState(null, '', '#tournament'); }
+  function tourCloseForm() { T.form = null; const h = $('#tour-form-host'); if (h) h.innerHTML = ''; }
+  /** 만들기·수정 폼 (kind = 'new' | 'edit'). 날짜를 고르면 그날 코트 예약에서 시작·종료·구간별 코트 수·번호를 가져온다 (정기 모임 생성 폼과 같은 방식) */
+  function tourOpenForm(kind) {
+    const host = $('#tour-form-host'); if (!host) return; const edit = kind === 'edit'; const doc = edit ? W.doc : null; const t = edit ? tourOf(doc) : null; if (edit && !t) return;
+    const st = edit ? wkSettings(doc) : { startTime: '19:00', endTime: '22:00', matchMinutes: 30, minWomenDoubles: 1 }; const v = t?.venue || {};
+    const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); const date = edit ? doc.date : ymdOf(d); // 기본값: 다음 금요일
+    const mm = [30, 60].includes(st.matchMinutes) ? [30, 60] : [30, 60, st.matchMinutes].sort((a, b) => a - b);
+    const vf = (k, label, max, ph) => `<label>${label} <input name="v_${k}" maxlength="${max}" value="${esc(v[k] || '')}" placeholder="${ph}"></label>`;
+    T.form = kind;
+    host.innerHTML = `<div class="tour-card tour-form-card"><h3>${edit ? '대회 수정' : '새 대회 만들기'}</h3>
+      <form id="tour-form" class="tour-form ${t?.mode === 'team' ? 'team' : ''}" data-kind="${kind}" autocomplete="off">
+        <div class="row"><label class="inline grow">대회명 <input name="name" maxlength="40" required placeholder="예: 2026년 4분기 테니스윗 대회" value="${esc(t?.name || '')}"></label><label class="inline">날짜 <input name="date" type="date" required value="${esc(date)}" ${edit ? 'disabled title="날짜를 바꾸려면 이 대회를 삭제하고 새로 만드세요"' : ''}></label></div>
+        <div class="row tour-mode"><span class="sub">방식</span><label class="inline radio"><input type="radio" name="mode" value="rotation" ${t?.mode === 'team' ? '' : 'checked'}> 개인전 <small>파트너를 바꿔 가며 · 개인 순위</small></label><label class="inline radio"><input type="radio" name="mode" value="team" ${t?.mode === 'team' ? 'checked' : ''}> 팀전 <small>팀 대 팀 · 팀 순위</small></label>
+          <label class="inline tour-team-only">팀 수 <select name="teamCount" style="width:auto">${[2, 3, 4].map((n) => `<option value="${n}" ${(t?.teamCount || 2) === n ? 'selected' : ''}>${n}팀</option>`).join('')}</select></label><label class="inline tour-team-only grow">팀 이름 <input name="teamNames" maxlength="60" value="${esc(t ? t.teamNames.filter((x, i) => x !== `${i + 1}팀`).length ? t.teamNames.join(', ') : '' : '')}" placeholder="쉼표로 구분 · 예: 청팀, 백팀 (비우면 1팀, 2팀)"></label></div>
+        <div class="row"><label class="inline">시작 <input name="startTime" type="time" value="${esc(st.startTime)}" style="width:auto"></label><label class="inline">종료 <input name="endTime" type="time" value="${esc(st.endTime)}" style="width:auto"></label><label class="inline">경기 <select name="matchMinutes" style="width:auto">${mm.map((x) => `<option value="${x}" ${st.matchMinutes === x ? 'selected' : ''}>${x}분</option>`).join('')}</select></label><label class="inline">여복 경기 수 <input name="minWomenDoubles" type="number" min="0" max="20" value="${st.minWomenDoubles ?? 1}" style="width:60px"></label></div>
+        <span class="wk-ch-row"><span class="sub">2시간 구간별 코트 수 · 코트 번호 <small>(날짜를 고르면 그날 코트 예약에서 자동으로 채웁니다 · 번호를 비우면 1, 2…)</small></span><span id="tour-court-hours"></span><button type="button" class="small" id="tour-fill-courts">코트 예약에서 가져오기</button></span>
+        <details class="tour-venue-form" ${v.name || v.addr || v.note ? 'open' : ''}><summary>회식 장소 (선택)</summary><div class="grid">${vf('name', '장소 이름', 60, '예: 통속으로')}${vf('time', '시간', 40, '예: 22:00부터')}${vf('addr', '주소', 120, '지도에 표시')}${vf('phone', '전화', 30, '')}${vf('menu', '메뉴·회비', 60, '')}${vf('note', '안내', 200, '')}</div></details>
+        <div class="row"><button type="submit" class="primary">${edit ? '수정 저장' : '🏆 대회 만들기'}</button><button type="button" id="tour-form-cancel">취소</button><span class="hint">대진표 비밀번호가 필요합니다. ${edit ? '시간·코트·방식·팀 수를 바꾸면 이미 만든 대진과 점수가 지워집니다 (이름·회식·여복 경기 수는 그대로).' : '대회는 같은 날 정기 모임과 따로 참가 신청을 받습니다. 대회에서는 잡복을 짜지 않습니다.'}</span></div>
+      </form></div>`;
+    const f = $('#tour-form'), box = $('#tour-court-hours'); wkRenderCourtInputs(f, box);
+    if (edit) { const cntAt = (h) => (doc.settings.courtsByHour && Number.isInteger(doc.settings.courtsByHour[String(h)]) ? doc.settings.courtsByHour[String(h)] : doc.settings.courts); const namesAt = (h) => doc.settings.courtNamesByHour?.[String(h)] || doc.settings.courtNames || []; for (const b of wkCourtBlocks({ startTime: st.startTime, endTime: st.endTime })) { const ci = f.querySelector(`[name="c_${b.key}"]`), ni = f.querySelector(`[name="n_${b.key}"]`); if (ci) ci.value = String(cntAt(b.from)); if (ni) ni.value = namesAt(b.from).slice(0, cntAt(b.from)).join(', '); } }
+    else wkFillFromCourts({ quiet: true, form: f, box });
+    host.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); f.querySelector('[name=name]')?.focus({ preventScroll: true });
+  }
+  /** 폼 → 대회 값 (틀리면 알리고 null) */
+  function tourFormValue(f) {
+    const fd = new FormData(f); const name = String(fd.get('name') || '').trim().slice(0, 40); if (!name) { toast('대회명을 입력하세요'); f.querySelector('[name=name]')?.focus(); return null; }
+    const st = wkSettingsFromForm(fd); if (!st) return null; const clean = tourSettings(st); if (!clean) { alert('시간·코트를 확인하세요 (경기 10~180분, 코트 1~8면, 여복 0~20경기).'); return null; }
+    const mode = fd.get('mode') === 'team' ? 'team' : 'rotation'; const teamCount = Math.min(4, Math.max(2, parseInt(fd.get('teamCount'), 10) || 2));
+    const teamNames = String(fd.get('teamNames') || '').split(/[,，]/).map((x) => x.trim().slice(0, 12)).slice(0, teamCount); // 쉼표로만 나누고 빈 칸은 자리를 지킨다 (빈 이름 = n팀)
+    const venue = {}; for (const k of VENUE_FIELDS) venue[k] = String(fd.get('v_' + k) || '').trim();
+    return { name, mode, teamCount, teamNames, venue, settings: clean };
+  }
+  const TOUR_MSG = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', EXISTS: '그 날짜에는 이미 대회가 있습니다 · 목록에서 열어 수정하세요', CLOSED: '지난 날짜의 대회는 만들거나 뺄 수 없습니다', INVALID: '저장 서버가 대회를 받지 못했습니다 — 저장 서버(Apps Script)가 옛 버전이면 관리자가 새 버전으로 배포해야 합니다', NOPROXY: '저장 서버가 연결되지 않아 지금은 관리자만 만들 수 있습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' };
+  async function tourFormSubmit(f) {
+    const v = tourFormValue(f); if (!v) return; const btn = f.querySelector('button[type=submit]');
+    if (f.dataset.kind === 'edit') {
+      const doc = W.doc; const t = tourOf(doc); if (!t || wkClosed(doc)) return; if (!(await wkRequireAuth('tour'))) return;
+      if (v.mode === 'rotation') v.teamCount = t.teamCount; // 개인전은 팀 수를 쓰지 않는다 (숨은 칸 값 때문에 대진이 지워지지 않게)
+      const shape = (s) => [s.startTime, s.endTime, s.matchMinutes, s.courts, JSON.stringify(s.courtsByHour || null)].join('|'); const teamShape = v.mode !== t.mode || (v.mode === 'team' && v.teamCount !== t.teamCount); const reset = teamShape || shape(v.settings) !== shape(doc.settings);
+      if (reset && (doc.schedule || (t.teams && teamShape)) && !confirm(`시간·코트·방식·팀 수가 바뀌어 ${[doc.schedule ? '만든 대진과 점수' : '', t.teams && teamShape ? '팀 구성' : ''].filter(Boolean).join('·')}이(가) 지워집니다. 저장할까요?`)) return;
+      btn.disabled = true; const ok = await wkSend({ op: 'tour-set', base: doc.rev, value: v }); btn.disabled = false; if (ok) { tourCloseForm(); toast('대회 정보를 저장했습니다'); } renderTournament(); return; // 거절되면 폼(입력한 값)을 그대로 둔다
+    }
+    const date = String(new FormData(f).get('date') || ''); if (!courtsDateOk(date, Date.now())) { toast('날짜를 확인하세요'); return; } if (wkClosed({ date })) { toast('지난 날짜에는 대회를 만들 수 없습니다'); return; }
+    if ((W.index?.tours || []).some((x) => x.date === date)) { toast(`${fmtDate(date)}에는 이미 대회가 있습니다 · 목록에서 열어 수정하세요`, 5000); return; }
+    if (!wkCanWrite()) { toast(TOUR_MSG.NOPROXY); return; } if (!(await wkRequireAuth('tour'))) return;
+    const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
+    try {
+      const res = await tourPostOp({ op: 'tour-create', value: { date, ...v } });
+      if (!res.ok && res.code === 'EXISTS' && res.doc && TOUR_ID_RE.test(String(res.doc.id || ''))) { tourIndexLocal(res.index, res.doc.tour ? res.doc : null); renderTournament(); if (confirm(`${fmtDate(date)}에는 이미 '${res.doc.tour?.name || '대회'}'가 있습니다. 그 대회를 열까요?`)) tourOpen(res.doc.id); return; }
+      if (!res.ok) { if (res.code === 'AUTH') wkForgetKey(); toast(res.detail && String(res.detail).startsWith('INDEX') ? '대회 파일은 만들었지만 목록에 넣지 못했습니다 · 같은 내용으로 다시 [대회 만들기]를 누르세요' : TOUR_MSG[res.code] || '만들지 못했습니다: ' + (res.code || '?'), 6000); return; }
+      if (res.doc && !WK_MOCK) wkFresh[`weekly/sessions/${res.doc.id}.json`] = { v: JSON.parse(JSON.stringify(res.doc)), t: Date.now() };
+      tourIndexLocal(res.index, res.doc); toast(`'${v.name}' 대회를 만들었습니다 · 이제 참가 신청을 받으세요`, 5000); tourOpen(res.doc.id); updateCoverTour();
+    } finally { btn.disabled = false; btn.innerHTML = label; }
+  }
+  /** 대회 목록에서 빼기 (파일은 남는다). 지난 대회는 관리자만 */
+  async function tourDelete(doc) {
+    const t = tourOf(doc); if (!t) return; if (wkClosed(doc) && !adminKey) return; const n = Object.keys(doc.attendance || {}).length;
+    if (!confirm(`'${t.name}' 대회를 목록에서 뺄까요?${n ? `\n참가 ${n}명·대진·점수 기록은 저장소 파일에 그대로 남습니다.` : ''}`)) return;
+    if (!(await wkRequireAuth('tour'))) return;
+    const res = await tourPostOp({ op: 'tour-del', session: doc.id }); if (!res.ok) { if (res.code === 'AUTH') wkForgetKey(); toast(TOUR_MSG[res.code] || '빼지 못했습니다: ' + (res.code || '?'), 5000); return; }
+    if (res.index) tourIndexLocal(res.index, null); else if (W.index) W.index.tours = (W.index.tours || []).filter((x) => x.id !== doc.id);
+    W.failed = W.failed.filter((op) => op.session !== doc.id); W.pending = W.pending.filter((op) => op.session !== doc.id); if (res.doc && W.id === doc.id) wkAdopt(res.doc, res.rev); // 뺀 대회에 대한 옛 변경이 다시 보내져 되살아나지 않게
+    toast(`'${t.name}' 대회를 목록에서 뺐습니다`); tourClose(); updateCoverTour();
+  }
+  /** 대회 만들기·목록에서 빼기 전송: 로컬 = 모의 저장소, 운영 = 프록시(Code.gs tourPost), 관리자는 프록시가 옛 버전이거나 실패하면 자기 토큰으로 */
+  async function tourPostOp(body) {
+    const full = { v: 1, club: 'tennisweet', by: W.me || '', ...body, auth: WK_PW_HASH }; const k = wkAuthKey(); if (k) full.key = k;
+    if (WK_MOCK) { if (!(adminKey || full.key)) return { ok: false, code: 'AUTH' }; await new Promise((r) => setTimeout(r, 200)); return tourLocalOp(full); }
+    const url = W.index?.proxy;
+    if (url) { try { const r = await fetch(url, { method: 'POST', body: JSON.stringify(full), redirect: 'follow' }); const j = await r.json(); if (!(adminKey && ['NETWORK', 'GITHUB', 'BUSY', 'AUTH', 'INVALID', 'CLOSED'].includes(j?.code))) return j; } catch (e) { if (!adminKey) return { ok: false, code: 'NETWORK', detail: e.message }; } }
+    if (adminKey) return tourLocalOp(full);
+    return { ok: false, code: 'NOPROXY' };
+  }
+  /** 프록시 없이 대회 op 적용 (로컬 모의 저장소·관리자 토큰) — Code.gs tourPost 와 같은 규칙 (관리자는 지난 대회도 뺄 수 있다) */
+  async function tourLocalOp(body) {
+    const now = new Date().toISOString();
+    if (body.op === 'tour-del') {
+      const id = String(body.session || ''); if (!TOUR_ID_RE.test(id)) return { ok: false, code: 'INVALID' };
+      const cur = await dataRead(`weekly/sessions/${id}.json`); if (cur && !cur.deleted && !adminKey && wkClosed(cur)) return { ok: false, code: 'CLOSED' };
+      let index = null; const ok = await dataAdminUpdate('weekly/index.json', (c) => { index = tourIndexPut(c, null, id, now); return index; }, `대회 ${id} 목록에서 제외`);
+      if (!ok && index) return { ok: false, code: 'GITHUB' }; // 이미 목록에 없으면 그대로 진행
+      let doc = null; await dataAdminUpdate(`weekly/sessions/${id}.json`, (c) => { if (!c || typeof c !== 'object' || c.deleted) return null; c.status = 'closed'; c.deleted = true; c.rev = (c.rev | 0) + 1; c.updatedAt = now; doc = c; return c; }, `대회 ${id} 닫기 (목록에서 뺌)`); // 파일은 남기되 닫아 둔다 (Code.gs 와 같게)
+      if (doc) { if (!WK_MOCK) wkFresh[`weekly/sessions/${id}.json`] = { v: JSON.parse(JSON.stringify(doc)), t: Date.now() }; await wkProxyRefresh(id); }
+      return doc ? { ok: true, index, rev: doc.rev, doc } : { ok: true, index };
+    }
+    const v = body.value && typeof body.value === 'object' ? body.value : {}; const date = String(v.date || '');
+    if (!courtsDateOk(date, Date.now())) return { ok: false, code: 'INVALID' }; if (wkClosed({ date })) return { ok: false, code: 'CLOSED' };
+    const meta = tourMeta({ name: v.name, mode: v.mode, teamCount: v.teamCount, teamNames: v.teamNames, venue: v.venue, teams: null }); const st = tourSettings(v.settings); if (!meta || !st) return { ok: false, code: 'INVALID' };
+    const id = date + 't'; const idx = await dataRead('weekly/index.json'); const listed = Array.isArray(idx?.tours) && idx.tours.some((x) => x && x.id === id);
+    let doc = null, fail = null, found = null;
+    const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur && (listed || (cur.tour && !cur.deleted))) { found = cur; return null; } doc = tourNewDoc(id, date, meta, st, cur ? cur.rev : 0, now); return doc; }, `대회 ${id} 만들기: ${meta.name}`); // 살아 있는 대회 파일이 이미 있으면 덮어쓰지 않는다 (목록만 빠졌으면 목록을 고친다 — Code.gs 와 같게)
+    if (found) { let index = null; if (!listed) await dataAdminUpdate('weekly/index.json', (c) => { index = tourIndexPut(c, tourIndexEntry(found), null, now); return index; }, `대회 ${id} 목록 복구`); fail = { ok: false, code: 'EXISTS', doc: found, index }; }
+    if (fail) return fail; if (!ok1 || !doc) return { ok: false, code: 'GITHUB' };
+    let index = null; const ok2 = await dataAdminUpdate('weekly/index.json', (c) => { index = tourIndexPut(c, tourIndexEntry(doc), null, now); return index; }, `대회 ${id} 목록 추가`);
+    if (!ok2 && index) return { ok: false, code: 'GITHUB', detail: 'INDEX', doc };
+    await wkProxyRefresh(id); return { ok: true, rev: doc.rev, doc, index };
   }
   const LIVE_ID = 'live';
-  /** 새 대회 시작: 작업본의 일정·점수·팀·특별 규칙·회식을 비우고 참가 체크를 해제 (명단·NTRP 유지, 게시본은 게시 전까지 그대로) */
-  function newTournament() {
-    if (!confirm('새 대회를 시작합니다.\n이 브라우저 작업본의 일정표·점수·팀 구성·회식 안내가 비워지고 참가 체크가 모두 해제됩니다 (선수 명단과 NTRP 는 유지, 게시본은 게시하기 전까지 그대로).\n먼저 "지난 대회로 보관"을 했는지 확인하세요. 계속할까요?')) return;
-    state.schedule = null; state.results = {}; state.units = []; state.editMode = false; state.meFilter = undefined;
-    state.settings = { ...state.settings, name: '', date: '', mustFace: '', sameNtrpGame: '', avoidPairs: '', venue: { name: '', time: '', addr: '', phone: '', menu: '', note: '' } };
-    state.players.forEach((p) => { p.active = false; p.from = ''; p.until = ''; });
-    save(); showTab('setup'); toast('대회 설정(이름·날짜·방식)을 입력한 뒤 선수 탭에서 참가를 체크하고 생성하세요', 6000);
-  }
   async function tournamentRefresh() {
-    const idx = await archRead('archive/index.json');
+    const [idx, widx] = await Promise.all([archRead('archive/index.json'), dataRead('weekly/index.json')]); if (widx && typeof widx === 'object') wkSetIndex(widx); // 대회 목록은 weekly/index.json 의 tours (다른 기기의 만들기·수정·보관·삭제를 반영)
     if (idx && typeof idx === 'object') T.index = { v: 1, events: (Array.isArray(idx.events) ? idx.events : []).filter((e) => e && ARCH_RE.test(String(e.id || ''))).map((e) => ({ id: String(e.id), name: String(e.name || '').slice(0, 60), date: /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) ? e.date : '', mode: String(e.mode || '').slice(0, 10), players: e.players | 0, matches: e.matches | 0 })).sort((a, b) => (a.date < b.date ? 1 : -1)) };
     else { T.index = { v: 1, events: [] }; T.indexErr = ''; }
-    renderTournament(); renderHeader(); if (!$('#cover')?.hidden) updateCover();
+    renderTournament(); renderHeader(); if (!$('#cover')?.hidden) updateCover(); else updateCoverTour();
   }
   async function openArchive(id) {
     if (id === LIVE_ID) { const d = buildArchive(LIVE_ID); if (!d) return; try { T.doc = assertArchive(d); } catch { return; } renderTournament(); window.scrollTo(0, 0); return; } // 진행 중인 대회: 게시본 그대로
@@ -2912,12 +3329,17 @@
       if (ok2) { toast(`'${doc.name || doc.id}' 을(를) 지난 대회로 보관했습니다`, 5000); T.doc = null; await tournamentRefresh(); }
     } finally { if (btn) { btn.disabled = false; btn.textContent = '📦 지난 대회로 보관'; } }
   }
-  $('#tab-tournament')?.addEventListener('submit', (e) => {
-    if (e.target.id !== 'tour-form-new') return; e.preventDefault(); const fd = new FormData(e.target);
-    const name = String(fd.get('name') || '').trim().slice(0, 60); const date = String(fd.get('date') || ''); if (!name) return;
-    newTournament(name, /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : '');
-  });
+  $('#tab-tournament')?.addEventListener('submit', async (e) => { if (e.target.id !== 'tour-form') return; e.preventDefault(); await tourFormSubmit(e.target); });
+  $('#tab-tournament')?.addEventListener('change', (e) => { const f = e.target.closest?.('#tour-form'); if (!f) return; const nm = e.target.name;
+    if (nm === 'mode') f.classList.toggle('team', f.querySelector('[name=mode]:checked')?.value === 'team');
+    if (nm === 'startTime' || nm === 'endTime') wkRenderCourtInputs(f, $('#tour-court-hours'));
+    if (nm === 'date') wkFillFromCourts({ form: f, box: $('#tour-court-hours') }); }); // 날짜를 고르면 그 날 코트 예약으로 시간·코트를 채운다
   $('#tab-tournament')?.addEventListener('click', async (e) => {
+    if (e.target.closest('#tour-new')) { tourOpenForm('new'); renderTournament(); return; }
+    if (e.target.closest('#tour-form-cancel')) { tourCloseForm(); renderTournament(); return; }
+    if (e.target.closest('#tour-fill-courts')) { wkFillFromCourts({ form: $('#tour-form'), box: $('#tour-court-hours') }); return; }
+    const op = e.target.closest('[data-tour-open]'); if (op) { tourOpen(op.dataset.tourOpen); return; }
+    if (e.target.closest('#tour-back')) { tourClose(); return; }
     const go = e.target.closest('[data-go-tab]'); if (go) { showTab(go.dataset.goTab); history.replaceState(null, '', '#' + go.dataset.goTab); return; }
     if (e.target.closest('#tour-archive')) { await archiveCurrent(); return; }
     if (e.target.closest('#arch-back')) { T.doc = null; renderTournament(); return; }
@@ -2940,7 +3362,7 @@
       enterViewOnly(published ? '' : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
       render();
       const want = (location.hash || '').replace('#', '');
-      if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
+      const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
       weeklyBoot(); tournamentRefresh();
       // 방문자: 게시본이 바뀌면 자동 갱신 (현장에서 관리자가 게시하면 곧 반영)
       let lastPub = published?.publishedAt || null;
@@ -2967,6 +3389,6 @@
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
     if (await syncTokenFromPublished(published)) toast('게시 토큰을 게시본에서 가져왔습니다 · 바로 게시할 수 있습니다');
-    render(); { const want = (location.hash || '').replace('#', ''); if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } } weeklyBoot(); tournamentRefresh();
+    render(); { const want = (location.hash || '').replace('#', ''); const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } } weeklyBoot(); tournamentRefresh();
   })();
 })();
