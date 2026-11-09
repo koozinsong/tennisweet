@@ -21,7 +21,7 @@
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-11-09T04:27:58.884Z",
+ "updatedAt": "2026-11-09T04:46:39.251Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
@@ -70,7 +70,7 @@
    "teamCount": 2,
    "startTime": "18:00",
    "endTime": "22:00",
-   "courts": 2,
+   "courts": 3,
    "archived": false
   }
  ]
