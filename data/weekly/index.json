@@ -21,7 +21,7 @@
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-11-07T01:25:55.263Z",
+ "updatedAt": "2026-11-09T04:27:12.347Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
@@ -60,5 +60,18 @@
   "2026-10-30",
   "2026-11-05",
   "2026-11-06"
+ ],
+ "tours": [
+  {
+   "id": "2026-11-26t",
+   "date": "2026-11-26",
+   "name": "2026년 동계 대회",
+   "mode": "rotation",
+   "teamCount": 2,
+   "startTime": "18:00",
+   "endTime": "22:00",
+   "courts": 2,
+   "archived": false
+  }
  ]
 }
