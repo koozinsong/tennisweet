@@ -1,0 +1,60 @@
+{
+ "v": 1,
+ "id": "2026-11-26t",
+ "date": "2026-11-26",
+ "status": "open",
+ "rev": 1,
+ "tour": {
+  "name": "2026년 동계 대회",
+  "mode": "rotation",
+  "teamCount": 2,
+  "teamNames": [
+   "1팀",
+   "2팀"
+  ],
+  "venue": {
+   "name": "",
+   "time": "",
+   "addr": "",
+   "phone": "",
+   "menu": "",
+   "note": ""
+  },
+  "teams": null
+ },
+ "settings": {
+  "startTime": "18:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 2,
+  "minWomenDoubles": 1,
+  "courtsByHour": {
+   "18": 1,
+   "19": 1,
+   "20": 2,
+   "21": 2
+  },
+  "courtNamesByHour": {
+   "18": [
+    "2"
+   ],
+   "19": [
+    "2"
+   ],
+   "20": [
+    "1",
+    "2"
+   ],
+   "21": [
+    "1",
+    "2"
+   ]
+  }
+ },
+ "attendance": {},
+ "schedule": null,
+ "done": {},
+ "results": {},
+ "createdAt": "2026-11-09T04:27:12.347Z"
+}
