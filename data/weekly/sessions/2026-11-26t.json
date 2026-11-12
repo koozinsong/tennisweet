@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 17,
+ "rev": 18,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "team",
@@ -140,11 +140,19 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:mntnrh": {
+   "n": "리바",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-12T01:10:25.947Z"
+ "updatedAt": "2026-11-12T01:10:41.547Z"
 }
