@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 10,
+ "rev": 11,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "team",
@@ -96,11 +96,17 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "ev1tqiv": {
+   "n": "이현용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-12T01:08:53.173Z"
+ "updatedAt": "2026-11-12T01:09:19.546Z"
 }
