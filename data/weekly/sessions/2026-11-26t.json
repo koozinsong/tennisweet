@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 15,
+ "rev": 16,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "team",
@@ -126,11 +126,18 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:18xeq3p": {
+   "n": "터빈",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-12T01:09:53.693Z"
+ "updatedAt": "2026-11-12T01:10:07.033Z"
 }
