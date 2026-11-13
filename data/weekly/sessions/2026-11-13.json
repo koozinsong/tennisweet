@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 4,
+ "rev": 5,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -34,11 +34,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:34:25.351Z"
+ "updatedAt": "2026-11-13T06:34:30.154Z"
 }
