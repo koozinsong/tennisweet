@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 11,
+ "rev": 12,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -81,11 +81,11 @@
   }
  },
  "schedule": {
-  "seed": 931380,
+  "seed": 961711,
   "gen": 1,
   "fromSlot": 0,
-  "inputHash": "1ezpgbn~fmx",
-  "at": "2026-11-13T06:36:01.353Z",
+  "inputHash": "174olli~fmx",
+  "at": "2026-11-13T06:38:08.047Z",
   "by": "h0teikh",
   "matches": [
    {
@@ -93,12 +93,12 @@
     "slot": 0,
     "court": 1,
     "aIds": [
-     "p:nba8nn1",
-     "p:g:126orx5"
+     "p:6kn0dof",
+     "p:nba8nn1"
     ],
     "bIds": [
-     "p:t136ug1",
-     "p:g:k5j9z"
+     "p:g:k5j9z",
+     "p:lvcpucm"
     ]
    },
    {
@@ -106,12 +106,12 @@
     "slot": 0,
     "court": 2,
     "aIds": [
-     "p:uzqomod",
+     "p:t136ug1",
      "p:g:18xeq3p"
     ],
     "bIds": [
      "p:g:1ge2qao",
-     "p:6kn0dof"
+     "p:g:126orx5"
     ]
    },
    {
@@ -119,12 +119,12 @@
     "slot": 1,
     "court": 1,
     "aIds": [
-     "p:nba8nn1",
+     "p:6kn0dof",
      "p:g:1ge2qao"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:t136ug1"
+     "p:g:k5j9z",
+     "p:g:126orx5"
     ]
    },
    {
@@ -132,12 +132,12 @@
     "slot": 1,
     "court": 2,
     "aIds": [
-     "p:g:k5j9z",
-     "p:g:126orx5"
+     "p:uzqomod",
+     "p:t136ug1"
     ],
     "bIds": [
-     "p:g:18xeq3p",
-     "p:6kn0dof"
+     "p:nba8nn1",
+     "p:g:18xeq3p"
     ]
    },
    {
@@ -145,12 +145,12 @@
     "slot": 2,
     "court": 1,
     "aIds": [
-     "p:g:126orx5",
-     "p:g:1ge2qao"
+     "p:g:k5j9z",
+     "p:6kn0dof"
     ],
     "bIds": [
-     "p:nba8nn1",
-     "p:6kn0dof"
+     "p:g:1ge2qao",
+     "p:g:18xeq3p"
     ]
    },
    {
@@ -158,12 +158,12 @@
     "slot": 2,
     "court": 2,
     "aIds": [
-     "p:t136ug1",
-     "p:g:18xeq3p"
+     "p:uzqomod",
+     "p:lvcpucm"
     ],
     "bIds": [
-     "p:uzqomod",
-     "p:g:k5j9z"
+     "p:g:126orx5",
+     "p:t136ug1"
     ]
    },
    {
@@ -171,12 +171,12 @@
     "slot": 3,
     "court": 1,
     "aIds": [
-     "p:t136ug1",
-     "p:g:1ge2qao"
+     "p:lvcpucm",
+     "p:g:126orx5"
     ],
     "bIds": [
-     "p:g:k5j9z",
-     "p:6kn0dof"
+     "p:nba8nn1",
+     "p:t136ug1"
     ]
    },
    {
@@ -184,12 +184,12 @@
     "slot": 3,
     "court": 2,
     "aIds": [
-     "p:uzqomod",
-     "p:g:126orx5"
+     "p:g:k5j9z",
+     "p:g:1ge2qao"
     ],
     "bIds": [
      "p:g:18xeq3p",
-     "p:nba8nn1"
+     "p:uzqomod"
     ]
    }
   ]
@@ -197,5 +197,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:38:00.946Z"
+ "updatedAt": "2026-11-13T06:38:09.893Z"
 }
