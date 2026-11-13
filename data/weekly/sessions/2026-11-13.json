@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 9,
+ "rev": 10,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -74,9 +74,122 @@
    "lv": 3
   }
  },
- "schedule": null,
+ "schedule": {
+  "seed": 931380,
+  "gen": 1,
+  "fromSlot": 0,
+  "inputHash": "1ezpgbn~fmx",
+  "at": "2026-11-13T06:36:01.353Z",
+  "by": "h0teikh",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:nba8nn1",
+     "p:g:126orx5"
+    ],
+    "bIds": [
+     "p:t136ug1",
+     "p:g:k5j9z"
+    ]
+   },
+   {
+    "id": "s0c2",
+    "slot": 0,
+    "court": 2,
+    "aIds": [
+     "p:uzqomod",
+     "p:g:18xeq3p"
+    ],
+    "bIds": [
+     "p:g:1ge2qao",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:nba8nn1",
+     "p:g:1ge2qao"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:t136ug1"
+    ]
+   },
+   {
+    "id": "s1c2",
+    "slot": 1,
+    "court": 2,
+    "aIds": [
+     "p:g:k5j9z",
+     "p:g:126orx5"
+    ],
+    "bIds": [
+     "p:g:18xeq3p",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:g:126orx5",
+     "p:g:1ge2qao"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:t136ug1",
+     "p:g:18xeq3p"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:g:k5j9z"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:t136ug1",
+     "p:g:1ge2qao"
+    ],
+    "bIds": [
+     "p:g:k5j9z",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:uzqomod",
+     "p:g:126orx5"
+    ],
+    "bIds": [
+     "p:g:18xeq3p",
+     "p:nba8nn1"
+    ]
+   }
+  ]
+ },
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:35:47.450Z"
+ "updatedAt": "2026-11-13T06:36:02.585Z"
 }
