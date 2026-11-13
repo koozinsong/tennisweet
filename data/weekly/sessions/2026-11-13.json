@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 7,
+ "rev": 8,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -56,11 +56,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 3
+  },
+  "g:1ge2qao": {
+   "n": "hks8234",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:34:59.367Z"
+ "updatedAt": "2026-11-13T06:35:19.695Z"
 }
