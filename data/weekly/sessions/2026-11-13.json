@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 8,
+ "rev": 9,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -64,11 +64,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 3
+  },
+  "g:126orx5": {
+   "n": "모노앤더시티",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:35:19.695Z"
+ "updatedAt": "2026-11-13T06:35:47.450Z"
 }
