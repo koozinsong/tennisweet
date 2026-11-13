@@ -9,19 +9,10 @@
    "startTime": "18:00",
    "endTime": "22:00",
    "courtsLabel": "코트 2면"
-  },
-  {
-   "id": "2026-11-13",
-   "date": "2026-11-13",
-   "courts": 2,
-   "matchMinutes": 30,
-   "startTime": "20:00",
-   "endTime": "22:00",
-   "courtsLabel": "코트 2면"
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-11-13T23:31:03.781Z",
+ "updatedAt": "2026-11-13T23:31:15.204Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
@@ -60,7 +51,8 @@
   "2026-10-30",
   "2026-11-05",
   "2026-11-06",
-  "2026-11-12"
+  "2026-11-12",
+  "2026-11-13"
  ],
  "tours": [
   {
