@@ -3,7 +3,7 @@
  "id": "2026-11-13",
  "date": "2026-11-13",
  "status": "open",
- "rev": 6,
+ "rev": 7,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -48,11 +48,19 @@
    "until": "22:00",
    "guest": true,
    "lv": 2.5
+  },
+  "g:k5j9z": {
+   "n": "이우진",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-07T01:25:49.229Z",
- "updatedAt": "2026-11-13T06:34:45.989Z"
+ "updatedAt": "2026-11-13T06:34:59.367Z"
 }
