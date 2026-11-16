@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 67,
+ "rev": 68,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -129,11 +129,11 @@
   }
  },
  "schedule": {
-  "seed": 722470,
-  "gen": 34,
+  "seed": 175643,
+  "gen": 35,
   "fromSlot": 0,
   "inputHash": "179ewmm~fmx",
-  "at": "2026-11-16T04:39:07.872Z",
+  "at": "2026-11-16T04:39:15.689Z",
   "by": "h0teikh",
   "matches": [
    {
@@ -141,12 +141,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:lvcpucm",
-     "p:g261xhp"
+     "p:328ljva",
+     "p:t136ug1"
     ],
     "bIds": [
-     "p:328ljva",
-     "p:nba8nn1"
+     "p:lvcpucm",
+     "p:g261xhp"
     ]
    },
    {
@@ -167,12 +167,12 @@
     "slot": 4,
     "court": 3,
     "aIds": [
-     "p:t136ug1",
-     "p:uzqomod"
-    ],
-    "bIds": [
      "p:6kn0dof",
      "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:uzqomod"
     ]
    },
    {
@@ -180,12 +180,12 @@
     "slot": 5,
     "court": 1,
     "aIds": [
-     "p:k45yesm",
-     "p:328ljva"
+     "p:t4lcpvt",
+     "p:uzqomod"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:nba8nn1"
+     "p:k45yesm",
+     "p:lvcpucm"
     ]
    },
    {
@@ -193,12 +193,12 @@
     "slot": 5,
     "court": 2,
     "aIds": [
-     "p:243v8q3",
-     "p:ibws5ld"
+     "p:t5tmwl5",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:t5tmwl5",
-     "p:6kn0dof"
+     "p:243v8q3",
+     "p:nba8nn1"
     ]
    },
    {
@@ -206,12 +206,12 @@
     "slot": 5,
     "court": 3,
     "aIds": [
-     "p:t136ug1",
-     "p:g261xhp"
+     "p:328ljva",
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:lvcpucm",
-     "p:uzqomod"
+     "p:t136ug1",
+     "p:6kn0dof"
     ]
    },
    {
@@ -220,11 +220,11 @@
     "court": 1,
     "aIds": [
      "p:243v8q3",
-     "p:t136ug1"
+     "p:6kn0dof"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:g261xhp"
+     "p:k45yesm",
+     "p:t136ug1"
     ]
    },
    {
@@ -232,47 +232,8 @@
     "slot": 6,
     "court": 2,
     "aIds": [
-     "p:k45yesm",
-     "p:nba8nn1"
-    ],
-    "bIds": [
      "p:t5tmwl5",
-     "p:uzqomod"
-    ]
-   },
-   {
-    "id": "s6c3",
-    "slot": 6,
-    "court": 3,
-    "aIds": [
-     "p:lvcpucm",
-     "p:6kn0dof"
-    ],
-    "bIds": [
-     "p:328ljva",
-     "p:ibws5ld"
-    ]
-   },
-   {
-    "id": "s7c1",
-    "slot": 7,
-    "court": 1,
-    "aIds": [
-     "p:t5tmwl5",
-     "p:lvcpucm"
-    ],
-    "bIds": [
-     "p:243v8q3",
-     "p:uzqomod"
-    ]
-   },
-   {
-    "id": "s7c2",
-    "slot": 7,
-    "court": 2,
-    "aIds": [
-     "p:k45yesm",
-     "p:g261xhp"
+     "p:328ljva"
     ],
     "bIds": [
      "p:t4lcpvt",
@@ -280,16 +241,55 @@
     ]
    },
    {
+    "id": "s6c3",
+    "slot": 6,
+    "court": 3,
+    "aIds": [
+     "p:uzqomod",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:nba8nn1",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s7c1",
+    "slot": 7,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s7c2",
+    "slot": 7,
+    "court": 2,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:t136ug1"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:uzqomod"
+    ]
+   },
+   {
     "id": "s7c3",
     "slot": 7,
     "court": 3,
     "aIds": [
-     "p:6kn0dof",
-     "p:328ljva"
+     "p:lvcpucm",
+     "p:6kn0dof"
     ],
     "bIds": [
-     "p:t136ug1",
-     "p:nba8nn1"
+     "p:g261xhp",
+     "p:ibws5ld"
     ]
    }
   ]
@@ -297,5 +297,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-16T04:39:08.888Z"
+ "updatedAt": "2026-11-16T04:39:17.209Z"
 }
