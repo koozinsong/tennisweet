@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 39,
+ "rev": 40,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -129,11 +129,11 @@
   }
  },
  "schedule": {
-  "seed": 52457,
-  "gen": 6,
+  "seed": 258436,
+  "gen": 7,
   "fromSlot": 0,
   "inputHash": "179ewmm~fmx",
-  "at": "2026-11-16T00:36:14.522Z",
+  "at": "2026-11-16T00:36:29.409Z",
   "by": "h0teikh",
   "matches": [
    {
@@ -154,12 +154,12 @@
     "slot": 4,
     "court": 2,
     "aIds": [
-     "p:t136ug1",
-     "p:nba8nn1"
+     "p:6kn0dof",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:328ljva",
-     "p:ibws5ld"
+     "p:uzqomod",
+     "p:lvcpucm"
     ]
    },
    {
@@ -167,12 +167,12 @@
     "slot": 4,
     "court": 3,
     "aIds": [
-     "p:g261xhp",
-     "p:6kn0dof"
+     "p:nba8nn1",
+     "p:t136ug1"
     ],
     "bIds": [
-     "p:lvcpucm",
-     "p:uzqomod"
+     "p:ibws5ld",
+     "p:328ljva"
     ]
    },
    {
@@ -245,31 +245,18 @@
     "slot": 6,
     "court": 3,
     "aIds": [
-     "p:328ljva",
-     "p:uzqomod"
-    ],
-    "bIds": [
      "p:ibws5ld",
      "p:g261xhp"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:328ljva"
     ]
    },
    {
     "id": "s7c1",
     "slot": 7,
     "court": 1,
-    "aIds": [
-     "p:k45yesm",
-     "p:328ljva"
-    ],
-    "bIds": [
-     "p:t5tmwl5",
-     "p:nba8nn1"
-    ]
-   },
-   {
-    "id": "s7c2",
-    "slot": 7,
-    "court": 2,
     "aIds": [
      "p:243v8q3",
      "p:uzqomod"
@@ -280,16 +267,29 @@
     ]
    },
    {
+    "id": "s7c2",
+    "slot": 7,
+    "court": 2,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:328ljva"
+    ]
+   },
+   {
     "id": "s7c3",
     "slot": 7,
     "court": 3,
     "aIds": [
-     "p:lvcpucm",
-     "p:6kn0dof"
+     "p:t136ug1",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:g261xhp",
-     "p:t136ug1"
+     "p:6kn0dof",
+     "p:lvcpucm"
     ]
    }
   ]
@@ -297,5 +297,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-16T00:36:16.075Z"
+ "updatedAt": "2026-11-16T00:36:30.817Z"
 }
