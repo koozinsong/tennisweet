@@ -3,7 +3,7 @@
  "id": "2026-11-19",
  "date": "2026-11-19",
  "status": "open",
- "rev": 3,
+ "rev": 4,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -29,11 +29,17 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "18qv5bz": {
+   "n": "신윤호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-13T23:31:43.312Z",
- "updatedAt": "2026-11-19T07:25:04.637Z"
+ "updatedAt": "2026-11-19T07:25:09.186Z"
 }
