@@ -3,7 +3,7 @@
  "id": "2026-11-19",
  "date": "2026-11-19",
  "status": "open",
- "rev": 8,
+ "rev": 9,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -62,11 +62,19 @@
    "g": "F",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:1wvsn3r": {
+   "n": "ybk1003",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-13T23:31:43.312Z",
- "updatedAt": "2026-11-19T07:25:58.605Z"
+ "updatedAt": "2026-11-19T07:31:45.889Z"
 }
