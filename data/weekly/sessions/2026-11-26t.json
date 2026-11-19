@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 71,
+ "rev": 72,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -126,6 +126,13 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "g:3igyma": {
+   "n": "임영균",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
   }
  },
  "schedule": {
@@ -297,5 +304,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-16T04:40:00.247Z"
+ "updatedAt": "2026-11-19T06:46:00.901Z"
 }
