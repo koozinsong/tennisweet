@@ -3,7 +3,7 @@
  "id": "2026-11-19",
  "date": "2026-11-19",
  "status": "open",
- "rev": 4,
+ "rev": 5,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -35,11 +35,17 @@
    "g": "M",
    "from": "20:00",
    "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:30",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-13T23:31:43.312Z",
- "updatedAt": "2026-11-19T07:25:09.186Z"
+ "updatedAt": "2026-11-19T07:25:19.869Z"
 }
