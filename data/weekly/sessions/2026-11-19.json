@@ -3,7 +3,7 @@
  "id": "2026-11-19",
  "date": "2026-11-19",
  "status": "open",
- "rev": 7,
+ "rev": 8,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -56,11 +56,17 @@
    "until": "22:00",
    "guest": true,
    "lv": 3
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
   }
  },
  "schedule": null,
  "done": {},
  "results": {},
  "createdAt": "2026-11-13T23:31:43.312Z",
- "updatedAt": "2026-11-19T07:25:50.818Z"
+ "updatedAt": "2026-11-19T07:25:58.605Z"
 }
