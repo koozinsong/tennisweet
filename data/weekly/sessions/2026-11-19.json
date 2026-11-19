@@ -3,7 +3,7 @@
  "id": "2026-11-19",
  "date": "2026-11-19",
  "status": "open",
- "rev": 1,
+ "rev": 2,
  "settings": {
   "startTime": "20:00",
   "endTime": "22:00",
@@ -17,9 +17,17 @@
    "3"
   ]
  },
- "attendance": {},
+ "attendance": {
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  }
+ },
  "schedule": null,
  "done": {},
  "results": {},
- "createdAt": "2026-11-13T23:31:43.312Z"
+ "createdAt": "2026-11-13T23:31:43.312Z",
+ "updatedAt": "2026-11-19T07:24:59.776Z"
 }
