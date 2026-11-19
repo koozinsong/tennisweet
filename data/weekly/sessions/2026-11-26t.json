@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 72,
+ "rev": 73,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -133,6 +133,14 @@
    "from": "20:00",
    "until": "22:00",
    "guest": true
+  },
+  "g:1wvsn3r": {
+   "n": "ybk1003",
+   "g": "M",
+   "from": "18:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
   }
  },
  "schedule": {
@@ -304,5 +312,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-19T06:46:00.901Z"
+ "updatedAt": "2026-11-19T07:31:12.873Z"
 }
