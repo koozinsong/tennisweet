@@ -45,7 +45,7 @@
     {
       "id": "nba8nn1",
       "name": "윤성환",
-      "gender": "",
+      "gender": "M",
       "from": "19:00",
       "until": "",
       "note": "",
@@ -694,6 +694,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-11-22T10:21:40.604Z",
-  "ghTokenEnc": "u35XVo2DdDnCjnFS.C5nw4u9ZzFzPuS88S81MKlPwzNxJwHFdPuPeEK64Bg2ueZBEQtnMtTHrcP5dxi7cTc5DD7Fa7zmNyFVbgfzpXnYJ+VyYawBQ8vilryRy7s2hKt2fAkfFkk4vyC14tk+d79UCEryBTdxVhCwojg=="
+  "publishedAt": "2026-11-22T10:22:01.084Z",
+  "ghTokenEnc": "bMu00ptMCPhwGIS1.iGDuoSQ1k7nNt8q0ti/TC5IO/+24+IJ0y71p6TXgCrlQCDXGxLKMHRe3tNxalqunxMr2KrK4PEw8KSyBK4f+fHtfKdpxmON7ECs1WmlKeL/d1ViS4jVjt2IR7eq1e8PihnE/TGfaOFmRUBs5Fw=="
 }
