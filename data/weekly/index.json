@@ -21,7 +21,7 @@
   }
  ],
  "proxy": "https://script.google.com/macros/s/AKfycbyjaSYeHGKi_YY1KeahaMj49qdpkj47RT_Z9_h982eb6LxLqmXO6khWbBVqFPDNBVCLtA/exec",
- "updatedAt": "2026-11-22T06:57:28.623Z",
+ "updatedAt": "2026-11-22T09:13:43.528Z",
  "levels": {
   "h0teikh": 4,
   "t4lcpvt": 3.5,
@@ -71,6 +71,17 @@
    "mode": "rotation",
    "teamCount": 2,
    "startTime": "20:00",
+   "endTime": "22:00",
+   "courts": 3,
+   "archived": false
+  },
+  {
+   "id": "2026-11-26t2",
+   "date": "2026-11-26",
+   "name": "2026년 동계 대회 (2)",
+   "mode": "rotation",
+   "teamCount": 2,
+   "startTime": "19:00",
    "endTime": "22:00",
    "courts": 3,
    "archived": false
