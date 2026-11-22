@@ -45,12 +45,12 @@
     {
       "id": "nba8nn1",
       "name": "윤성환",
-      "gender": "M",
+      "gender": "",
       "from": "19:00",
       "until": "",
       "note": "",
       "active": true,
-      "ntrpEnc": "I23VQuVJv2iYNnN7.eoqpPVJ84wviq4a/DbUeS8DVvA=="
+      "ntrpEnc": "T0Fe9iH6JKleQ8st.wasVlhk1a5GTgPZcAYm/fOo="
     },
     {
       "id": "k45yesm",
@@ -60,7 +60,7 @@
       "until": "",
       "note": "",
       "active": true,
-      "ntrpEnc": "GWOaOipowreiXCqH.NJtN1SYKaPyma+/Vfllk5QI="
+      "ntrpEnc": "Xb05JyL8FTL2h0QB.inylePVq9/G3bAN9tKXwv5lEdw=="
     },
     {
       "id": "243v8q3",
@@ -101,7 +101,7 @@
       "until": "",
       "note": "",
       "active": true,
-      "ntrpEnc": "I1wG8TM2/CmaqVWU.51brFvhGYXQKfCWGYwU0GFg="
+      "ntrpEnc": "tdXoc13eOXY0FBUs.NoW98o2YUGIgRxLA7wln/KnUHg=="
     },
     {
       "id": "t5tmwl5",
@@ -163,18 +163,18 @@
       "tag": "",
       "note": "",
       "active": false,
-      "ntrpEnc": "6Lq8CMLnC7bnw3o6.zW/R/d1dvrs8ncqKbC6gl9B5zA=="
+      "ntrpEnc": "RV2TJnf/M1Qmu4mp.ElRFszeWahXMALVmopjAKFA="
     },
     {
       "id": "g261xhp",
       "name": "김진모",
-      "gender": "M",
+      "gender": "F",
       "from": "",
       "until": "",
       "tag": "",
       "note": "",
       "active": false,
-      "ntrpEnc": "d9sickwQzyEyqYl2.KqaUv4ZQys+a+uI6cF7HS30="
+      "ntrpEnc": "tVJpRO27GlsREKDd.wFlsWanV+k4PysjkOE4+5lA="
     },
     {
       "id": "uqb3sp3",
@@ -196,7 +196,7 @@
       "tag": "",
       "note": "",
       "active": false,
-      "ntrpEnc": "QvUiBqd9DFEPc4p1.Yz0d1xGEzHVmB071G9kBMBue0A=="
+      "ntrpEnc": "hVS+O792Q3rna7Gl.OyI2tq9f353rxkkcI1hIvnE="
     },
     {
       "id": "328ljva",
@@ -694,6 +694,6 @@
     ]
   },
   "editMode": false,
-  "publishedAt": "2026-11-22T10:18:51.288Z",
-  "ghTokenEnc": "W3UvKpMjlWb7vMUN.iGHdYVYVIbeREyUy8QsK6ebCQG0kWUu6D0iXNn8pDulGKYHCb6OYBL7pwdIFZNA4t3YxwAnUS/d/P4ErtHBt8GyfU4mi2bQE0mlp/I+Mi9uKAsjd3rWkAase0EY7vAWW3ukdLzTu1IRD1h7Y/Q=="
+  "publishedAt": "2026-11-22T10:20:52.119Z",
+  "ghTokenEnc": "Yg456i1NN/Ni+pYe.InHbUhSPvaVQNZIDlgRBoAEsO46X3il5XFVbOv9HbvHt0+sMzazXC3amCxjN2BpX6lQk2SZA1G8WJGyf5LrQprJRgeBteOipgdmVN383/6MbsuZaB5yOP+FiDcrbue4/yK3rsI4n5HYNGRH5Gw=="
 }
