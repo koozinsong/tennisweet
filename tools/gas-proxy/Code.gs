@@ -1,5 +1,5 @@
 /* 테니스윗 정기 모임 저장 프록시 — Google Apps Script 웹앱
- * 멤버 폰에는 토큰이 없다. 이 스크립트가 GitHub 저장소(koozinsong/tennisweet)의 data/weekly/sessions/<날짜>.json (대회는 <날짜>t.json), data/courts.json, data/weekly/index.json 의 대회 목록(tours)만 대신 커밋한다.
+ * 멤버 폰에는 토큰이 없다. 이 스크립트가 GitHub 저장소(koozinsong/tennisweet)의 data/weekly/sessions/<날짜>.json (대회는 <날짜>t.json, 같은 날 둘째 대회부터 <날짜>t2 … t9.json), data/courts.json, data/weekly/index.json 의 대회 목록(tours)만 대신 커밋한다.
  * (게시하기와 같은 방식으로 main 원본 + gh-pages 서빙 사본 두 브랜치에 쓴다)
  *
  * 배포 (README '멤버 직접 저장' 절):
@@ -9,24 +9,27 @@
  *  3) 배포 → 새 배포 → 유형 '웹 앱', 실행: '나', 액세스: '모든 사용자' → 웹 앱 URL(…/exec) 을 관리자 화면 정기 모임 → '저장 서버 주소'에 입력
  *  4) 코드를 고치면 배포 → 배포 관리 → 새 버전 (URL 유지)
  *
- * 읽기: GET ?session=YYYY-MM-DD → { ok, rev, doc } (캐시, Pages 지연 없음)
+ * 읽기: GET ?session=YYYY-MM-DD (대회는 <날짜>t, t2 … t9) → { ok, rev, doc } (캐시, Pages 지연 없음)
  * 요청: POST 본문 = JSON 문자열 (Content-Type 없이 → CORS preflight 없음)
  *   { v:1, club:'tennisweet', session:'2026-09-20', op:'set'|'generate'|'edit'|'ping', path?, value?, base?, by? }
  *   generate·edit·courts 는 key(대진표 비밀번호에서 만든 열쇠)가 필요하다 — 서버는 SHA-256(key) 만 비교
  *   courts: { op:'courts', key, value:[{ d:'YYYY-MM-DD', t:'20', c:0, n:'이름'|'', p?:'내가 본 값' }] } → data/courts.json (session 불필요, 대진표 비밀번호 필요)
- *   대회 (v8, 모두 대진표 비밀번호 필요): tour-create { op:'tour-create', key, value:{ date, name, mode:'rotation'|'team', teamCount?, teamNames?, venue?, settings } } → sessions/<날짜>t.json 생성 + index.json tours 항목 (목록에 있으면 EXISTS)
+ *   대회 (v8, 모두 대진표 비밀번호 필요): tour-create { op:'tour-create', key, value:{ date, name, mode:'rotation'|'team', teamCount?, teamNames?, venue?, settings, copyFrom? } } → sessions/<날짜>t.json 생성 + index.json tours 항목
+ *     (v9) 같은 날짜에 여러 대회: 그 날짜의 첫 빈 자리(<날짜>t, t2 … t9)에 만든다. 같은 날 같은 이름이 있으면 EXISTS(그 대회를 돌려준다), 아홉 자리가 다 찼으면 FULL.
+ *     value.multi = true 는 새 앱의 표시 — 표시가 없는 옛 앱의 요청은 v8 규칙(날짜마다 <날짜>t 하나)을 그대로 따른다. tour-set 으로 이름을 바꿀 때도 같은 날 같은 이름이면 EXISTS.
+ *     value.copyFrom = 같은 날 다른 대회 id 이면 그 대회의 참가자(attendance)를 새 대회로 가져온다 (응답 copied = 가져온 인원)
  *     tour-set { session:'<날짜>t', base, value:{ name?, mode?, teamCount?, teamNames?, venue?, teams?, settings? } } → 대회 정보 수정 (시간·코트·방식·팀 수가 바뀌면 대진·완료·점수 비움)
  *     tour-archive { session:'<날짜>t', base, value:true|false } → 결과 보관(대회를 닫음)·보관 취소, 대회 후 7일 안 (대진이 있어야 보관)
  *     tour-del { op:'tour-del', session:'<날짜>t', key } → index.json tours 에서만 뺀다 (파일 보존, 마감 지난 대회는 거절). 대회의 set courtNames 도 비밀번호 필요
  *   edit: value = [{ id, aIds:[2], bIds:[2] }, …], prev? = { id: [aIds, bIds] } (최대 4경기, 같은 시간대 중복 금지, base=rev 필수, prev 와 현재 팀이 다르면 STALE, 완료 표시 유지)
- * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB'|'AUTH'|'EXISTS', rev?, doc? } (대회 op 는 성공 시 index 도 돌려준다)
+ * 응답: { ok:true, rev, doc } | { ok:false, code:'INVALID'|'NOSESSION'|'CLOSED'|'STALE'|'FULL'|'BUSY'|'GITHUB'|'AUTH'|'EXISTS', rev?, doc? } (대회 op 는 성공 시 index 도 돌려준다, tour-create 는 copied 도)
  */
 const CLUB = 'tennisweet';
 const WK_KEY_SHA = 'ff83ce9ab3243ef60ca56c1783ab4a0f909abae34203e9b699352e552107d9b6'; // 대진표 비밀번호 확인: 클라이언트가 보내는 열쇠 K = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회)의 hex, 여기에는 SHA-256(K) 만 둔다. 공개된 코드(app.js·이 파일)만으로는 K 를 만들 수 없다 (옛 방식은 공개 검증값을 그대로 비교해 우회가 가능했다)
 const DONE_GRACE_DAYS = 7; // 완료 표시 유예 (모임 후 7일)
 const SCORE_MAX = 6; // 점수(게임 수) 상한 — app.js WK_SCORE_MAX 와 동일
-const PROXY_VERSION = 8; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동), 4 = 코트 번호(set courtNames), 5 = 코트 예약(op courts → data/courts.json) + 인증을 열쇠(key) 해시 비교로 변경 + 시간대별 코트 번호(set courtNames 에 { 시: [번호] }), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv), 8 = 대회(tour-create·tour-set·tour-del, index.json 의 tours)
-const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
+const PROXY_VERSION = 9; // 앱의 '연결 확인'이 비교하는 서버 코드 버전 (app.js PROXY_VERSION_NEED): 2 = 대진표 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results.<mid> = {a,b} 0~6, 완료 자동), 4 = 코트 번호(set courtNames), 5 = 코트 예약(op courts → data/courts.json) + 인증을 열쇠(key) 해시 비교로 변경 + 시간대별 코트 번호(set courtNames 에 { 시: [번호] }), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv), 8 = 대회(tour-create·tour-set·tour-del, index.json 의 tours), 9 = 같은 날짜에 대회 여러 개(id <날짜>t, t2 … t9 — 이름이 달라야 한다) + 참가자 가져오기(copyFrom)
+const ID_RE = /^[A-Za-z0-9_:.-]{1,40}$/, TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}(?:[a-z]|t[2-9])?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
 function cfg() { const p = PropertiesService.getScriptProperties(); return { token: p.getProperty('GH_TOKEN'), owner: p.getProperty('OWNER') || 'koozinsong', repo: p.getProperty('REPO') || 'tennisweet', branches: (p.getProperty('BRANCHES') || 'main,gh-pages').split(',').map(function (b) { return b.trim(); }).filter(Boolean) }; }
 
 /** GET ?session=YYYY-MM-DD → 최신 세션 문서 (쓰기 직후 캐시에 담아 두므로 Pages 반영을 기다리지 않는다). 그 외 → ping */
@@ -60,6 +63,7 @@ function doPost(e) {
   }
   const lock = LockService.getScriptLock(); if (!lock.tryLock(20000)) return out({ ok: false, code: 'BUSY' });
   try {
+    if (body.op === 'tour-set' && TOUR_ID_RE.test(String(body.session)) && body.value && typeof body.value.name === 'string') { let ix = null; try { ix = ghGet(c, 'data/weekly/index.json', c.branches[0]); } catch (err) {} /* 목록을 읽지 못하면 이 검사만 건너뛴다 (수정 자체를 막지 않는다) */ const list = ix && ix.json && Array.isArray(ix.json.tours) ? ix.json.tours : []; const nk = tourNameKey(body.value.name); const own = list.filter(function (t) { return t && t.id === body.session; })[0]; if (!(own && tourNameKey(own.name) === nk) && list.some(function (t) { return t && typeof t.id === 'string' && t.id !== body.session && t.id.slice(0, 10) === String(body.session).slice(0, 10) && tourNameKey(t.name) === nk; })) return out({ ok: false, code: 'EXISTS' }); } // 대회 이름 바꾸기: 같은 날짜의 다른 대회와 같은 이름으로는 바꿀 수 없다 (만들기와 같은 규칙). 이름이 그대로인 수정은 검사하지 않는다
     const path = 'data/weekly/sessions/' + body.session + '.json'; // 세션 파일만 쓸 수 있다 (경로는 서버가 정한다)
     const main = c.branches[0]; let saved = null;
     for (let attempt = 0; attempt < 3 && !saved; attempt++) {
@@ -80,7 +84,7 @@ function doPost(e) {
   } catch (err) { return out({ ok: false, code: 'GITHUB', detail: String(err && err.message || err) }); }
   finally { lock.releaseLock(); }
 }
-/** 대회 만들기(tour-create)·목록에서 빼기(tour-del, 파일은 닫아서 남김) — 대진표 비밀번호 필요. 응답 { ok, rev?, doc?, index } | { ok:false, code:'AUTH'|'INVALID'|'EXISTS'|'CLOSED'|'BUSY'|'GITHUB', doc?, index? } */
+/** 대회 만들기(tour-create)·목록에서 빼기(tour-del, 파일은 닫아서 남김) — 대진표 비밀번호 필요. 응답 { ok, rev?, doc?, index, copied? } | { ok:false, code:'AUTH'|'INVALID'|'EXISTS'|'FULL'|'CLOSED'|'BUSY'|'GITHUB', doc?, index? } */
 function tourPost(body) {
   if (!authOk(body)) return out({ ok: false, code: 'AUTH' });
   const c = cfg(); if (!c.token) return out({ ok: false, code: 'GITHUB', detail: 'GH_TOKEN 속성이 없습니다' });
@@ -99,18 +103,32 @@ function tourPost(body) {
     if (!courtsDateOk(date, Date.now())) return out({ ok: false, code: 'INVALID' });
     if (closed({ date: date }, null)) return out({ ok: false, code: 'CLOSED' }); // 지난 날짜에는 만들 수 없다
     const meta = tourMeta({ name: v.name, mode: v.mode, teamCount: v.teamCount, teamNames: v.teamNames, venue: v.venue, teams: null }); const st = tourSettings(v.settings); if (!meta || !st) return out({ ok: false, code: 'INVALID' });
-    const id = date + 't'; const path = 'data/weekly/sessions/' + id + '.json';
     const idxCur = ghGet(c, 'data/weekly/index.json', main); if (idxCur && (!idxCur.json || typeof idxCur.json !== 'object' || Array.isArray(idxCur.json))) return out({ ok: false, code: 'GITHUB', detail: 'index.json 형식 오류 — 덮어쓰지 않습니다' });
-    const listed = !!(idxCur && Array.isArray(idxCur.json.tours) && idxCur.json.tours.some(function (t) { return t && t.id === id; }));
-    const cur = ghGet(c, path, main); if (cur && cur.json && listed) return out({ ok: false, code: 'EXISTS', rev: cur.json.rev | 0, doc: cur.json }); // 같은 날짜 대회가 이미 있다 (목록에서 뺀 옛 파일이면 새로 만든다)
-    if (cur && cur.json && cur.json.tour && !cur.json.deleted) { const rr = tourIndexWrite(c, function (idx) { return tourIndexPut(idx, tourIndexEntry(cur.json), null, now); }, '대회 ' + id + ' 목록 복구' + who); if (!rr.ok) return out({ ok: false, code: rr.code, detail: 'INDEX ' + (rr.detail || '') }); return out({ ok: false, code: 'EXISTS', rev: cur.json.rev | 0, doc: cur.json, index: rr.idx }); } // 파일은 있는데 목록에만 없다(앞선 만들기의 목록 쓰기 실패 또는 Pages 지연): 덮어쓰지 않고 목록을 고친 뒤 그 대회를 알려 준다
-    const doc = tourNewDoc(id, date, meta, st, cur && cur.json ? cur.json.rev : 0, now); const content = JSON.stringify(doc, null, 1) + '\n'; const msg = '대회 ' + id + ' 만들기: ' + meta.name + who;
+    const listedIds = {}; (idxCur && Array.isArray(idxCur.json.tours) ? idxCur.json.tours : []).forEach(function (t) { if (t && typeof t.id === 'string') listedIds[t.id] = 1; });
+    const ids = tourIdsOf(date); const slots = []; let scan = true; // 같은 날짜에 여러 대회: 자리(<날짜>t, t2 … t9)를 차례로 읽는다. 파일이 없고 뒤쪽 자리가 목록에도 없으면 거기서 멈춘다 (대회 파일은 지우지 않으므로 빈 자리 뒤는 쓰인 적이 없다)
+    for (let i = 0; i < ids.length; i++) {
+      let f = null; if (scan) { f = ghGet(c, 'data/weekly/sessions/' + ids[i] + '.json', main); if (!(f && f.json) && !ids.slice(i + 1).some(function (x) { return listedIds[x]; })) scan = false; }
+      slots.push({ id: ids[i], listed: !!listedIds[ids[i]], doc: f && f.json && typeof f.json === 'object' ? f.json : null, sha: f ? f.sha : null });
+    }
+    const pick = tourPickSlot(slots, meta.name);
+    if (!v.multi && !pick.same) { const liveAny = slots.filter(function (x) { return x.doc && x.doc.tour && !x.doc.deleted; })[0]; if (liveAny) pick.same = liveAny; else pick.free = ids[0]; } // 옛 앱(표시 multi 없음)의 요청은 v8 규칙 그대로: 그 날짜에 살아 있는 대회가 있으면 EXISTS(그 대회), 없으면 <날짜>t 자리를 (다시) 쓴다 — 옛 화면은 t2 … 대회를 열지 못한다
+    let rr = null; if (pick.repair.length) rr = tourIndexWrite(c, function (idx) { let o = null; pick.repair.forEach(function (d) { const r = tourIndexPut(o || idx, tourIndexEntry(d), null, now); if (r) o = r; }); return o; }, '대회 목록 복구 (' + date + ')' + who); // 살아 있는데 목록에서만 빠진 대회(앞선 만들기의 목록 쓰기 실패·Pages 지연): 덮어쓰지 않고 목록을 고친다
+    if (pick.same) { // 같은 날 같은 이름의 대회가 이미 있다 → 그 대회를 돌려준다 (목록에서만 빠져 있었으면 고친 목록과 함께)
+      const sd = pick.same.doc; if (pick.same.listed) return out({ ok: false, code: 'EXISTS', rev: sd.rev | 0, doc: sd });
+      if (!rr || !rr.ok) return out({ ok: false, code: rr ? rr.code : 'GITHUB', detail: 'INDEX ' + ((rr && rr.detail) || '') }); return out({ ok: false, code: 'EXISTS', rev: sd.rev | 0, doc: sd, index: rr.idx });
+    }
+    if (!pick.free) return out({ ok: false, code: 'FULL' }); // 같은 날짜에는 TOUR_PER_DAY 개까지
+    const id = pick.free; const cur = slots.filter(function (x) { return x.id === id; })[0]; const path = 'data/weekly/sessions/' + id + '.json'; // 한 번도 안 쓴 자리, 아홉 자리가 다 찼으면 목록에서 뺀(deleted) 옛 파일의 자리 (그때는 rev 를 이어 간다)
+    const doc = tourNewDoc(id, date, meta, st, cur.doc ? cur.doc.rev : 0, now);
+    let copied = 0; const from = String(v.copyFrom || ''); // 참가자 가져오기: 같은 날 다른 대회의 참석을 새 대회로 (위에서 이미 읽은 문서)
+    if (from && from !== id) { const ss = slots.filter(function (x) { return x.id === from; })[0]; if (ss && ss.doc && ss.doc.tour && !ss.doc.deleted) { doc.attendance = tourCopyAttendance(ss.doc.attendance, st); copied = Object.keys(doc.attendance).length; } }
+    const content = JSON.stringify(doc, null, 1) + '\n'; const msg = '대회 ' + id + ' 만들기: ' + meta.name + who;
     const code = ghPut(c, path, content, cur ? cur.sha : null, msg, main); if (code !== 200 && code !== 201) return out({ ok: false, code: code === 409 || code === 422 ? 'BUSY' : 'GITHUB', detail: 'PUT ' + code });
     try { CacheService.getScriptCache().put('s:' + id, JSON.stringify(doc), 21600); } catch (err) {}
     for (let i = 1; i < c.branches.length; i++) { try { const cur2 = ghGet(c, path, c.branches[i]); ghPut(c, path, content, cur2 ? cur2.sha : null, msg, c.branches[i]); } catch (err) {} } // 서빙 사본(gh-pages)
-    const r = tourIndexWrite(c, function (idx) { return tourIndexPut(idx, tourIndexEntry(doc), null, now); }, '대회 ' + id + ' 목록 추가' + who);
-    if (!r.ok) return out({ ok: false, code: r.code, detail: 'INDEX ' + (r.detail || ''), doc: doc }); // 파일은 만들어졌지만 목록에 못 넣음 → 다시 보내면 (목록에 없으므로) 같은 파일을 새로 만들고 목록에 넣는다
-    return out({ ok: true, rev: doc.rev, doc: doc, index: r.idx });
+    let r; try { r = tourIndexWrite(c, function (idx) { return tourIndexPut(idx, tourIndexEntry(doc), null, now); }, '대회 ' + id + ' 목록 추가' + who); } catch (err) { r = { code: 'GITHUB', detail: String(err && err.message || err) }; } // 목록을 읽지 못한 경우도 아래 'INDEX' 응답으로 (파일은 이미 만들어졌다)
+    if (!r.ok) return out({ ok: false, code: r.code, detail: 'INDEX ' + (r.detail || ''), doc: doc }); // 파일은 만들어졌지만 목록에 못 넣음 → 같은 이름으로 다시 보내면 목록을 고치고 그 대회를 EXISTS 로 돌려준다
+    return out({ ok: true, rev: doc.rev, doc: doc, index: r.idx, copied: copied });
   } catch (err) { return out({ ok: false, code: 'GITHUB', detail: String(err && err.message || err) }); }
   finally { lock.releaseLock(); }
 }
@@ -213,7 +231,37 @@ function cleanCourtNames(v) { if (!Array.isArray(v)) return null; const out = v.
 /** 시간대별 코트 번호 정리: { '19': ['5'], '20': ['5','7','9'] } — app.js wkCleanCourtNamesByHour 와 동일 */
 function cleanCourtNamesByHour(v) { if (!v || typeof v !== 'object' || Array.isArray(v)) return null; const out = {}; for (const h of Object.keys(v).slice(0, 24)) { if (!/^\d{1,2}$/.test(h) || +h > 23) continue; const names = cleanCourtNames(v[h]); if (names) out[String(+h)] = names; } return Object.keys(out).length ? out : null; }
 // ---- 대회: 정기 모임과 같은 세션 파일에 대회 정보(doc.tour)를 더한 것. 아래 함수들은 app.js 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
-const TOUR_ID_RE = /^\d{4}-\d{2}-\d{2}t$/; // 대회 id = 날짜 + 't' (같은 날 정기 모임 파일과 겹치지 않게)
+const TOUR_ID_RE = /^\d{4}-\d{2}-\d{2}t[2-9]?$/; // 대회 id = 날짜 + 't' (같은 날 정기 모임 파일과 겹치지 않게), 같은 날 둘째 대회부터 t2 … t9
+const TOUR_PER_DAY = 9; // 같은 날짜에 만들 수 있는 대회 수
+/** 그 날짜에 쓸 수 있는 대회 id (첫 대회 = 날짜 + 't', 둘째부터 t2 … t9) */
+function tourIdsOf(date) { const ids = [date + 't']; for (let i = 2; i <= TOUR_PER_DAY; i++) ids.push(date + 't' + i); return ids; }
+/** 같은 날 대회를 가르는 이름 비교용 (앞뒤·연속 공백, 대소문자, 한글 풀어쓰기(NFD) 차이는 무시) */
+function tourNameKey(name) { return String(name == null ? '' : name).normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase(); }
+/** 같은 날짜의 자리들에서 새 대회(name)가 갈 곳을 정한다. slots = [{ id, listed(목록에 있음), doc(그 자리의 파일 | null) }] — <날짜>t, t2 … 순서.
+ *  반환 { same: 같은 이름의 대회가 있는 자리 | null, free: 새 대회를 만들 자리 id | '', repair: [살아 있는데 목록에서만 빠진 대회 문서] }.
+ *  같은 이름이 어느 자리에든 있으면 그 대회가 먼저(EXISTS — 두 번 누르기·다시 보내기가 대회를 둘 만들지 않게)이고, 없으면 free 에 만든다.
+ *  free = 한 번도 쓰지 않은 자리(파일 없음)가 먼저, 아홉 자리를 다 쓴 뒤에만 목록에서 뺀(deleted)·대회가 아닌 파일의 자리 — 뺀 대회의 파일·옛 링크가 새 대회로 바뀌는 일을 되도록 미룬다 */
+function tourPickSlot(slots, name) {
+  const key = tourNameKey(name); let same = null, fresh = '', reuse = ''; const repair = [];
+  for (const s of slots) {
+    const d = s.doc; const live = !!(d && d.tour && !d.deleted);
+    if (live || (d && s.listed)) { if (!same && tourNameKey(d.tour ? d.tour.name : '') === key) same = s; if (live && !s.listed) repair.push(d); }
+    else if (d) { if (!reuse) reuse = s.id; } else if (!fresh) fresh = s.id;
+  }
+  return { same: same, free: fresh || reuse, repair: repair };
+}
+/** 참가자 가져오기: 같은 날 다른 대회의 참석(src)을 새 대회로 옮긴다 — 형식이 맞는 것만, 80명까지. 참석 시간은 새 대회의 시작~종료(st) 안으로 맞추고, 겹치는 시간이 없는 사람은 뺀다 */
+function tourCopyAttendance(src, st) {
+  const out = {}; if (!src || typeof src !== 'object' || Array.isArray(src) || !st) return out; let n = 0;
+  for (const id of Object.keys(src)) {
+    if (n >= 80) break; const v = src[id];
+    if (!ID_RE.test(id) || !v || typeof v !== 'object' || typeof v.n !== 'string' || !v.n.trim() || (v.g !== 'M' && v.g !== 'F') || typeof v.from !== 'string' || typeof v.until !== 'string' || !TIME_RE.test(v.from) || !TIME_RE.test(v.until)) continue;
+    const from = v.from < st.startTime ? st.startTime : v.from, until = v.until > st.endTime ? st.endTime : v.until; if (!(from < until)) continue;
+    const e = { n: v.n.trim().slice(0, 20), g: v.g, from: from, until: until }; if (v.guest) e.guest = true; if (v.y) e.y = true; if (Number.isFinite(v.lv) && v.lv >= 1 && v.lv <= 7 && Math.round(v.lv * 2) === v.lv * 2) e.lv = v.lv;
+    out[id] = e; n++;
+  }
+  return out;
+}
 const TOUR_VENUE_LIM = { name: 60, time: 40, addr: 120, phone: 30, menu: 60, note: 200 }; // 회식 장소 칸별 길이
 const tourNames = cleanCourtNames, tourNamesByHour = cleanCourtNamesByHour;
 /** 회식 장소 정리 */
@@ -260,8 +308,8 @@ function tourIndexPut(idx, entry, removeId, now, onlyListed) {
   const id = entry ? entry.id : removeId; const old = list.find((x) => x.id === id);
   if (entry ? (!old && onlyListed) || (!!old && JSON.stringify(old) === JSON.stringify(entry)) : !old) return null;
   const next = list.filter((x) => x.id !== id); if (entry) next.push(entry);
-  next.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-  cur.v = cur.v || 1; cur.tours = next.slice(0, 60); cur.updatedAt = now; return cur;
+  next.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // 날짜 최신순, 같은 날짜는 자리 순(t, t2, …)
+  cur.v = cur.v || 1; cur.tours = next.slice(0, 120); cur.updatedAt = now; return cur;
 }
 // ---- /tour shared ----
 function applyWeeklyOp(doc, op) {

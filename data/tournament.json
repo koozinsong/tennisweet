@@ -247,9 +247,9 @@
       "note": "경기 완료하신 분들은 미리 이동하셔도 됩니다."
     },
     "fmMenEqual": true,
-    "mustFace": "김지선, 고서영",
+    "mustFace": "",
     "sameNtrpGame": "4",
-    "avoidPairs": "김지선-이석우"
+    "avoidPairs": ""
   },
   "units": [
     {

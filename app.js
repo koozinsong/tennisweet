@@ -82,7 +82,7 @@
   function assertTypesOk() { const v = typeViolations(); if (!v.length) return true; alert(`경기 종류가 일치하지 않는 경기가 ${v.length}건 있습니다 (⚠ 종류 불일치). 먼저 수정해 주세요.`); return false; }
   async function makeShareLink() {
     if (!assertTypesOk()) return;
-    const snap = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, sharedAt: new Date().toISOString() };
+    const snap = { ...state, settings: pubSettings(state.settings), editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, sharedAt: new Date().toISOString() };
     const enc = await compress(JSON.stringify(snap));
     const url = `${location.origin}${location.pathname}#s=${encodeURIComponent(enc)}`;
     try { await navigator.clipboard.writeText(url); alert(`공유 링크가 복사되었습니다 (${Math.round(url.length / 1024)}KB).\n카톡 등으로 전달하면 누구나 일정·결과를 읽기 전용으로 볼 수 있습니다.\n결과가 바뀌면 다시 공유하세요.`); }
@@ -119,7 +119,7 @@
     showCover(false); showTab(b.dataset.go); history.replaceState(null, '', '#' + (b.dataset.go === 'tournament' && T.open ? 'tournament/' + T.open : b.dataset.go)); // 열어 둔 대회가 있으면 링크 복사·새로고침이 그 대회로
   });
   /** 다른 사람에게 보낼 주소: 지금 보는 탭까지 담고, 관리자 페이지·검색어·공유 스냅샷은 뺀다 (홈 화면 앱은 주소창이 없어 이 버튼으로만 복사할 수 있다) */
-  function shareLinkUrl() { const u = new URL(location.href); u.search = ''; u.pathname = u.pathname.replace(/(admin|index|app)\.html$/, ''); u.hash = /^#(weekly|courts|tournament|schedule|standings|players|tournament\/\d{4}-\d{2}-\d{2}t)$/.test(location.hash) && !document.body.classList.contains('cover-on') ? location.hash : ''; return u.href; }
+  function shareLinkUrl() { const u = new URL(location.href); u.search = ''; u.pathname = u.pathname.replace(/(admin|index|app)\.html$/, ''); u.hash = /^#(weekly|courts|tournament|schedule|standings|players|tournament\/\d{4}-\d{2}-\d{2}t[2-9]?)$/.test(location.hash) && !document.body.classList.contains('cover-on') ? location.hash : ''; return u.href; }
   async function copyShareLink() { const url = shareLinkUrl(); let ok = false; try { await navigator.clipboard.writeText(url); ok = true; } catch { try { const ta = document.createElement('textarea'); ta.value = url; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, url.length); ok = document.execCommand('copy'); ta.remove(); } catch {} } if (ok) toast(`링크를 복사했습니다 · ${url.replace(/^https?:\/\//, '')}`); else prompt('아래 주소를 길게 눌러 복사하세요', url); } // 클립보드 권한이 없으면 예전 방식으로, 그것도 안 되면 직접 복사하도록 보여 준다
   document.addEventListener('click', (e) => { if (e.target.closest?.('[data-copy-link]')) copyShareLink(); });
   $('#btn-home')?.addEventListener('click', () => { showCover(true); history.replaceState(null, '', location.pathname); });
@@ -398,10 +398,10 @@
   const pairType = (a, b) => [gOf(a), gOf(b)].sort().join(''); // 'FF' 여복 / 'FM' 혼복 / 'MM' 남복
   const TYPE_LABEL = { FF: '여복', FM: '혼복', MM: '남복' };
   const sidePl = (m, side) => (m[side + 'Players'] ? m[side + 'Players'] : sideIds(m, side).flatMap((id) => unitById(id)?.playerIds || [])).filter(Boolean); // 한쪽 조의 선수 id
-  /** 특별 규칙 이름 목록 파싱: "김지선, 고서영" / "김지선-고서영" / "김지선 고서영" */
+  /** 특별 규칙 이름 목록 파싱: "홍길동, 김영희" / "홍길동-김영희" / "홍길동 김영희" */
   const parseNames = (str) => { const t = String(str || ''); const a = t.split(/[,/·]+/).map((x) => x.trim()).filter(Boolean); return a.length >= 2 ? a : t.split(/[\s\-]+/).map((x) => x.trim()).filter(Boolean); };
   const menDiffer = (a, b) => !!a && !!b && a !== b; // NTRP 미입력(0) 은 어느 쪽과도 짝이 됨
-  /** 같은 조 금지 목록: "김지선-이석우, 박상용/송국진" → [[id, id], …] (참가 선수에 없는 이름은 무시) */
+  /** 같은 조 금지 목록: "홍길동-김철수, 이영희/박민수" → [[id, id], …] (참가 선수에 없는 이름은 무시) */
   function avoidPairIds(str, ps = activePlayers()) {
     const out = []; for (const item of String(str || '').split(/[,;\n]+/)) { const names = item.split(/[\s\-/·]+/).map((x) => x.trim()).filter(Boolean); if (names.length !== 2) continue; const P = names.map((nm) => ps.find((p) => p.name === nm)); if (P[0] && P[1] && P[0] !== P[1]) out.push([P[0].id, P[1].id]); }
     return out;
@@ -484,7 +484,7 @@
             const tp = pairType(cand[i], cand[j]);
             // 남복·혼복 골고루: 이 종류를 이미 많이 한 남성이면 벌점, 적게 했으면 가점
             const mix = [cand[i], cand[j]].filter((id) => gOf(id) === 'M').reduce((c, id) => c + (tp === 'FM' ? fmCnt[id] - mmCnt[id] : tp === 'MM' ? mmCnt[id] - fmCnt[id] : 0), 0) * 4;
-            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * (opts?.partW || 40) + (hp ? (hp[key(cand[i], cand[j])] || 0) * 60 : 0) + (opts?.noise ? opts.noise(key(cand[i], cand[j])) : 0) + mix + (twoInRow(cand[i]) ? 10 : 0) + (twoInRow(cand[j]) ? 10 : 0) - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) }); // hp: 지난 대회에서 같은 조였던 짝은 피한다
+            out.push({ p: [cand[i], cand[j]], type: tp, cost: (played[cand[i]] + played[cand[j]]) * 5 + (partner[key(cand[i], cand[j])] || 0) * (opts?.partW || 40) + (hp ? (hp[key(cand[i], cand[j])] || 0) * 60 : 0) + (opts?.adj && opts.adj.has(key(cand[i], cand[j])) ? opts.adjP || 0 : 0) + (opts?.noise ? opts.noise(key(cand[i], cand[j])) : 0) + mix + (twoInRow(cand[i]) ? 10 : 0) + (twoInRow(cand[j]) ? 10 : 0) - (restedLast(cand[i]) ? 40 : 0) - (restedLast(cand[j]) ? 40 : 0) }); // hp: 지난 대회에서 같은 조였던 짝은 피한다
           }
           return out;
         };
@@ -496,7 +496,7 @@
           for (const x of pa) for (const y of pb) {
             if (x.type !== y.type) continue;
             const balCost = Math.abs(ntrpOf(x.p[0]) + ntrpOf(x.p[1]) - ntrpOf(y.p[0]) - ntrpOf(y.p[1])) * 25; // NTRP 균형(기본)
-            let oppCost = 0; for (const u of x.p) for (const v of y.p) oppCost += (opts?.oppW || 30) * (opp[key(u, v)] || 0); // 같은 상대 반복 회피 (대회는 opts.oppW 로 더 무겁게)
+            let oppCost = 0; for (const u of x.p) for (const v of y.p) oppCost += (opts?.oppW || 30) * (opp[key(u, v)] || 0) + (opts?.adj && opts.adj.has(key(u, v)) ? opts.adjO || 0 : 0); // 같은 상대 반복 회피 (대회는 opts.oppW 로 더 무겁게) + 편성 보정(opts.adj)
             const cost = teamCost + x.cost + y.cost + balCost + oppCost + rng() - (x.type === 'FF' && ffDone < minFF ? 500 : 0) + (x.type === 'FF' && maxFF != null && ffDone >= maxFF ? 500 : 0); // 여복 부족하면 여복 우선, 여복 경기 수를 채웠으면 여복은 다른 방법이 없을 때만
             if (cost < bestCost) { bestCost = cost; best = [A, B, x.p, y.p]; }
           }
@@ -662,6 +662,7 @@
     const fmWomenRep = rep(fmW); // 혼복에서 같은 여성 상대와 다시 붙은 횟수 (골고루 원칙)
     let prevSame = 0; if (GEN_HOOK && GEN_HOOK.prevP && GEN_HOOK.prevW) for (const k of Object.keys(pc)) if (GEN_HOOK.prevP.has(k)) prevSame += pc[k]; // 다시 섞기(대회): 지금 판과 같은 짝 수
     let noiseSum = 0; if (GEN_HOOK && GEN_HOOK.noise) for (const k of Object.keys(pc)) noiseSum += pairNoise(k) * pc[k]; // 다시 섞기(대회): 씨드별 무작위 가산점
+    let adjN = 0, adjM = 0; if (GEN_HOOK && GEN_HOOK.adj) { for (const k of Object.keys(pc)) if (GEN_HOOK.adj.has(k)) adjN += pc[k]; for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); for (const x of A) for (const y of B) if (GEN_HOOK.adj.has(k2(x, y))) adjM++; } } // 편성 보정: 해당 쌍이 같은 조로 묶인 횟수(adjN)·상대로 만난 횟수(adjM)
     let prevMSame = 0; if (GEN_HOOK && (GEN_HOOK.prevM || (GEN_HOOK.noise && GEN_HOOK.noise.mw))) for (const m of sch.matches) { const A = ids(m.aIds || [m.aId]), B = ids(m.bIds || [m.bId]); if (A.length !== 2 || B.length !== 2) continue; const ka = k2(A[0], A[1]), kb = k2(B[0], B[1]); const mk = m.slot + ':' + (ka < kb ? ka + '/' + kb : kb + '/' + ka); if (GEN_HOOK.prevM && GEN_HOOK.prevM.has(mk)) prevMSame++; if (GEN_HOOK.noise && GEN_HOOK.noise.mw) noiseSum += pairNoise(mk, GEN_HOOK.noise.mw); } // 다시 섞기(대회): 짝 구성이 사실상 하나로 정해지는 작은 명단은 짝 단위 항으로는 판이 갈리지 않는다 → 같은 시간대의 같은 경기(네 사람·편)를 따로 세고, 경기마다 씨드별 가산점도 준다
     let oppX = 0, partX = 0; if (GEN_HOOK && (GEN_HOOK.oppW || GEN_HOOK.partW)) { for (const [k, v] of Object.entries(oc)) { if (v < 2) continue; const [x, y] = k.split('|'); if (!(gOf(x) === 'F' && gOf(y) === 'F')) oppX += v - 1; } partX = rep(pc); } // 대회: 같은 상대(여자끼리 제외)·같은 짝을 다시 만난 횟수
     const apairs = avoidPairIds(state.settings.avoidPairs); const avoided = apairs.length ? sch.matches.filter((m) => avoidedPartner(m, apairs)).length : 0; // 같은 조 금지 위반
@@ -699,7 +700,7 @@
     let typeVar = 0, mixShort = 0; if (GEN_HOOK && !SCORE_LIGHT) { const bits = (b) => ((b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1)) || 1; const kF = bits(tgF), kM = bits(tgM); for (const x in tcnt) { const r = tcnt[x]; const g = r[0] + r[1] + r[2]; const k = gOf(x) === 'F' ? kF : kM; typeVar += Math.max(0, Math.max(r[0], r[1], r[2]) - Math.ceil(g / k)); if (gOf(x) !== 'F' && (tgM & 2)) mixShort += Math.max(0, Math.ceil(g / 2) - r[1]); } } // mixShort: 남자마다 섞인 경기(혼복·잡복)가 경기 수의 절반에 못 미치는 만큼 — 여성이 적은 날은 잡복으로 흩어서라도 채운다 (잡복 1000 보다 작지만 사람 수만큼 쌓인다) // 종류 골고루: 한 사람이 한 종류(여복·혼복·남복·잡복)에 몰린 경기 수 — 그 성별이 이 판에서 실제로 하는 종류 수로 나눈 몫을 넘는 만큼 (소프트)
     let banned = 0; const TY = GEN_HOOK && GEN_HOOK.types; if (TY) for (const m of sch.matches) { const A = ids(m.aIds), B = ids(m.bIds); const wa = A.filter((x) => gOf(x) === 'F').length, wb = B.filter((x) => gOf(x) === 'F').length; if (!TY[wa + wb === 4 ? 'FF' : wa + wb === 0 ? 'MM' : wa === 1 && wb === 1 ? 'FM' : 'MIX']) banned++; } // 뺀 경기 종류: 어떤 규칙보다 앞선다 (이미 시작한 시간대의 경기는 시도 간 상수)
     const spreadW = GEN_HOOK ? 150 : 60; // 정기 모임은 경기 수 균등을 중복 회피·NTRP 균형보다 앞에 둔다 (게임 수에서 손해 보는 사람이 없도록)
-    return banned * 1e7 + (GEN_HOOK ? menBad * (300 + HUP / 3) : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * (300 + HUP) + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + ffOver * 2.5e4 + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + gapOver * 6e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 + 4.5 * HUP : 150) + rep(oc) * (100 + 0.3 * HUP) + rep(pc) * ((GEN_HOOK ? 300 : 100) + 0.7 * HUP) + (oppX ? oppX * GEN_HOOK.oppW : 0) + (partX ? partX * GEN_HOOK.partW : 0) + (prevSame ? prevSame * GEN_HOOK.prevW : 0) + (prevMSame ? prevMSame * GEN_HOOK.prevMW : 0) + noiseSum + histCost + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * (3000 + 2.5 * HUP) + ntrpDiff * 120 + fm15 * 6 * HUP + same15 * 6 * HUP + sameBig * (800 + 2.5 * HUP) + fmBig * (400 + HUP / 2) + topMiss * (1500 + 2.5 * HUP) + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
+    return banned * 1e7 + (GEN_HOOK ? menBad * (300 + HUP / 3) : menBad * 1e5) + mixBad * 2e4 + mixSoft + dblRest * (300 + HUP) + lateRest * 1e5 + avoided * 1e5 + missing * (GEN_HOOK ? 5e4 : 1e4) + ffShort * (GEN_HOOK ? 2.5e4 : 2000) + ffOver * 2.5e4 + loss * (GEN_HOOK ? 3e4 : 400) + yieldOver * 3e4 + gapOver * 6e4 + guestLoss * (GEN_HOOK ? 4e4 : 2000) + memFar * 4.5e4 + fmWomenRep * 500 + rep3 * (GEN_HOOK ? 1500 + 4.5 * HUP : 150) + rep(oc) * (100 + 0.3 * HUP) + rep(pc) * ((GEN_HOOK ? 300 : 100) + 0.7 * HUP) + (oppX ? oppX * GEN_HOOK.oppW : 0) + (partX ? partX * GEN_HOOK.partW : 0) + (prevSame ? prevSame * GEN_HOOK.prevW : 0) + (prevMSame ? prevMSame * GEN_HOOK.prevMW : 0) + (adjN ? adjN * GEN_HOOK.adjP : 0) + (adjM ? adjM * GEN_HOOK.adjO : 0) + noiseSum + histCost + typeVar * 250 + (GEN_HOOK ? mixCourts * 1000 + mixShort * 600 : 0) + spread * spreadW + devL1 * (3000 + 2.5 * HUP) + ntrpDiff * 120 + fm15 * 6 * HUP + same15 * 6 * HUP + sameBig * (800 + 2.5 * HUP) + fmBig * (400 + HUP / 2) + topMiss * (1500 + 2.5 * HUP) + quad * 15 + triple * 8; // 혼복 여성 상대 중복 > 3회 이상 상대 > 중복 회피 ≈ NTRP 균형 > 경기 수 균등 > 연속 출전 완화
   }
   let GEN_HOOK = null; // 정기 모임 생성 시 { fromSlot, fixed:[이미 시작한 시간대의 경기], hist } 주입. 대회 생성은 null (동작 불변)
   /** 그 시간대 사람들로 세울 수 있는 코트 수: 기본은 인원 ÷ 4, 경기 종류를 뺐으면 그 종류로 담을 수 있는 만큼 */
@@ -737,13 +738,14 @@
     // 코트 비용: 파트너·상대 중복, NTRP 균형(기본), 암묵적 편성 선호, 혼복 남자 NTRP 불일치(사실상 금지)
     const nsum = (a, b) => NT[a] + NT[b];
     // 암묵적 편성 선호(데이터 필드 pref, 화면 표시 없음): p=파트너·상대가 본인 수준에 가깝게, s=파트너가 본인 이상, e=상대 조 합이 본인 조 이하
-    const DEFAULT_PREF = { '김지선': 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음)
-    const CARE = {}; if (!GEN_HOOK) ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[p.name] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; }); // 정기 모임은 개인 선호 없이 레벨 균형만
+    const DEFAULT_PREF = { 3129387676: 'p' }; // 데이터에 표시가 없어도 기본 적용 (화면 표시 없음). 열쇠 = fnv1a('pref|' + 이름) — 코드에 이름을 적지 않는다
+    const CARE = {}; if (!GEN_HOOK) ps.forEach((p) => { const pr = p.pref || DEFAULT_PREF[fnv1a('pref|' + p.name)] || ''; if (pr) CARE[p.id] = { p: 'peers', s: 'strongPartner', e: 'easyOpp' }[pr]; }); // 정기 모임은 개인 선호 없이 레벨 균형만
     const careCost = (me, mate, o1, o2) => { const c = CARE[me]; if (!c) return 0; const nm = NT[me], np = NT[mate], no = (NT[o1] + NT[o2]) / 2; if (c === 'peers') return 18 * (Math.abs(np - nm) + Math.abs(no - nm)); if (c === 'strongPartner') return np < nm ? 30 * (nm - np) : 0; if (c === 'easyOpp') return (NT[o1] + NT[o2]) > (nm + np) ? 30 * ((NT[o1] + NT[o2]) - (nm + np)) : 0; return 0; };
     const OPP_W = GEN_HOOK && GEN_HOOK.oppW || 0, PART_W = GEN_HOOK && GEN_HOOK.partW || 0; // 대회: 같은 상대·같은 짝을 다시 만나는 것을 더 무겁게 (정기 모임은 0 = 기존 그대로)
     const PREV_P = GEN_HOOK && GEN_HOOK.prevP || null, PREV_W = PREV_P ? GEN_HOOK.prevW || 0 : 0; // 다시 섞기(대회): 지금 판의 짝은 피해 다른 판이 나오게
     const NOISE = !!(GEN_HOOK && GEN_HOOK.noise);
-    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = ((GEN_HOOK ? 350 + HIST_UP : 150) + PART_W) * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += (120 + 0.3 * HIST_UP + (OPP_W && !(isF[x] && isF[y]) ? OPP_W : 0)) * (opp[key(x, y)] || 0); /* 여자끼리 상대는 여성 수 때문에 겹칠 수밖에 없어 기본 무게 */ if (PREV_W) cost += PREV_W * ((PREV_P.has(key(a1, a2)) ? 1 : 0) + (PREV_P.has(key(b1, b2)) ? 1 : 0)); /* 다시 섞기: 지금 판의 짝 */ if (NOISE) cost += pairNoise(key(a1, a2)) + pairNoise(key(b1, b2)); /* 다시 섞기: 씨드별 무작위 가산점 */ const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (GEN_HOOK) { if (isF[a1] !== isF[a2] && isF[b1] !== isF[b2]) { const w1 = isF[a1] ? a1 : a2, m1 = isF[a1] ? a2 : a1, w2 = isF[b1] ? b1 : b2, m2 = isF[b1] ? b2 : b1; if (fmMixBad(NT[w1], NT[m1], NT[w2], NT[m2])) cost += 300 + HIST_UP / 3; } } // 정기 모임 혼복 원칙 (약한 여자에게 강한 남자, 여자 동급이면 남자 동급)
+    const ADJ_H = (GEN_HOOK && GEN_HOOK.adj) || null, ADJ_P = ADJ_H ? GEN_HOOK.adjP || 0 : 0, ADJ_O = ADJ_H ? GEN_HOOK.adjO || 0 : 0; // 편성 보정: 같은 조 ADJ_P, 상대 ADJ_O
+    const courtCost = (c) => { const [a1, a2, b1, b2] = c; let cost = ((GEN_HOOK ? 350 + HIST_UP : 150) + PART_W) * ((partner[key(a1, a2)] || 0) + (partner[key(b1, b2)] || 0)); for (const x of [a1, a2]) for (const y of [b1, b2]) cost += (120 + 0.3 * HIST_UP + (OPP_W && !(isF[x] && isF[y]) ? OPP_W : 0)) * (opp[key(x, y)] || 0); /* 여자끼리 상대는 여성 수 때문에 겹칠 수밖에 없어 기본 무게 */ if (PREV_W) cost += PREV_W * ((PREV_P.has(key(a1, a2)) ? 1 : 0) + (PREV_P.has(key(b1, b2)) ? 1 : 0)); /* 다시 섞기: 지금 판의 짝 */ if (NOISE) cost += pairNoise(key(a1, a2)) + pairNoise(key(b1, b2)); /* 다시 섞기: 씨드별 무작위 가산점 */ if (ADJ_H) { if (ADJ_H.has(key(a1, a2))) cost += ADJ_P; if (ADJ_H.has(key(b1, b2))) cost += ADJ_P; for (const x of [a1, a2]) for (const y of [b1, b2]) if (ADJ_H.has(key(x, y))) cost += ADJ_O; } /* 편성 보정 */ const d = Math.abs(nsum(a1, a2) - nsum(b1, b2)); cost += careCost(a1, a2, b1, b2) + careCost(a2, a1, b1, b2) + careCost(b1, b2, a1, a2) + careCost(b2, b1, a1, a2); if (GEN_HOOK) { if (isF[a1] !== isF[a2] && isF[b1] !== isF[b2]) { const w1 = isF[a1] ? a1 : a2, m1 = isF[a1] ? a2 : a1, w2 = isF[b1] ? b1 : b2, m2 = isF[b1] ? b2 : b1; if (fmMixBad(NT[w1], NT[m1], NT[w2], NT[m2])) cost += 300 + HIST_UP / 3; } } // 정기 모임 혼복 원칙 (약한 여자에게 강한 남자, 여자 동급이면 남자 동급)
       else if (menEq) { const men = c.filter((x) => !isF[x]); if (men.length === 2 && menDiffer(NT[men[0]], NT[men[1]])) cost += 1e5; } const wk = fmWomenKey(c); if (wk) cost += 600 * (fmWomen[wk] || 0); if (avoidedCourt(c)) cost += 1e5; const mixed = c.filter((x) => isF[x]).length === 1; if (mixed) { const wi = c.findIndex((x) => isF[x]); const mate = c[wi ^ 1]; const wSide = NT[c[wi]] + NT[mate], mSide = NT[c[(wi + 2) % 4]] + NT[c[(wi + 3) % 4]]; const short = mSide - wSide; if (short >= 1.5) cost += 2e4; else if (short > 0) cost += 60 + 40 * short; if (c.some((x, i) => i !== wi && NT[x] > NT[mate])) cost += 150; } if (GEN_HOOK) { const fa = (isF[a1] ? 1 : 0) + (isF[a2] ? 1 : 0), fb = (isF[b1] ? 1 : 0) + (isF[b2] ? 1 : 0); const mixedC = fa !== fb || fa === 1; const cnt = (x) => (mixedC ? ctCnt[x].FM + ctCnt[x].MIX : fa === 2 ? ctCnt[x].FF : ctCnt[x].MM); cost += 90 * (cnt(a1) + cnt(a2) + cnt(b1) + cnt(b2)); } /* 혼복·잡복은 같은 묶음 */ /* 종류 골고루: 이미 한 종류를 또 하면 1회당 90 (파트너 반복 350·상대 반복 120 사이) — 문자열 연산 없이 (수백만 번 호출) */ const same = c.every((x) => isF[x]) || c.every((x) => !isF[x]); const fmCourt = !same && !mixed; return cost + d * 120 + (d > 0.5 && !mixed ? 100 : 0) + (GEN_HOOK && d >= 1 ? (fmCourt ? 400 + HIST_UP / 2 + (d >= 1.5 ? 6 * HIST_UP : 0) : 800 + 2.5 * HIST_UP + (d >= 1.5 ? 6 * HIST_UP : 0)) : 0) + (HIST_UP ? histCourt(GEN_HOOK.hist, key, a1, a2, b1, b2) : 0); }; // 정기 모임: 팀 합 차이 1.0 이상은 상대 반복(120)·종류(90)보다 훨씬 무겁게, 혼복은 절반 // 정기 모임: 여복·남복은 팀 합 차이 1.0 이상이면 상대 반복보다 무겁게 (NTRP 균형 > 다양성) // 잡복은 위의 부족분 벌점이 균형을 담당 // 잡복: 균형이 같다면 여성 파트너는 최고 남자 // 잡복(여 1명)은 균형 벌점 2배: 파트너·상대를 NTRP 로 최대한 맞춘다 // 혼복 여성 상대는 골고루: 같은 여성과 다시 붙는 혼복은 강한 벌점 // NTRP 균형(기본, 우선): 양쪽 조 합 차이 0.5 = 30, 1.0 = 160 (상대 중복 120 보다 큼)
     // 선발 우선순위 (낮을수록 먼저): 경기 수 균등 > 직전 휴식자 우선 > 연속 출전 완화 > 오래 쉰 순
     const availAt = (slot) => ps.filter((p) => playerAvailable(p, s, slot));
@@ -768,7 +770,7 @@
     // 혼복 필수 대진 선수 파싱 (다른 필수 대진이 같은 시간대에 이 두 사람을 쓰지 않도록 먼저 확정)
     const faceNames = parseNames(s.mustFace); let faceIds = null;
     if (faceNames.length) {
-      if (faceNames.length !== 2) throw new Error('혼복 필수 대진은 선수 2명의 이름이어야 합니다 (예: 김지선, 고서영).');
+      if (faceNames.length !== 2) throw new Error('혼복 필수 대진은 선수 2명의 이름이어야 합니다 (예: 홍길동, 김영희).');
       const P = faceNames.map((nm) => ps.find((p) => p.name === nm));
       const miss = faceNames.filter((_, i) => !P[i]);
       if (miss.length) notes.push(`혼복 필수 대진 제외: ${miss.join(', ')} 이(가) 참가 선수에 없음`);
@@ -1408,7 +1410,7 @@
   $('#btn-share').addEventListener('click', makeShareLink);
   $('#btn-export').addEventListener('click', () => {
     if (!assertTypesOk()) return;
-    const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, publishedAt: new Date().toISOString() };
+    const out = { ...state, settings: pubSettings(state.settings), editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, ghTokenEnc: undefined, publishedAt: new Date().toISOString() };
     state.publishedAt = out.publishedAt; save(); // 이 파일을 게시하면 작업본과 같은 게시본으로 인식
     const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -1531,6 +1533,8 @@
   }
   let publishing = false;
   const bannerAdmin = (extra) => { const el = $('#view-banner-text'); if (el) el.textContent = `✏️ 관리자 모드 (v ${String(window.TENNISWEET_VERSION || '').slice(0, 7)}) · ${extra}`; };
+  /** 게시본·공유 링크·내보내기 파일에 싣는 설정: 사람 이름이 들어가는 특별 규칙(혼복 필수 대진·같은 조 금지)은 뺀다 — 게시 파일은 주소만 알면 누구나 열 수 있다. 이 기기의 작업본에는 그대로 남는다 */
+  function pubSettings(s) { return { ...s, mustFace: '', avoidPairs: '' }; }
   async function publish(retry = 0, overwrite = false) {
     if (publishing) return; publishing = true; // 중복 클릭 즉시 차단
     const btn = $('#btn-publish'); const label = btn.innerHTML; btn.disabled = true; btn.textContent = '게시 중…';
@@ -1539,14 +1543,14 @@
       if (!assertTypesOk()) return;
       if (!state.schedule && !confirm('아직 일정표가 없습니다. 선수·설정만 게시할까요?')) return;
       if (WK_MOCK) { // 로컬 테스트: GitHub 대신 브라우저 모의 저장소에 게시 → 같은 브라우저의 방문자 화면(localhost)에 반영
-        const publishedAt = new Date().toISOString(); const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt };
+        const publishedAt = new Date().toISOString(); const out = { ...state, settings: pubSettings(state.settings), editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt };
         wkMock.set('data/tournament.json', JSON.parse(JSON.stringify(out))); state.publishedAt = publishedAt; state.basePublishedAt = publishedAt; save();
         toast('로컬 모의 게시 완료 · 이 브라우저의 방문자 화면(localhost:8090)에 반영됩니다. 실제 저장소에는 올라가지 않습니다', 6000); bannerAdmin(`로컬 모의 게시 ${new Date(publishedAt).toLocaleTimeString('ko-KR')} (GitHub 미반영)`); return;
       }
       let tok = await loadToken();
       if (!tok) { tok = await askToken(); if (!tok) { toast('게시를 취소했습니다 (토큰 없음)'); return; } await saveToken(tok); }
       const publishedAt = new Date().toISOString();
-      const out = { ...state, editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt, ghTokenEnc: await encStr(tok) }; // 토큰은 관리자 키로 암호화해 동봉 (다른 기기는 비밀번호만으로 게시 가능)
+      const out = { ...state, settings: pubSettings(state.settings), editMode: false, meFilter: undefined, savedAt: undefined, basePublishedAt: undefined, publishedAt, ghTokenEnc: await encStr(tok) }; // 토큰은 관리자 키로 암호화해 동봉 (다른 기기는 비밀번호만으로 게시 가능)
       const content = JSON.stringify(out, null, 2) + '\n';
       const msg = `게시: ${state.settings.name || '대회'} · ${new Date(publishedAt).toLocaleString('ko-KR')}`;
       const results = []; let mainOk = false;
@@ -1623,7 +1627,7 @@
   const IS_LOCAL = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const WK_MOCK = IS_LOCAL && !/[?&]store=live/.test(location.search); // 로컬 개발: 브라우저 저장소로 흉내 (운영 데이터를 건드리지 않음)
   const PROXY_RE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
-  const TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}[a-z]?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
+  const TIME_RE = /^\d{2}:\d{2}$/, SESSION_RE = /^\d{4}-\d{2}-\d{2}(?:[a-z]|t[2-9])?$/, MID_RE = /^s\d{1,2}c\d{1,2}$/;
   const fnv1a = (str) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h >>> 0; };
   const guestId = (name) => 'g:' + fnv1a(String(name).normalize('NFC').replace(/\s+/g, '')).toString(36); // 같은 이름 게스트는 다음 주에도 같은 id (이력이 이어짐)
   /** 세션 문서에 작업 1건 적용 — 프록시(tools/gas-proxy/Code.gs)의 applyWeeklyOp 와 같은 로직. 둘을 함께 고칠 것 */
@@ -1703,7 +1707,37 @@
     return { ok: true };
   }
   // ---- 대회: 정기 모임과 같은 세션 파일에 대회 정보(doc.tour)를 더한 것. 아래 함수들은 Code.gs 의 같은 이름 함수와 본문이 같다. 한쪽을 고치면 다른 쪽도 같이 고칠 것 ----
-  const TOUR_ID_RE = /^\d{4}-\d{2}-\d{2}t$/; // 대회 id = 날짜 + 't' (같은 날 정기 모임 파일과 겹치지 않게)
+  const TOUR_ID_RE = /^\d{4}-\d{2}-\d{2}t[2-9]?$/; // 대회 id = 날짜 + 't' (같은 날 정기 모임 파일과 겹치지 않게), 같은 날 둘째 대회부터 t2 … t9
+  const TOUR_PER_DAY = 9; // 같은 날짜에 만들 수 있는 대회 수
+  /** 그 날짜에 쓸 수 있는 대회 id (첫 대회 = 날짜 + 't', 둘째부터 t2 … t9) */
+  function tourIdsOf(date) { const ids = [date + 't']; for (let i = 2; i <= TOUR_PER_DAY; i++) ids.push(date + 't' + i); return ids; }
+  /** 같은 날 대회를 가르는 이름 비교용 (앞뒤·연속 공백, 대소문자, 한글 풀어쓰기(NFD) 차이는 무시) */
+  function tourNameKey(name) { return String(name == null ? '' : name).normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase(); }
+  /** 같은 날짜의 자리들에서 새 대회(name)가 갈 곳을 정한다. slots = [{ id, listed(목록에 있음), doc(그 자리의 파일 | null) }] — <날짜>t, t2 … 순서.
+   *  반환 { same: 같은 이름의 대회가 있는 자리 | null, free: 새 대회를 만들 자리 id | '', repair: [살아 있는데 목록에서만 빠진 대회 문서] }.
+   *  같은 이름이 어느 자리에든 있으면 그 대회가 먼저(EXISTS — 두 번 누르기·다시 보내기가 대회를 둘 만들지 않게)이고, 없으면 free 에 만든다.
+   *  free = 한 번도 쓰지 않은 자리(파일 없음)가 먼저, 아홉 자리를 다 쓴 뒤에만 목록에서 뺀(deleted)·대회가 아닌 파일의 자리 — 뺀 대회의 파일·옛 링크가 새 대회로 바뀌는 일을 되도록 미룬다 */
+  function tourPickSlot(slots, name) {
+    const key = tourNameKey(name); let same = null, fresh = '', reuse = ''; const repair = [];
+    for (const s of slots) {
+      const d = s.doc; const live = !!(d && d.tour && !d.deleted);
+      if (live || (d && s.listed)) { if (!same && tourNameKey(d.tour ? d.tour.name : '') === key) same = s; if (live && !s.listed) repair.push(d); }
+      else if (d) { if (!reuse) reuse = s.id; } else if (!fresh) fresh = s.id;
+    }
+    return { same: same, free: fresh || reuse, repair: repair };
+  }
+  /** 참가자 가져오기: 같은 날 다른 대회의 참석(src)을 새 대회로 옮긴다 — 형식이 맞는 것만, 80명까지. 참석 시간은 새 대회의 시작~종료(st) 안으로 맞추고, 겹치는 시간이 없는 사람은 뺀다 */
+  function tourCopyAttendance(src, st) {
+    const out = {}; if (!src || typeof src !== 'object' || Array.isArray(src) || !st) return out; let n = 0;
+    for (const id of Object.keys(src)) {
+      if (n >= 80) break; const v = src[id];
+      if (!ID_RE.test(id) || !v || typeof v !== 'object' || typeof v.n !== 'string' || !v.n.trim() || (v.g !== 'M' && v.g !== 'F') || typeof v.from !== 'string' || typeof v.until !== 'string' || !TIME_RE.test(v.from) || !TIME_RE.test(v.until)) continue;
+      const from = v.from < st.startTime ? st.startTime : v.from, until = v.until > st.endTime ? st.endTime : v.until; if (!(from < until)) continue;
+      const e = { n: v.n.trim().slice(0, 20), g: v.g, from: from, until: until }; if (v.guest) e.guest = true; if (v.y) e.y = true; if (Number.isFinite(v.lv) && v.lv >= 1 && v.lv <= 7 && Math.round(v.lv * 2) === v.lv * 2) e.lv = v.lv;
+      out[id] = e; n++;
+    }
+    return out;
+  }
   const TOUR_VENUE_LIM = { name: 60, time: 40, addr: 120, phone: 30, menu: 60, note: 200 }; // 회식 장소 칸별 길이
   const tourNames = wkCleanCourtNames, tourNamesByHour = wkCleanCourtNamesByHour;
   /** 회식 장소 정리 */
@@ -1750,8 +1784,8 @@
     const id = entry ? entry.id : removeId; const old = list.find((x) => x.id === id);
     if (entry ? (!old && onlyListed) || (!!old && JSON.stringify(old) === JSON.stringify(entry)) : !old) return null;
     const next = list.filter((x) => x.id !== id); if (entry) next.push(entry);
-    next.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-    cur.v = cur.v || 1; cur.tours = next.slice(0, 60); cur.updatedAt = now; return cur;
+    next.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // 날짜 최신순, 같은 날짜는 자리 순(t, t2, …)
+    cur.v = cur.v || 1; cur.tours = next.slice(0, 120); cur.updatedAt = now; return cur;
   }
   // ---- /tour shared ----
   /** 외부에서 온 세션 문서 검증·정리 (화면 속성에 들어가므로 형식을 강제) */
@@ -1800,7 +1834,7 @@
     if (ok && written) wkFresh[path] = { v: JSON.parse(JSON.stringify(written)), t: Date.now() };
     return ok;
   }
-  const PROXY_VERSION_NEED = 8; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv), 8 = 대회(tour-create·tour-set·tour-archive·tour-del, index.json 의 tours)
+  const PROXY_VERSION_NEED = 9; // 이 앱이 기대하는 프록시 코드 버전 (Code.gs PROXY_VERSION): 2 = 비밀번호 검사 + 완료 표시 7일 유예, 3 = 경기 기록(results), 4 = 코트 번호(courtNames), 5 = 코트 예약(op courts → data/courts.json), 6 = 참석의 양보 표시(y), 7 = 게스트 NTRP(lv), 8 = 대회(tour-create·tour-set·tour-archive·tour-del, index.json 의 tours), 9 = 같은 날짜에 대회 여러 개(id <날짜>t, t2 … t9) + 참가자 가져오기(copyFrom)
   const WK_PW_HASH = '121986baa49d856d62d3d3b3596650f8b7bad4d0c66f3cdece9adeaa0597985b'; // 대진표 비밀번호 검증값 = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-verify', 120000회). 이 기기에서 비밀번호가 맞는지 확인하는 용도 (공개 값이라 서버 인증에는 쓰지 않는다 — 서버는 WK_KEY_STORE 의 열쇠를 확인). 비밀번호 평문은 코드 어디에도 없다
   const WK_AUTH_KEY = 'tennisweet.wk.auth'; // (옛 방식) 검증값 저장 자리 — 이제 쓰지 않고, 남아 있으면 지운다
   const WK_KEY_STORE = 'tennisweet.wk.key'; // 이 기기에서 비밀번호를 맞추면 저장하는 '열쇠' = PBKDF2-SHA256(비밀번호, 'tennisweet-wk-key', 120000회). 서버(Code.gs)는 SHA-256(열쇠)만 알고 있어, 공개된 코드만으로는 열쇠를 만들 수 없다
@@ -1904,7 +1938,7 @@
   function wkCoverMeta() { const wid = W.kind === 'tour' ? (W.wid && wkSessions().some((x) => x.id === W.wid) ? W.wid : wkDefaultId()) : W.id; const s = wkSessions().find((x) => x.id === wid); if (!s) return '예정된 모임 없음'; const doc = W.kind === 'weekly' && W.doc?.id === wid ? W.doc : null; const st = doc ? wkSettings(doc) : null; const n = doc ? Object.keys(doc.attendance).length : null; return `${fmtDate(s.date)}${st ? ` ${st.startTime.slice(0, 2)}~${st.endTime.slice(0, 2)}시` : ''}${n != null ? ` · 참석 ${n}명` : ''}${doc?.schedule ? ' · 대진 있음' : ''}`; }
   function wkUpdateCover() { const el = $('#cover-weekly'); if (el) el.textContent = wkCoverMeta(); }
   /** 목록 파일의 대회 항목 정리 (날짜 내림차순) */
-  const wkCleanTours = (list) => (Array.isArray(list) ? list : []).filter((t) => t && TOUR_ID_RE.test(String(t.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ''))).map((t) => ({ id: String(t.id), date: String(t.date), name: String(t.name || '대회').slice(0, 40), mode: t.mode === 'team' ? 'team' : 'rotation', teamCount: Math.min(4, Math.max(2, t.teamCount | 0)), startTime: TIME_RE.test(String(t.startTime || '')) ? t.startTime : '', endTime: TIME_RE.test(String(t.endTime || '')) ? t.endTime : '', courts: Math.max(0, t.courts | 0), archived: t.archived === true })).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const wkCleanTours = (list) => (Array.isArray(list) ? list : []).filter((t) => t && TOUR_ID_RE.test(String(t.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(t.date || ''))).map((t) => ({ id: String(t.id), date: String(t.date), name: String(t.name || '대회').slice(0, 40), mode: t.mode === 'team' ? 'team' : 'rotation', teamCount: Math.min(4, Math.max(2, t.teamCount | 0)), startTime: TIME_RE.test(String(t.startTime || '')) ? t.startTime : '', endTime: TIME_RE.test(String(t.endTime || '')) ? t.endTime : '', courts: Math.max(0, t.courts | 0), archived: t.archived === true })).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); // 같은 날짜는 id 순(t, t2, …)으로 고정
   /** 대회를 만들거나 고친 뒤: 서버가 돌려준 목록(없으면 문서로 만든 항목)을 화면에 바로 반영하고, Pages 반영(약 1분)까지는 읽기보다 이 목록을 우선 */
   function tourIndexLocal(index, doc) {
     if (index && typeof index === 'object' && !Array.isArray(index)) { if (!WK_MOCK) wkFresh['weekly/index.json'] = { v: JSON.parse(JSON.stringify(index)), t: Date.now() }; if (W.index) W.index.tours = wkCleanTours(index.tours); }
@@ -1975,7 +2009,7 @@
     if (res.ok) { if (op.op === 'generate' && op.value) wkTypesSave({ id: op.session, schedule: op.value }, null); /* 고르던 경기 종류는 이제 대진에 기록돼 있다 (거절되면 남겨 둔다) */ if ((op.op === 'tour-set' || op.op === 'tour-archive') && res.doc) tourIndexLocal(res.index, res.doc); if (res.doc && mine) wkAdopt(res.doc, res.rev); W.lastMsg = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }); renderWeeklyView(); wkUpdateCover(); return true; }
     if (res.code === 'AUTH') { wkForgetKey(); W.adjust = false; W.pick = null; W.teamEdit = false; } // 서버가 거부한 검증값은 버리고 다음에 다시 묻는다
     const tourOp = TOUR_ID_RE.test(String(op.session));
-    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : tourOp ? '지난 대회는 수정할 수 없습니다' : '지난 모임은 수정할 수 없습니다', NOSESSION: tourOp ? '대회 파일을 찾지 못했습니다' : '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: tourOp ? '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 대회를 아직 못 받습니다 — 관리자가 Apps Script 새 버전 배포)' : '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
+    const msg = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', EXISTS: '같은 날짜에 같은 이름의 대회가 있습니다 · 이름을 다르게 지어 주세요', STALE: '다른 분이 방금 바꿨습니다 · 최신 내용으로 갱신했습니다', CLOSED: res.detail === 'OLD_PROXY' ? '저장 서버가 옛 버전이라 지난 모임의 완료 표시를 아직 못 받습니다 (관리자가 Apps Script 새 버전 배포 필요)' : tourOp ? '지난 대회는 수정할 수 없습니다' : '지난 모임은 수정할 수 없습니다', NOSESSION: tourOp ? '대회 파일을 찾지 못했습니다' : '관리자가 아직 이 날짜를 만들지 않았습니다', INVALID: tourOp ? '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 대회를 아직 못 받습니다 — 관리자가 Apps Script 새 버전 배포)' : '저장할 수 없는 값입니다 (저장 서버가 옛 버전이면 조 조정을 아직 못 받습니다)', FULL: '참석 인원이 너무 많아 더 넣을 수 없습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NOPROXY: '지금은 관리자만 저장할 수 있습니다', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' }[res.code] || ('저장 실패: ' + (res.code || '?'));
     const retryable = ['NETWORK', 'BUSY', 'GITHUB', 'NOPROXY'].includes(res.code);
     if (retryable && !W.pending.some((x) => wkSameTarget(x, op))) W.failed.push(op); // 재시도 대기 (같은 대상의 더 새로운 변경이 이미 큐에 있으면 옛 실패분은 버린다 — 새 변경이 그 내용을 포함)
     if (mine) { if (res.doc) wkAdopt(res.doc, res.rev); else if (!retryable) await wkLoadDoc(W.id, { quiet: true }); } // 거부된 변경은 서버 문서로 되돌린다 (현재 모임일 때만)
@@ -2056,7 +2090,7 @@
   function tourHeadHtml(doc, s) {
     const t = doc.tour; const past = wkClosed(doc); const canEdit = !past && wkCanWrite(); const archived = doc.status === 'closed' && !doc.deleted; const archOk = wkCanWrite() && wkArchOpen(doc) && !doc.deleted; const canArch = archOk && !archived && !!doc.schedule?.matches?.length;
     if (doc.deleted) return `<div class="tour-hero archived"><div class="tour-hero-top"><b class="tour-name">🏆 ${esc(t.name)}</b><span class="tag">목록에서 뺀 대회</span></div><div class="sub">이 대회는 목록에서 빠졌습니다 · 기록만 남아 있고 더 바꿀 수 없습니다</div></div>`;
-    const btns = [canEdit ? '<button type="button" class="small" id="tour-edit"><svg class="ic"><use href="#i-edit"/></svg>대회 수정</button>' : '', canArch ? '<button type="button" class="small primary" id="tour-arch-on" title="점수·참가·대진을 잠그고 지난 대회로 옮깁니다 (대진표 비밀번호)">📦 결과 보관</button>' : '', archived && archOk ? '<button type="button" class="small" id="tour-arch-off" title="대회 후 7일 안에는 다시 열 수 있습니다 (대진표 비밀번호)">보관 취소</button>' : '', canEdit || (past && adminKey) ? '<button type="button" class="small danger-text" id="tour-del">대회 삭제</button>' : ''].filter(Boolean);
+    const btns = [canEdit ? '<button type="button" class="small" id="tour-edit"><svg class="ic"><use href="#i-edit"/></svg>대회 수정</button>' : '', canEdit ? '<button type="button" class="small" id="tour-dup" title="이 대회와 같은 날짜·시간·코트로 이름만 다른 대회를 하나 더 만듭니다 (참가자도 가져올 수 있습니다)">➕ 같은 날 하나 더</button>' : '', canArch ? '<button type="button" class="small primary" id="tour-arch-on" title="점수·참가·대진을 잠그고 지난 대회로 옮깁니다 (대진표 비밀번호)">📦 결과 보관</button>' : '', archived && archOk ? '<button type="button" class="small" id="tour-arch-off" title="대회 후 7일 안에는 다시 열 수 있습니다 (대진표 비밀번호)">보관 취소</button>' : '', canEdit || (past && adminKey) ? '<button type="button" class="small danger-text" id="tour-del">대회 삭제</button>' : ''].filter(Boolean);
     return `<div class="tour-hero ${archived ? 'archived' : ''}"><div class="tour-hero-top"><b class="tour-name">🏆 ${esc(t.name)}</b><span class="tag type ${t.mode === 'team' ? 'mm' : 'fm'}">${t.mode === 'team' ? `팀전 ${t.teamCount}팀` : '개인전'}</span>${archived ? '<span class="tag arch">📦 결과 보관</span>' : past ? '<span class="tag">지난 대회</span>' : isToday(doc.date) ? '<span class="tag type fm">오늘</span>' : ''}</div>
       <div class="sub">${archived ? `결과를 보관했습니다${doc.archivedAt ? ` (${esc(new Date(doc.archivedAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }))})` : ''} · 점수·참가·대진은 더 바뀌지 않습니다` : `${t.mode === 'team' ? '팀 대 팀 복식 (양쪽 같은 종류) · 팀 순위와 개인 기록' : '파트너를 바꿔 가며 복식 · 개인 순위'} · 여복 ${s.minWomenDoubles || 0}경기 · 잡복 없음 · 지난 대회와 같은 조는 되도록 피함`}</div>
       ${btns.length ? `<div class="row">${btns.join('')}</div>` : ''}</div>`;
@@ -2112,6 +2146,7 @@
   async function tourViewClick(t) {
     const doc = W.doc; if (!tourOf(doc)) return false;
     if (t.closest('#tour-edit')) { if (!wkClosed(doc) && wkCanWrite() && (await wkRequireAuth('tour'))) tourOpenForm('edit'); return true; }
+    if (t.closest('#tour-dup')) { if (!wkClosed(doc) && wkCanWrite()) tourOpenForm('new', doc); return true; } // 같은 날 하나 더: 이 대회의 날짜·시간·코트·방식을 채운 새 대회 폼 (비밀번호는 만들 때 묻는다)
     if (t.closest('#tour-del')) { await tourDelete(doc); return true; }
     if (t.closest('#tour-arch-on') || t.closest('#tour-arch-off')) { const on = !!t.closest('#tour-arch-on'); if (!wkCanWrite() || !wkArchOpen(doc)) return true; if (W.failed.some((op) => op.session === doc.id)) { toast('저장하지 못한 변경이 있습니다 · 먼저 "다시 시도"로 보낸 뒤 보관하세요'); return true; }
       if (on) { const ms = doc.schedule?.matches || []; const left = ms.filter((m) => !doc.results?.[m.id]).length; if (!confirm(`'${doc.tour.name}' 결과를 보관할까요?\n보관하면 점수·참가·대진을 더 고칠 수 없고 지난 대회로 옮겨집니다${left ? `\n(점수가 없는 경기 ${left}개는 결과에서 빠집니다)` : ''}.\n대회 후 7일 안에는 비밀번호로 보관을 취소할 수 있습니다.`)) return true; }
@@ -2262,7 +2297,7 @@
     state.players = ps; state.settings = s; ntrp.clear();
     ps.forEach((p) => ntrp.set(p.id, String(wkLevelOf(p)))); // 레벨(관리자가 갱신: NTRP, 여성 −0.5)로 균형. 게스트·미입력은 3.5 로 간주
     { const menLv = ps.filter((p) => p.gender !== 'F').map((p) => wkLevelOf(p)); s.sameNtrpGame = menLv.length >= 4 && (!ty || ty.MM) ? String(Math.max(...menLv)) : ''; if (ty && !ty.FF) s.minWomenDoubles = 0; } // 상위 남복 1경기: 참석 남자 최고 레벨 4명 (모자라면 다음 등급 포함 상위 4명) — 대회의 '동일 NTRP 남복' 장치 재사용
-    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true, types: ty, ffMax: extra && Number.isInteger(extra.ffMax) ? extra.ffMax : null, oppW: (extra && extra.oppW) || 0, partW: (extra && extra.partW) || 0, prevP: extra && Array.isArray(extra.prev) && extra.prevW ? new Set(extra.prev.flatMap((m) => [m.aIds, m.bIds]).filter((S) => S.length === 2).map(([x, y]) => { const a = x.slice(2), b = y.slice(2); return a < b ? a + '|' + b : b + '|' + a; })) : null, prevW: (extra && extra.prevW) || 0, prevM: extra && Array.isArray(extra.prev) && extra.prevMW ? new Set(extra.prev.filter((m) => m.aIds.length === 2 && m.bIds.length === 2).map((m) => { const k = (S) => { const a = S[0].slice(2), b = S[1].slice(2); return a < b ? a + '|' + b : b + '|' + a; }; const ka = k(m.aIds), kb = k(m.bIds); return m.slot + ':' + (ka < kb ? ka + '/' + kb : kb + '/' + ka); })) : null, prevMW: (extra && extra.prevMW) || 0, noise: extra && extra.noiseW ? { w: extra.noiseW, mw: extra.matchNoiseW || 0, seed, map: {} } : null };
+    GEN_HOOK = { fromSlot, fixed, hist: hist || null, mixOk: true, types: ty, ffMax: extra && Number.isInteger(extra.ffMax) ? extra.ffMax : null, oppW: (extra && extra.oppW) || 0, partW: (extra && extra.partW) || 0, prevP: extra && Array.isArray(extra.prev) && extra.prevW ? new Set(extra.prev.flatMap((m) => [m.aIds, m.bIds]).filter((S) => S.length === 2).map(([x, y]) => { const a = x.slice(2), b = y.slice(2); return a < b ? a + '|' + b : b + '|' + a; })) : null, prevW: (extra && extra.prevW) || 0, prevM: extra && Array.isArray(extra.prev) && extra.prevMW ? new Set(extra.prev.filter((m) => m.aIds.length === 2 && m.bIds.length === 2).map((m) => { const k = (S) => { const a = S[0].slice(2), b = S[1].slice(2); return a < b ? a + '|' + b : b + '|' + a; }; const ka = k(m.aIds), kb = k(m.bIds); return m.slot + ':' + (ka < kb ? ka + '/' + kb : kb + '/' + ka); })) : null, prevMW: (extra && extra.prevMW) || 0, noise: extra && extra.noiseW ? { w: extra.noiseW, mw: extra.matchNoiseW || 0, seed, map: {} } : null, adj: wkAdjSet(ps, TOUR_ID_RE.test(String(doc.id || '')) ? 'tour' : 'weekly'), adjP: WK_ADJ.P, adjO: WK_ADJ.O };
     try {
       const sch = generateRotation(s, seed);
       const matches = sch.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })).sort((a, b) => a.slot - b.slot || a.court - b.court);
@@ -2271,20 +2306,44 @@
     } finally { GEN_HOOK = null; state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
   }
   // ---- 대회 대진: 개인전 = 정기 모임 생성기(잡복 없이, 여복 경기 수 지정), 팀전 = 팀전 생성기(팀 대 팀, 양쪽 같은 종류라 잡복이 없다). 지난 대회의 같은 조·같은 팀은 되도록 다시 묶지 않는다 ----
+  // 편성 보정: keys 에 해당하는 참석자 쌍은 같은 코트(같은 조·상대)에 되도록 배정하지 않는다. on = 전체 켜기/끄기, weekly·tour = 정기 모임·대회별 적용 (끄면 보정 없이 전과 글자 단위로 같은 판). keys = fnv1a('wk-adj|' + 작은 id + '|' + 큰 id)
+  // P·O = 같은 조·상대일 때 코트 비용과 판 점수에 더하는 값 — 빈 코트(5e4)·경기 수 공정(3e4)보다는 아래, 실력 균형·다양성 항목보다는 위. 팀전은 teamP·teamO 로 짝·상대를 고르되 경기 수 공정이 나빠지는 판은 고르지 않는다. 화면에는 표시하지 않는다
+  const WK_ADJ = { on: true, weekly: true, tour: true, keys: new Set([1203994986, 2337758973]), P: 2e4, O: 8000, teamP: 3000, teamO: 1500 };
+  /** 참석자(ps) 가운데 편성 보정에 해당하는 쌍의 열쇠('a|b', id 순) 집합. kind = 'weekly' | 'tour'. 꺼져 있거나 해당하는 쌍이 없으면 null */
+  const wkAdjSet = (ps, kind) => { if (!WK_ADJ.on || !WK_ADJ[kind]) return null; const S = new Set(); for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) { const a = ps[i].id, b = ps[j].id, k = a < b ? a + '|' + b : b + '|' + a; if (WK_ADJ.keys.has(fnv1a('wk-adj|' + k))) S.add(k); } return S.size ? S : null; };
   const TOUR_TYPES = { FF: true, MM: true, FM: true, MIX: false }; // 대회는 잡복 없이
   const TOUR_DIV = { oppW: 1500, partW: 3000, teamOppGen: 150, teamPartGen: 500, teamOpp: 600, teamPart: 3000, prevW: 400, noiseW: 1000, prevTeamMatch: 250, prevMW: 300, matchNoiseW: 300, teamGenNoise: 40 }; // 대회는 최대한 다양한 상대와 (사용자 요청 11/16): 개인전 oppW·partW = 같은 상대(여자끼리 제외)·같은 짝을 다시 만날 때 판 점수·코트 비용에 더하는 값 — 팀 합 1.0 이상(3300)보다는 아래, 혼복 1.0 이상(900)보다는 위. 실제 명단 4개 실험: 남자 등 상대 반복 평균 4.4 → 1.7, 짝 반복 0, 1.5 이상 차이 0. 팀전은 생성기(후보 절반)·판 점수 무게. 다시 섞기(11/16): 씨드만 바꾸면 같은 최적판으로 모여 같은 판이 다시 나왔다(8번 중 4번 동일) → prevW = 지금 판과 같은 짝 1개당 가산, noiseW = 짝마다 씨드에서 정해지는 0~noiseW 가산(pairNoise). 11/26 명단 6연속 다시 섞기: 동일한 판 0, 직전과 같은 경기 4.2 → 1.7/12, 같은 짝 15.8 → 11/24 (실력 균형 규칙 때문에 아무 제약 없는 무작위도 9쯤), 품질은 상대 반복 2.5 → 2.8·팀 합 1.0+ 0.5 → 0.7·1.5+ 0. '좋은 판 중 무작위'·'최근 2~3판 기억'은 효과가 없어 넣지 않았다. 검토 반영(11/16): prevMW = 지금 판과 같은 시간대·같은 경기 1개당 가산, matchNoiseW = 경기마다 씨드별 0~matchNoiseW 가산 — 5~6명처럼 짝 구성이 사실상 정해지는 명단에서 같은 판이 다시 나오던 것(5명 12연속 중 3번 → 0번). teamGenNoise = 팀전 다시 섞기에서 추가 후보 40개를 만들 때 짝마다 주는 씨드별 0~teamGenNoise 가산 — 좋은 판이 몇 개뿐인 명단에서 같은 판이 번갈아 나오던 것(11/26 명단 2팀 13판 중 서로 다른 판 4 → 9, 품질 그대로; 고르는 단계 가산점은 효과가 없었다)
   const tourOf = (doc) => (doc && TOUR_ID_RE.test(String(doc.id || '')) && doc.tour ? doc.tour : null);
   const tourTeamName = (tour, i) => tour?.teamNames?.[i] || `${i + 1}팀`;
   const TOUR_HIST_MAX = 6; // 참고하는 지난 대회 수 (가장 최근 1, 그 전 0.5, 0.25 …)
+  const tourPlayed = (d) => Object.keys(d.results || {}).length > 0 || Object.keys(d.done || {}).length > 0 || d.status === 'closed'; // 점수·완료 표시가 있거나 결과를 보관한 대회 = 실제로 치른 대회
+  /** 같은 날짜에 만든 대회가 여럿이면(이름을 달리해 만들어 둔 대진들) 실제로 치른 것만 남긴다. 그런 것이 없으면 대진이 있는 첫 대회 하나만 — 쓰지 않은 대진까지 지난 대진으로 세지 않게. docs = 세션·보관 문서 배열 (대회가 아닌 문서와 못 읽은 null 은 그대로 둔다) */
+  function tourPlayedOnly(docs) {
+    const groups = {}; for (const d of docs) if (d && TOUR_ID_RE.test(String(d.id || ''))) (groups[d.date] ??= []).push(d);
+    const drop = new Set();
+    for (const g of Object.values(groups)) { if (g.length < 2) continue; const withSch = g.filter((d) => d.schedule?.matches?.length).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)); const pl = withSch.filter(tourPlayed); const keep = new Set((pl.length ? pl : withSch.slice(0, 1)).map((d) => d.id)); for (const d of g) if (!keep.has(d.id)) drop.add(d.id); }
+    return drop.size ? docs.filter((d) => !d || !drop.has(d.id)) : docs;
+  }
+  /** 같은 날짜에 이름을 달리해 만든 다른 대회들의 대진 { n: 대진이 있는 대회 수, failed: 읽지 못한 대회 수, matches: 그 경기들을 이어 붙인 것 }. 대진 생성·다시 섞기가 그 판들과 다른 판을 내도록 '지금 판'처럼 피한다 — 참가자가 같아도 대회마다 다른 대진이 나오게 (씨드만 다르면 같은 최적판으로 모인다). 읽지 못한 대회는 건너뛴다 */
+  async function tourSiblingMatches(doc) {
+    const sibs = (W.index?.tours || []).filter((t) => t.date === doc.date && t.id !== doc.id); if (!sibs.length) return { n: 0, failed: 0, matches: [] };
+    let failed = 0;
+    const docs = await Promise.all(sibs.map(async (t) => {
+      const q = [...W.pending, ...W.failed].filter((op) => op.session === t.id && op.op === 'generate').pop(); if (q) return { schedule: q.value && Array.isArray(q.value.matches) ? { matches: q.value.matches } : null }; // 이 기기에서 방금 만든(아직 저장 중인) 대진이 서버 사본보다 새롭다
+      try { const d = await Promise.race([wkReadSession(t.id), new Promise((r) => setTimeout(() => r(null), 4000))]); if (!d) { failed++; return null; } return assertWeekly(d); } catch { failed++; return null; } }));
+    const have = docs.filter((d) => d && !d.deleted && d.schedule?.matches?.length);
+    return { n: have.length, failed, matches: have.flatMap((d) => d.schedule.matches) };
+  }
   /** 지난 대회들(만든 대회 + 옛 보관본)에서 사람 쌍별 같은 조(partner)·상대(opp)·같은 팀(mate) 무게. 날짜가 이 대회보다 앞선 것만, 파일 하나를 못 읽어도 나머지로 */
   async function tourHistory(doc) {
     const H = { partner: {}, opp: {}, mate: {}, n: 0, failed: 0 }; const key = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const add = (o, k, v) => (o[k] = (o[k] || 0) + v);
     let events = T.index?.events; if (!events) { try { const raw = await archRead('archive/index.json'); events = Array.isArray(raw?.events) ? raw.events : []; } catch { events = []; } }
-    const list = [...(W.index?.tours || []).filter((t) => t.id !== doc.id && t.date < doc.date).map((t) => ({ ses: true, id: t.id, date: t.date })), ...events.filter((e) => e && ARCH_RE.test(String(e.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) && e.date < doc.date).map((e) => ({ ses: false, id: e.id, date: e.date }))].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, TOUR_HIST_MAX);
-    const docs = await Promise.all(list.map(async (x) => { const late = new Promise((r) => setTimeout(() => r(null), 5000)); try { if (x.ses) { if (W.cache[x.id]) return W.cache[x.id]; let d = await Promise.race([dataRead(`weekly/sessions/${x.id}.json`), late]); if (d) { d = assertWeekly(d); W.cache[x.id] = d; } return d; } const d = await Promise.race([archRead(`archive/${x.id}.json`), late]); return d ? assertArchive(d) : null; } catch { return null; } }));
+    const list = [...(W.index?.tours || []).filter((t) => t.id !== doc.id && t.date < doc.date).map((t) => ({ ses: true, id: t.id, date: t.date })), ...events.filter((e) => e && ARCH_RE.test(String(e.id || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(e.date || '')) && e.date < doc.date).map((e) => ({ ses: false, id: e.id, date: e.date }))].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).filter((x, i, arr) => new Set(arr.slice(0, i + 1).map((y) => y.date)).size <= TOUR_HIST_MAX); // 최근 6개 날짜까지 (같은 날짜에 이름을 달리해 만든 대회가 여럿일 수 있어 날짜 수로 자른다 — 그 날짜의 대회는 모두 읽어야 '치른 대회'를 가릴 수 있다)
+    const docs0 = await Promise.all(list.map(async (x) => { const late = new Promise((r) => setTimeout(() => r(null), 5000)); try { if (x.ses) { if (W.cache[x.id]) return W.cache[x.id]; let d = await Promise.race([dataRead(`weekly/sessions/${x.id}.json`), late]); if (d) { d = assertWeekly(d); W.cache[x.id] = d; } return d; } const d = await Promise.race([archRead(`archive/${x.id}.json`), late]); return d ? assertArchive(d) : null; } catch { return null; } }));
+    const docs = tourPlayedOnly(docs0); // 같은 날짜에 여럿이면 실제로 치른 대회만
     let rank = 0;
     for (const d of docs) {
-      if (!d) { H.failed++; continue; } if (!d.schedule?.matches?.length) continue; const w = Math.pow(0.5, rank++); H.n++;
+      if (rank >= TOUR_HIST_MAX) break; if (!d) { H.failed++; continue; } if (!d.schedule?.matches?.length) continue; const w = Math.pow(0.5, rank++); H.n++;
       const units = {}; for (const u of d.units || []) units[u.id] = u;
       for (const m of d.schedule.matches) { const A = recSide(m, 'a', units), B = recSide(m, 'b', units); for (const S of [A, B]) if (S.length === 2) add(H.partner, key(S[0], S[1]), w); for (const x of A) for (const y of B) add(H.opp, key(x, y), w); }
       const teams = d.tour ? (d.tour.mode === 'team' ? d.tour.teams : null) : d.settings?.mode === 'team' ? (d.units || []).map((u) => u.playerIds) : null; // 팀전이었으면 같은 팀
@@ -2369,15 +2428,20 @@
     const fixed = old.map((m) => { const A = m.aIds.map((x) => x.slice(2)), B = m.bIds.map((x) => x.slice(2)); return { slot: m.slot, court: m.court, aId: 'T' + teamOf[A[0]], bId: 'T' + teamOf[B[0]], aPlayers: A, bPlayers: B }; });
     const inputHash = wkInputHash(doc); const seed0 = fnv1a(`${doc.id}|${inputHash}|${gen}|${fromSlot}|team`) % 1000000;
     const saved = { players: state.players, settings: state.settings, nt: new Map(ntrp) }; let best = null, bestC = Infinity, err = null;
+    const adjSet = wkAdjSet(ps, 'tour'); const pk = (a, b) => (a < b ? a + '|' + b : b + '|' + a); const cands = []; // 편성 보정 (해당하는 쌍이 참가했을 때만): 보정 없이 만든 후보와 보정을 넣은 후보를 모아, 경기 수 공정이 나빠지지 않는 판 가운데서 고른다
+    const gstat = (all, n) => { const g = {}; for (const m of all) for (const id of [...m.A, ...m.B]) g[id] = (g[id] || 0) + 1; let minG = Infinity, gap = 0; for (const t of teams) { const v = t.playerIds.map((id) => g[id] || 0); if (!v.length) continue; minG = Math.min(minG, ...v); gap = Math.max(gap, Math.max(...v) - Math.min(...v)); } return { n, minG, gap }; }; // 경기 수·참가자 최소 경기 수·팀 안 경기 수 차이
     try {
       state.players = ps; state.settings = s; ntrp.clear(); ps.forEach((p) => ntrp.set(p.id, String(wkLevelOf(p))));
       const K = prevKeys && div.teamGenNoise ? 80 : 40; // 다시 섞기: 기존 후보 40개는 그대로 두고, 짝마다 씨드에서 정해지는 가산점을 준 후보를 더 만든다 (좋은 판이 몇 개뿐인 명단에서 같은 판이 되돌아오지 않게)
-      for (let k = 0; k < K; k++) {
-        const sd = (seed0 + k * 7919) % 1000000; const o = k % 2 ? { fromSlot, fixed, hist: hp, oppW: div.teamOppGen, partW: div.teamPartGen } : { fromSlot, fixed, hist: hp }; if (k >= 40) { const nm = {}; o.noise = (pk) => (nm[pk] ??= (fnv1a(sd + '|' + pk) % 1000) / 1000 * div.teamGenNoise); }
+      for (let pass = 0; pass < (adjSet ? 2 : 1); pass++) for (let k = 0; k < K; k++) { // pass 1 = 편성 보정을 넣어 만든 후보 (보정이 없으면 pass 0 만 — 전과 같은 판)
+        const sd = (seed0 + k * 7919) % 1000000; const o = k % 2 ? { fromSlot, fixed, hist: hp, oppW: div.teamOppGen, partW: div.teamPartGen } : { fromSlot, fixed, hist: hp }; if (pass === 1) { o.adj = adjSet; o.adjP = WK_ADJ.teamP; o.adjO = WK_ADJ.teamO; } if (k >= 40) { const nm = {}; o.noise = (pk) => (nm[pk] ??= (fnv1a(sd + '|' + pk) % 1000) / 1000 * div.teamGenNoise); }
         let sch; try { sch = generateTeam(s, teams, sd, o); /* 후보의 절반은 기존 무게, 절반은 다양성 무게로 만들고, 고르는 점수는 다양성을 반영한다 (탐욕 생성이 무게에 따라 다른 길로 빠져 어느 한쪽이 나쁜 구성이 있다) */ } catch (e) { err = e; continue; }
         const all = [...fixed.map((m) => ({ A: m.aPlayers, B: m.bPlayers })), ...sch.matches.map((m) => ({ A: m.aPlayers, B: m.bPlayers }))];
-        let c = tourTeamScore(all, s, ps, teams, hp, ntrpOf, { opp: div.teamOpp, part: div.teamPart }); if (prevKeys) c += div.prevTeamMatch * sch.matches.filter((m) => prevKeys.has(mKey(m.aPlayers, m.bPlayers))).length; /* 다시 섞기: 지금 판과 같은 경기가 많은 후보는 뒤로 (팀 안의 짝은 가짓수가 적어 짝에 벌점을 주면 대회 안 반복이 늘어난다 — 고르는 단계에서만) */ if (c < bestC) { bestC = c; best = sch; }
+        let c = tourTeamScore(all, s, ps, teams, hp, ntrpOf, { opp: div.teamOpp, part: div.teamPart }); if (prevKeys) c += div.prevTeamMatch * sch.matches.filter((m) => prevKeys.has(mKey(m.aPlayers, m.bPlayers))).length; /* 다시 섞기: 지금 판과 같은 경기가 많은 후보는 뒤로 (팀 안의 짝은 가짓수가 적어 짝에 벌점을 주면 대회 안 반복이 늘어난다 — 고르는 단계에서만) */ if (!adjSet) { if (c < bestC) { bestC = c; best = sch; } continue; }
+        let hpN = 0, hoN = 0; for (const m of sch.matches) { for (const S of [m.aPlayers, m.bPlayers]) if (S.length === 2 && adjSet.has(pk(S[0], S[1]))) hpN++; for (const a of m.aPlayers) for (const b of m.bPlayers) if (adjSet.has(pk(a, b))) hoN++; }
+        cands.push({ sch, c, pen: hpN * WK_ADJ.P + hoN * WK_ADJ.O, pass, st: gstat(all, sch.matches.length) });
       }
+      if (adjSet && cands.length) { const base = cands.filter((x) => x.pass === 0).sort((a, b) => a.c - b.c)[0] || cands.slice().sort((a, b) => a.c - b.c)[0]; /* 보정이 없었다면 골랐을 판 */ const ok = cands.filter((x) => x.st.n >= base.st.n && x.st.minG >= base.st.minG && x.st.gap <= base.st.gap); best = ok.sort((a, b) => a.c + a.pen - (b.c + b.pen))[0].sch; } // 경기 수가 줄거나 누군가의 경기 수가 줄거나 팀 안 차이가 벌어지는 판은 고르지 않는다 (피할 수 없으면 양보)
     } finally { state.players = saved.players; state.settings = saved.settings; ntrp.clear(); saved.nt.forEach((v, k) => ntrp.set(k, v)); }
     if (!best) throw err || new Error('배정 가능한 경기가 없습니다.');
     const matches = [...old.map((m) => ({ id: m.id, slot: m.slot, court: m.court, aIds: m.aIds, bIds: m.bIds })), ...best.matches.map((m) => ({ id: `s${m.slot}c${m.court}`, slot: m.slot, court: m.court, aIds: m.aPlayers.map((x) => 'p:' + x), bIds: m.bPlayers.map((x) => 'p:' + x) }))].sort((a, b) => a.slot - b.slot || a.court - b.court);
@@ -2401,7 +2465,7 @@
     let failed = 0;
     const docs = await Promise.all(ids.map(async (id) => { if (W.id === id && W.doc) return W.doc; const cached = W.cache[id]; if (cached && !listed.has(id)) return cached;
       let d = await Promise.race([dataRead(`weekly/sessions/${id}.json`), new Promise((r) => setTimeout(() => r(null), 5000))]); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (!d) { if (cached) return cached; failed++; return null; } if (!listed.has(id)) W.cache[id] = d; return d; }));
-    return { ...wkHistoryFrom(docs, cur.date), failed };
+    return { ...wkHistoryFrom(tourPlayedOnly(docs), cur.date), failed }; // 같은 날짜에 만들어 둔 대회가 여럿이면 실제로 치른 것만 지난 대진으로
   }
   async function wkGenerate(mode) {
     const doc = W.doc; if (!doc || wkClosed(doc) || !wkCanWrite()) return; const s = wkSettings(doc); const att = wkAttendees(doc); const tour = tourOf(doc); const team = tour?.mode === 'team';
@@ -2416,9 +2480,9 @@
     if (busy) { busyText('지니가 대진을 짜는 중…'); busy.hidden = false; } // 생성 중 표시 (계산은 5~10초 동안 화면을 멈추므로, 표시가 먼저 그려진 뒤 시작한다)
     try {
       const late = () => new Promise((r) => setTimeout(() => r(null), 6000));
-      const [hw, ht] = await Promise.all([tour ? null : Promise.race([wkHistory(doc.id), late()]), tour ? Promise.race([tourHistory(doc), late()]) : null]); await Promise.race([new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60))), new Promise((r) => setTimeout(r, 400))]); // 대회는 지난 대회 대진만 참고한다 (정기 모임 대진은 보지 않음 — 사용자 결정 11/16)
+      const [hw, ht, sib] = await Promise.all([tour ? null : Promise.race([wkHistory(doc.id), late()]), tour ? Promise.race([tourHistory(doc), late()]) : null, tour && fromSlot === 0 ? Promise.race([tourSiblingMatches(doc), late()]) : null]); await Promise.race([new Promise((r) => requestAnimationFrame(() => setTimeout(r, 60))), new Promise((r) => setTimeout(r, 400))]); // 대회는 지난 대회 대진만 참고한다 (정기 모임 대진은 보지 않음 — 사용자 결정 11/16)
       const hist = tour ? { ...tourMergeHist(null, ht), sessions: Math.max(1, ht?.n || 0) } : hw; let sch;
-      const prevMs = tour && mode === 'reshuffle' && fromSlot === 0 ? (doc.schedule?.matches || null) : null; // 대회 다시 섞기: 지금 판의 짝을 피해 눈에 띄게 다른 판이 나오게 (씨드만 바꾸면 같은 최적판으로 모인다) // 대회는 지난 대회가 없어도 같은 무게 체계(이력 있음)로 짠다
+      const curMs = tour && mode === 'reshuffle' && fromSlot === 0 ? (doc.schedule?.matches || null) : null; const sibMs = sib && sib.n ? sib.matches : null; const prevMs = curMs || sibMs ? [...(curMs || []), ...(sibMs || [])] : null; // 대회 다시 섞기: 지금 판의 짝을 피해 눈에 띄게 다른 판이 나오게 (씨드만 바꾸면 같은 최적판으로 모인다). 같은 날짜에 이름을 달리해 만든 다른 대회들의 판(sibMs)도 같이 피한다 — 참가자가 같아도 첫 대진부터 서로 다른 판 // 대회는 지난 대회가 없어도 같은 무게 체계(이력 있음)로 짠다
       if (team) { // 팀전: 팀이 없거나 팀 밖의 참가자가 있으면 먼저 팀에 넣는다 (이미 나눈 팀은 그대로, 지난 대회 중복을 피해)
         for (let k = 0; k < 2; k++) { const d0 = W.doc; const t0 = tourOf(d0); const inTeam = new Set((t0?.teams || []).flat()); if (t0?.teams && wkAttendees(d0).every((p) => inTeam.has(p.id))) break;
           const teams = tourBuildTeams(d0, ht, t0?.teams); const ok = await wkSend({ op: 'tour-set', base: d0.rev, value: { teams } }); // 팀이 서버에 저장된 뒤에만 대진을 만든다 (그사이 다른 변경으로 거절되면 최신 문서로 한 번 더)
@@ -2426,7 +2490,7 @@
         if (!tourOf(W.doc)?.teams) throw new Error('팀 구성을 저장하지 못했습니다. 잠시 후 다시 눌러 주세요.');
         sch = generateTourTeamSchedule(W.doc, fromSlot, gen, ht, TOUR_DIV, prevMs);
       } else sch = generateWeeklySchedule(doc, hist, fromSlot, gen, ty, tour ? { ffMax: s.minWomenDoubles, oppW: TOUR_DIV.oppW, partW: TOUR_DIV.partW, prev: prevMs, prevW: TOUR_DIV.prevW, prevMW: TOUR_DIV.prevMW, noiseW: prevMs ? TOUR_DIV.noiseW : 0, matchNoiseW: prevMs ? TOUR_DIV.matchNoiseW : 0 } : null); // 개인전 대회: 여복 경기 수 = 입력값 (최소이자 상한), 같은 상대·짝 반복은 더 무겁게
-      const drawSig = (ms) => ms.map((m) => m.slot + ':' + [[...m.aIds].sort().join('+'), [...m.bIds].sort().join('+')].sort().join('/')).sort().join(' '); const samePrev = !!prevMs && prevMs.length > 0 && drawSig(prevMs) === drawSig(sch.matches); // 다시 섞기인데 시간대별 경기가 모두 같은 판 (4~5명처럼 가능한 판이 적은 명단)
+      const drawSig = (ms) => ms.map((m) => m.slot + ':' + [[...m.aIds].sort().join('+'), [...m.bIds].sort().join('+')].sort().join('/')).sort().join(' '); const samePrev = !!curMs && curMs.length > 0 && drawSig(curMs) === drawSig(sch.matches); // 다시 섞기인데 시간대별 경기가 모두 같은 판 (4~5명처럼 가능한 판이 적은 명단)
       const sending = wkSend({ op: 'generate', base: W.doc.rev, value: sch }); // 새 대진은 이 시점에 화면에 그려진다 (낙관적 반영)
       const zeroT = team ? wkAttendees(W.doc).filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).map((p) => p.name) : []; // 팀전: 같은 팀에 함께 뛸 사람이 없거나 종류가 안 맞아 빠진 사람
       if (busy) busy.hidden = true; // 표시는 계산 동안만: 저장은 상태 줄('저장 중…')이 알리고, 신호가 약해 저장이 늦어도 화면을 막지 않는다
@@ -2434,6 +2498,8 @@
         if (offTypes || (tour && !team)) { let empty = 0; const n = maxSlots(s); for (let i = fromSlot; i < n; i++) empty += Math.max(0, Math.min(courtsAtSlot(s, i), Math.floor(att.filter((p) => playerAvailable(p, s, i)).length / 4)) - sch.matches.filter((m) => m.slot === i).length); const gap = wkRuleCheck(doc, s, sch.matches, ty).issues.some((x) => x.startsWith('경기 수 부족')); const zero = att.filter((p) => !sch.matches.some((m) => [...m.aIds, ...m.bIds].includes('p:' + p.id))).length; if (empty) { parts.push(`${tour ? '대회는 잡복 없이 짜므로' : offTypes + ' 없이 짜서'} 코트 ${empty}칸이 비었습니다`); warn = true; } else if (!tour) parts.push(`${offTypes} 없이 만들었습니다`); if (zero) { parts.push(`경기가 없는 사람이 ${zero}명입니다`); warn = true; } else if (gap) { parts.push('경기 수 차이가 나는 사람이 있습니다'); warn = true; } }
         if (zeroT.length) { parts.push(`경기가 없는 사람: ${zeroT.slice(0, 4).join(', ')}${zeroT.length > 4 ? ` 외 ${zeroT.length - 4}명` : ''} — 팀 조정으로 옮겨 다시 짜세요`); warn = true; }
         if (samePrev) { parts.push('이 참가 구성으로는 만들 수 있는 판이 적어 같은 판이 다시 나왔습니다'); warn = true; }
+        if (sibMs) parts.push(`같은 날 다른 대회 ${sib.n}개의 대진과 다르게 짰습니다`);
+        if (tour && fromSlot === 0 && (sib ? sib.failed : (W.index?.tours || []).some((t) => t.date === doc.date && t.id !== doc.id))) { parts.push(sib ? `같은 날 다른 대회 ${sib.failed}개의 대진은 읽지 못해 참고하지 못했습니다` : '같은 날 다른 대회의 대진을 읽지 못해 참고하지 못했습니다'); warn = true; }
         if (tour) { if (!ht || (!ht.n && ht.failed)) { parts.push(ht ? `지난 대회 ${ht.failed}회의 기록을 읽지 못했습니다` : '지난 대회 기록을 읽지 못했습니다'); warn = true; } else if (ht.n) parts.push(`지난 대회 ${ht.n}회의 짝${team ? '·팀' : ''} 구성은 되도록 피했습니다${ht.failed ? ` (${ht.failed}회는 읽지 못함)` : ''}`); }
         else if (!hist || hist.failed) { parts.push(hist && hist.sessions ? `지난 모임 ${hist.failed}회를 읽지 못해 ${hist.sessions}회만 참고했습니다` : '지난 대진을 읽지 못해 이번 모임 안에서만 섞었습니다'); warn = true; } else if (hist.sessions) parts.push(`지난 모임 ${hist.sessions}회의 대진을 참고했습니다`);
         if (parts.length) toast(parts.join(' · '), warn ? 6000 : 3500); }
@@ -2887,7 +2953,7 @@
   }
   async function recLoadAll() {
     const out = []; const ids = [...new Set([...(W.index?.past || []), ...wkSessions().map((x) => x.id)])].filter((id) => !TOUR_ID_RE.test(id) && id.slice(0, 10) < ymdOf()).sort().slice(-REC_MAX_SESSIONS); // 오늘 이전(끝난) 정기 모임 최근 12회만 — 오늘 모임은 아직 진행 중이라 제외. 끝난 모임은 보통 목록에서 빠져 past 에 있다
-    for (const t of (W.index?.tours || []).filter((x) => x.date < ymdOf())) { let d = W.cache[t.id]; if (!d) { d = await dataRead(`weekly/sessions/${t.id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[t.id] = d; } if (d?.schedule?.matches?.length) out.push(recFromDoc('tour', t.id, d)); } // 멤버가 만든 대회 (세션 파일)
+    { const tds = []; for (const t of (W.index?.tours || []).filter((x) => x.date < ymdOf())) { let d = W.cache[t.id]; if (!d) { d = await dataRead(`weekly/sessions/${t.id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[t.id] = d; } if (d?.schedule?.matches?.length) tds.push(d); } for (const d of tourPlayedOnly(tds)) out.push(recFromDoc('tour', d.id, d)); } // 멤버가 만든 대회 (세션 파일) — 같은 날짜에 여럿이면 실제로 치른 것만
     for (const id of ids) { let d = W.id === id && W.doc ? W.doc : W.cache[id]; if (!d) { d = await dataRead(`weekly/sessions/${id}.json`); if (d) { try { d = assertWeekly(d); } catch { d = null; } } if (d) W.cache[id] = d; } if (d?.schedule?.matches?.length) out.push(recFromDoc('weekly', id, d)); }
     const aidx = T.index || (await archRead('archive/index.json')); for (const e of (aidx?.events || [])) { if (!e?.id || !/^[A-Za-z0-9_-]{1,40}$/.test(e.id)) continue; const d = await archRead(`archive/${e.id}.json`); if (d?.schedule?.matches?.length) out.push(recFromDoc('tour', e.id, d)); }
     return out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)); // 최근 순
@@ -2923,11 +2989,11 @@
     html += `<h4>개인별 <span class="sub">이름을 누르면 상세</span></h4><div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>이름</th><th class="num">참석</th>${hasTour ? '<th class="num">대회</th>' : ''}<th class="num">경기</th><th class="num">완료</th><th class="num">혼복</th><th class="num">남복</th><th class="num">여복</th><th class="num">잡복</th>${hasWL ? '<th class="num">승-패</th>' : ''}<th>자주 짝</th><th>자주 상대</th></tr></thead><tbody>${people.map((p) => `<tr class="rec-row ${R.sel === p.key ? 'sel' : ''}" data-rec="${esc(p.key)}"><td>${nm(p)}</td><td class="num">${p.att}</td>${hasTour ? `<td class="num">${p.tours}</td>` : ''}<td class="num"><b>${p.games}</b></td><td class="num">${p.done}</td><td class="num">${p.t.FM}</td><td class="num">${p.t.MM}</td><td class="num">${p.t.FF}</td><td class="num">${p.t.MIX}</td>${hasWL ? `<td class="num">${p.w || p.l ? `${p.w}-${p.l}` : '—'}</td>` : ''}<td class="wkr-pairs">${recTopHtml(p.partners, P)}</td><td class="wkr-pairs">${recTopHtml(p.opps, P)}</td></tr>`).join('')}</tbody></table></div>`;
     const sel = R.sel && P[R.sel];
     if (sel) {
-      const rows = [...sel.list].sort((x, y) => (x.r.date < y.r.date ? 1 : x.r.date > y.r.date ? -1 : x.m.slot - y.m.slot || x.m.court - y.m.court));
+      const rows = [...sel.list].sort((x, y) => (x.r.date < y.r.date ? 1 : x.r.date > y.r.date ? -1 : x.r.id < y.r.id ? -1 : x.r.id > y.r.id ? 1 : x.m.slot - y.m.slot || x.m.court - y.m.court));
       const who = (r, ids) => ids.map((pid) => { const q = P[pid], a = r.people[pid]; const guest = !q; return `<span class="${guest ? 'gname' : 'pname'} ${(q?.g || a?.g) === 'F' ? 'f' : 'm'}">${guest ? '<span class="gmark">G</span>' : ''}${esc(q?.name || a?.n || pid)}</span>`; }).join(' · ');
       html += `<div class="wkr-detail"><h4>${nm(sel)} <span class="sub">경기 ${sel.games} · 완료 ${sel.done}${sel.w || sel.l ? ` · ${sel.w}승 ${sel.l}패` : ''} · 마지막 ${esc(fmtDate(sel.last))}</span> <button type="button" class="small" id="wkr-close">닫기</button></h4>
         <div class="row wkr-lists"><div><b>짝</b> ${recTopHtml(sel.partners, P, 99)}</div><div><b>상대</b> ${recTopHtml(sel.opps, P, 99)}</div></div>
-        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ' 🏆' : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court ? esc(wkCourtLabel(st.startTime ? { ...st, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 } : st, m.court, m.slot)) : ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
+        <div class="table-wrap"><table class="stand summary wkr"><thead><tr><th>날짜</th><th>시간</th><th class="num">코트</th><th>종류</th><th>파트너</th><th>상대</th><th>결과</th></tr></thead><tbody>${rows.map(({ r, m, side }) => { const mine = m[side].filter((x) => x !== sel.key), other = m[side === 'A' ? 'B' : 'A']; const st = r.settings; const t0 = st.startTime ? slotStartMin({ startTime: st.startTime, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 }, m.slot) : null; const res = m.win ? (m.win === (side === 'A' ? 'a' : 'b') ? '승' : '패') + ` ${esc(m.score)}` : m.score ? esc(m.score) : m.done ? '✓ 완료' : '—'; return `<tr><td>${esc(fmtDate(r.date))}${r.src === 'tour' ? ` 🏆 <small>${esc(r.name)}</small>` : ''}</td><td>${t0 == null ? '' : hhmm(t0)}</td><td class="num">${m.court ? esc(wkCourtLabel(st.startTime ? { ...st, matchMinutes: st.matchMinutes || 30, breakMinutes: st.breakMinutes || 0 } : st, m.court, m.slot)) : ''}</td><td>${recTypeLabel[m.type]}</td><td>${who(r, mine)}</td><td>${who(r, other)}</td><td>${res}</td></tr>`; }).join('')}</tbody></table></div></div>`;
     }
     box.innerHTML = html; const csv = $('#wkr-csv'); if (csv) csv.hidden = !people.length;
   }
@@ -3197,10 +3263,10 @@
   function renderTournament() {
     const box = $('#tour-view'); if (!box) return; const s = state.settings, sch = state.schedule; const editor = document.body.classList.contains('editor');
     const n = sch ? sch.matches.filter((m) => !m.bye).length : 0; const live = liveTournament(); const today = ymdOf();
-    if (T.open) { const t = (W.index?.tours || []).find((x) => x.id === T.open); box.innerHTML = `<div class="row tour-back"><button type="button" id="tour-back">← 대회 목록</button>${t ? `<span class="sub">${esc(fmtDate(t.date))} · ${esc(t.name)}</span>` : ''}</div>`; return; } // 대회 화면은 아래 #tour-session-host (정기 모임과 같은 화면)
+    if (T.open) { const t = (W.index?.tours || []).find((x) => x.id === T.open); const sibs = t ? (W.index?.tours || []).filter((x) => x.date === t.date) : []; /* 같은 날짜에 이름을 달리해 만든 대회들 */ box.innerHTML = `<div class="row tour-back"><button type="button" id="tour-back">← 대회 목록</button>${t ? (sibs.length > 1 ? `<span class="sub">${esc(fmtDate(t.date))} · 같은 날 대회 ${sibs.length}개</span><span class="tour-sibs">${sibs.map((x) => `<button type="button" class="chip ${x.id === T.open ? 'on' : ''}" data-tour-open="${esc(x.id)}">${esc(x.name)}</button>`).join('')}</span>` : `<span class="sub">${esc(fmtDate(t.date))} · ${esc(t.name)}</span>`) : ''}</div>`; return; } // 대회 화면은 아래 #tour-session-host (정기 모임과 같은 화면)
     if (T.doc) { box.innerHTML = (T.doc.id === LIVE_ID ? `<div class="row"><button data-go-tab="schedule" class="primary"><svg class="ic"><use href="#i-court"/></svg>경기 일정표 (전체)</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button></div>` : '') + archiveHtml(T.doc); return; } // 옛 보관본 보기
     const tours = W.index?.tours || []; const up = tours.filter((x) => x.date >= today && !x.archived).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0)); const pastT = tours.filter((x) => x.date < today || x.archived); // 결과를 보관한 대회는 날짜와 상관없이 지난 대회
-    let html = T.form === 'new' ? '' : `<div class="row tour-actions"><button type="button" class="primary big" id="tour-new" ${wkCanWrite() || !W.index ? '' : 'disabled'}><svg class="ic"><use href="#i-trophy"/></svg>대회 만들기</button><span class="hint">${!W.index || wkCanWrite() ? '대진표 비밀번호가 필요합니다 · 날짜를 고르면 그날 코트 예약에서 시간과 코트를 가져옵니다' : '저장 서버가 연결되지 않아 지금은 만들 수 없습니다'}</span></div>`;
+    let html = T.form === 'new' ? '' : `<div class="row tour-actions"><button type="button" class="primary big" id="tour-new" ${wkCanWrite() || !W.index ? '' : 'disabled'}><svg class="ic"><use href="#i-trophy"/></svg>대회 만들기</button><span class="hint">${!W.index || wkCanWrite() ? '대진표 비밀번호가 필요합니다 · 날짜를 고르면 그날 코트 예약에서 시간과 코트를 가져옵니다 · 같은 날짜에도 이름을 달리해 여러 개 만들 수 있습니다' : '저장 서버가 연결되지 않아 지금은 만들 수 없습니다'}</span></div>`;
     html += '<h3>다가오는 대회</h3>' + (!W.index ? '<p class="hint">불러오는 중…</p>' : up.length ? `<div class="cards">${up.map(tourCardHtml).join('')}</div>` : '<p class="hint">예정된 대회가 없습니다. 위의 [대회 만들기]로 시작하세요.</p>');
     if (editor && live) html += `<h3>진행 중인 대회 <span class="sub">(관리자 작업본 · 게시하기 방식)</span></h3><div class="tour-card"><div class="tour-head"><b>${esc(s.name || '(대회명 없음)')}</b><span class="sub">${esc(s.date || '날짜 없음')} · ${modeLabel()}${n ? ` · ${n}경기` : ' · 일정표 없음'}${state.publishedAt ? ` · ${new Date(state.publishedAt).toLocaleDateString('ko-KR')} 게시` : ''}</span></div>
         <div class="row"><button data-go-tab="setup"><svg class="ic"><use href="#i-settings"/></svg>대회 설정</button><button data-go-tab="players"><svg class="ic"><use href="#i-users"/></svg>참가 선수</button><button data-go-tab="schedule"><svg class="ic"><use href="#i-court"/></svg>일정표</button><button data-go-tab="standings"><svg class="ic"><use href="#i-trophy"/></svg>순위</button><button data-go-tab="venue"><svg class="ic"><use href="#i-cup"/></svg>회식 장소</button>${sch ? '<button id="tour-archive" title="대진·참가자·경기 기록을 지난 대회 목록에 보관 (순위표 제외)">📦 지난 대회로 보관</button>' : ''}</div></div>`;
@@ -3210,38 +3276,47 @@
     if (T.index) items.push(...T.index.events.map((ev) => ({ date: ev.date, html: `<button class="card tour-item" data-arch="${esc(ev.id)}"><b>${esc(ev.name || ev.id)}</b><span class="sub">${esc(ev.date)}${ev.date ? ' · ' : ''}${esc(ev.mode)}${ev.players ? ` · ${ev.players}명` : ''}${ev.matches ? ` · ${ev.matches}경기` : ''}</span></button>` })));
     items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     html += items.length ? `<div class="cards">${items.map((x) => x.html).join('')}</div>` : `<p class="hint">${T.index ? '지난 대회가 아직 없습니다.' : esc(T.indexErr || '불러오는 중…')}</p>`;
-    box.innerHTML = html;
+    box.innerHTML = html; if (T.form === 'new') tourFormSameDay($('#tour-form'));
   }
   // ---- 대회 탭: 목록(다가오는 대회·지난 대회) · 만들기/수정 폼 · 대회 열기 (대회 화면은 #wk-view 를 #tour-session-host 로 옮겨 그린다) ----
   const tourCardHtml = (t) => { const today = ymdOf(); return `<button class="card tour-item ${t.date === today && !t.archived ? 'live' : ''}" data-tour-open="${esc(t.id)}"><b>🏆 ${esc(t.name)} <span class="tag type ${t.mode === 'team' ? 'mm' : 'fm'}">${t.mode === 'team' ? `팀전 ${t.teamCount}팀` : '개인전'}</span>${t.archived ? ' <span class="tag arch">📦 결과</span>' : t.date === today ? ' <span class="tag type fm">오늘</span>' : ''}</b><span class="sub">${esc(fmtDate(t.date))}${t.startTime ? ` · ${esc(t.startTime)}~${esc(t.endTime)}` : ''}${t.courts ? ` · 코트 ${t.courts}면` : ''}</span></button>`; };
-  function coverTourMeta() { const today = ymdOf(); const up = (W.index?.tours || []).filter((t) => t.date >= today && !t.archived).sort((a, b) => (a.date < b.date ? -1 : 1))[0]; return up ? `다음 대회 ${fmtDate(up.date)} · ${up.name}` : T.index?.events?.length || (W.index?.tours || []).length ? `지난 대회 ${(T.index?.events?.length || 0) + (W.index?.tours || []).length}회` : ''; }
+  function coverTourMeta() { const today = ymdOf(); const ups = (W.index?.tours || []).filter((t) => t.date >= today && !t.archived).sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id < b.id ? -1 : 1)); const up = ups[0]; const more = up ? ups.filter((t) => t.date === up.date).length - 1 : 0; /* 같은 날짜에 이름을 달리해 만든 대회가 더 있으면 '외 N개' */ return up ? `다음 대회 ${fmtDate(up.date)} · ${up.name}${more ? ` 외 ${more}개` : ''}` : T.index?.events?.length || (W.index?.tours || []).length ? `지난 대회 ${(T.index?.events?.length || 0) + (W.index?.tours || []).length}회` : ''; }
   function updateCoverTour() { if (liveTournament()) return; const el = $('#cover-meta'); if (el) el.textContent = coverTourMeta(); }
   /** 대회 열기·닫기 (주소에 #tournament/<id> 를 남겨 링크 복사로 그 대회를 건넬 수 있게) */
   function tourOpen(id) { if (!TOUR_ID_RE.test(String(id || ''))) return; T.open = id; T.doc = null; tourCloseForm(); if ($('#tab-tournament')?.classList.contains('active')) wkUse('tour', id); renderTournament(); /* 다른 탭으로 옮겨 갔으면 화면은 대회 탭을 열 때 옮긴다 */ if ($('#tab-tournament')?.classList.contains('active')) history.replaceState(null, '', '#tournament/' + id); window.scrollTo(0, 0); }
   function tourClose() { T.open = null; tourCloseForm(); wkUse('weekly'); renderTournament(); if ($('#tab-tournament')?.classList.contains('active')) history.replaceState(null, '', '#tournament'); }
   function tourCloseForm() { T.form = null; const h = $('#tour-form-host'); if (h) h.innerHTML = ''; }
   /** 만들기·수정 폼 (kind = 'new' | 'edit'). 날짜를 고르면 그날 코트 예약에서 시작·종료·구간별 코트 수·번호를 가져온다 (정기 모임 생성 폼과 같은 방식) */
-  function tourOpenForm(kind) {
-    const host = $('#tour-form-host'); if (!host) return; const edit = kind === 'edit'; const doc = edit ? W.doc : null; const t = edit ? tourOf(doc) : null; if (edit && !t) return;
-    const st = edit ? wkSettings(doc) : { startTime: '19:00', endTime: '22:00', matchMinutes: 30, minWomenDoubles: 1 }; const v = t?.venue || {};
-    const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); const date = edit ? doc.date : ymdOf(d); // 기본값: 다음 금요일
+  function tourOpenForm(kind, fromDoc) {
+    const host = $('#tour-form-host'); if (!host) return; const edit = kind === 'edit'; const src = !edit && fromDoc && tourOf(fromDoc) ? fromDoc : null; /* src = [같은 날 하나 더]의 원본 대회 — 날짜·시간·코트·방식·회식을 그대로 채운다 */ const doc = edit ? W.doc : src; const t = doc ? tourOf(doc) : null; if (edit && !t) return;
+    const st = doc ? wkSettings(doc) : { startTime: '19:00', endTime: '22:00', matchMinutes: 30, minWomenDoubles: 1 }; const v = t?.venue || {};
+    const d = new Date(); d.setDate(d.getDate() + ((5 - d.getDay() + 7) % 7 || 7)); const date = doc ? doc.date : ymdOf(d); // 기본값: 다음 금요일 (수정·같은 날 하나 더는 그 대회의 날짜)
+    const dupName = src ? (() => { const used = new Set((W.index?.tours || []).filter((x) => x.date === src.date).map((x) => tourNameKey(x.name))); const base = t.name.replace(/(?:\s*\((?:[2-9]|10)\))+\s*$/, '').slice(0, 35).trimEnd() || t.name.slice(0, 35).trimEnd(); /* 끝의 ' (2)' 같은 번호는 떼고 다음 빈 번호를 붙인다 */ for (let i = 2; i <= TOUR_PER_DAY + 1; i++) { const nm = `${base} (${i})`; if (!used.has(tourNameKey(nm))) return nm; } return ''; })() : ''; // 같은 날 하나 더: 겹치지 않는 이름을 미리 넣어 둔다 (고쳐 쓰면 된다)
     const mm = [30, 60].includes(st.matchMinutes) ? [30, 60] : [30, 60, st.matchMinutes].sort((a, b) => a - b);
     const vf = (k, label, max, ph) => `<label>${label} <input name="v_${k}" maxlength="${max}" value="${esc(v[k] || '')}" placeholder="${ph}"></label>`;
     T.form = kind;
-    host.innerHTML = `<div class="tour-card tour-form-card"><h3>${edit ? '대회 수정' : '새 대회 만들기'}</h3>
+    host.innerHTML = `<div class="tour-card tour-form-card"><h3>${edit ? '대회 수정' : src ? `같은 날 하나 더 만들기 <span class="sub">'${esc(t.name)}' 의 날짜·시간·코트 그대로</span>` : '새 대회 만들기'}</h3>
       <form id="tour-form" class="tour-form ${t?.mode === 'team' ? 'team' : ''}" data-kind="${kind}" autocomplete="off">
-        <div class="row"><label class="inline grow">대회명 <input name="name" maxlength="40" required placeholder="예: 2026년 4분기 테니스윗 대회" value="${esc(t?.name || '')}"></label><label class="inline">날짜 <input name="date" type="date" required value="${esc(date)}" ${edit ? 'disabled title="날짜를 바꾸려면 이 대회를 삭제하고 새로 만드세요"' : ''}></label></div>
+        <div class="row"><label class="inline grow">대회명 <input name="name" maxlength="40" required placeholder="예: 2026년 4분기 테니스윗 대회" value="${esc(edit ? t.name : dupName)}"></label><label class="inline">날짜 <input name="date" type="date" required value="${esc(date)}" ${edit ? 'disabled title="날짜를 바꾸려면 이 대회를 삭제하고 새로 만드세요"' : src ? 'readonly title="같은 날짜에 하나 더 만듭니다 · 다른 날짜는 목록의 [대회 만들기]"' : ''}></label></div>${edit ? '' : '<div class="row tour-same-day" id="tour-same-day"></div>'}
         <div class="row tour-mode"><span class="sub">방식</span><label class="inline radio"><input type="radio" name="mode" value="rotation" ${t?.mode === 'team' ? '' : 'checked'}> 개인전 <small>파트너를 바꿔 가며 · 개인 순위</small></label><label class="inline radio"><input type="radio" name="mode" value="team" ${t?.mode === 'team' ? 'checked' : ''}> 팀전 <small>팀 대 팀 · 팀 순위</small></label>
           <label class="inline tour-team-only">팀 수 <select name="teamCount" style="width:auto">${[2, 3, 4].map((n) => `<option value="${n}" ${(t?.teamCount || 2) === n ? 'selected' : ''}>${n}팀</option>`).join('')}</select></label><label class="inline tour-team-only grow">팀 이름 <input name="teamNames" maxlength="60" value="${esc(t ? t.teamNames.filter((x, i) => x !== `${i + 1}팀`).length ? t.teamNames.join(', ') : '' : '')}" placeholder="쉼표로 구분 · 예: 청팀, 백팀 (비우면 1팀, 2팀)"></label></div>
         <div class="row"><label class="inline">시작 <input name="startTime" type="time" value="${esc(st.startTime)}" style="width:auto"></label><label class="inline">종료 <input name="endTime" type="time" value="${esc(st.endTime)}" style="width:auto"></label><label class="inline">경기 <select name="matchMinutes" style="width:auto">${mm.map((x) => `<option value="${x}" ${st.matchMinutes === x ? 'selected' : ''}>${x}분</option>`).join('')}</select></label><label class="inline">여복 경기 수 <input name="minWomenDoubles" type="number" min="0" max="20" value="${st.minWomenDoubles ?? 1}" style="width:60px"></label></div>
         <span class="wk-ch-row"><span class="sub">2시간 구간별 코트 수 · 코트 번호 <small>(날짜를 고르면 그날 코트 예약에서 자동으로 채웁니다 · 번호를 비우면 1, 2…)</small></span><span id="tour-court-hours"></span><button type="button" class="small" id="tour-fill-courts">코트 예약에서 가져오기</button></span>
         <details class="tour-venue-form" ${v.name || v.addr || v.note ? 'open' : ''}><summary>회식 장소 (선택)</summary><div class="grid">${vf('name', '장소 이름', 60, '예: 통속으로')}${vf('time', '시간', 40, '예: 22:00부터')}${vf('addr', '주소', 120, '지도에 표시')}${vf('phone', '전화', 30, '')}${vf('menu', '메뉴·회비', 60, '')}${vf('note', '안내', 200, '')}</div></details>
-        <div class="row"><button type="submit" class="primary">${edit ? '수정 저장' : '🏆 대회 만들기'}</button><button type="button" id="tour-form-cancel">취소</button><span class="hint">대진표 비밀번호가 필요합니다. ${edit ? '시간·코트·방식·팀 수를 바꾸면 이미 만든 대진과 점수가 지워집니다 (이름·회식·여복 경기 수는 그대로).' : '대회는 같은 날 정기 모임과 따로 참가 신청을 받습니다. 대회에서는 잡복을 짜지 않습니다.'}</span></div>
+        <div class="row"><button type="submit" class="primary">${edit ? '수정 저장' : '🏆 대회 만들기'}</button><button type="button" id="tour-form-cancel">취소</button><span class="hint">대진표 비밀번호가 필요합니다. ${edit ? '시간·코트·방식·팀 수를 바꾸면 이미 만든 대진과 점수가 지워집니다 (이름·회식·여복 경기 수는 그대로).' : '대회는 같은 날 정기 모임과 따로 참가 신청을 받습니다. 대회에서는 잡복을 짜지 않습니다. 같은 날짜에 이름을 달리해 여러 개 만들어 둘 수 있습니다.'}</span></div>
       </form></div>`;
     const f = $('#tour-form'), box = $('#tour-court-hours'); wkRenderCourtInputs(f, box);
-    if (edit) { const cntAt = (h) => (doc.settings.courtsByHour && Number.isInteger(doc.settings.courtsByHour[String(h)]) ? doc.settings.courtsByHour[String(h)] : doc.settings.courts); const namesAt = (h) => doc.settings.courtNamesByHour?.[String(h)] || doc.settings.courtNames || []; for (const b of wkCourtBlocks({ startTime: st.startTime, endTime: st.endTime })) { const ci = f.querySelector(`[name="c_${b.key}"]`), ni = f.querySelector(`[name="n_${b.key}"]`); if (ci) ci.value = String(cntAt(b.from)); if (ni) ni.value = namesAt(b.from).slice(0, cntAt(b.from)).join(', '); } }
+    if (doc) { const cntAt = (h) => (doc.settings.courtsByHour && Number.isInteger(doc.settings.courtsByHour[String(h)]) ? doc.settings.courtsByHour[String(h)] : doc.settings.courts); const namesAt = (h) => doc.settings.courtNamesByHour?.[String(h)] || doc.settings.courtNames || []; for (const b of wkCourtBlocks({ startTime: st.startTime, endTime: st.endTime })) { const ci = f.querySelector(`[name="c_${b.key}"]`), ni = f.querySelector(`[name="n_${b.key}"]`); if (ci) ci.value = String(cntAt(b.from)); if (ni) ni.value = namesAt(b.from).slice(0, cntAt(b.from)).join(', '); } }
     else wkFillFromCourts({ quiet: true, form: f, box });
-    host.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); f.querySelector('[name=name]')?.focus({ preventScroll: true });
+    if (!edit) tourFormSameDay(f, src?.id);
+    host.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); f.querySelector('[name=name]')?.focus({ preventScroll: true }); if (src) f.querySelector('[name=name]')?.select();
+  }
+  /** 새 대회 폼: 고른 날짜에 이미 대회가 있으면 알리고, 그 대회의 참가자를 가져올지 고르게 한다 (같은 날짜에 이름을 달리해 여러 개 만들 수 있다) */
+  function tourFormSameDay(f, prefer) {
+    const box = f?.querySelector('#tour-same-day'); if (!box) return; const date = String(f.querySelector('[name=date]')?.value || ''); const same = (W.index?.tours || []).filter((x) => x.date === date);
+    if (!same.length) { box.innerHTML = ''; return; } // 비어 있으면 CSS(:empty)가 줄을 숨긴다 (.row 는 hidden 속성이 먹지 않는다)
+    const prev = f.querySelector('[name=copyFrom]'); const keep = prefer && same.some((x) => x.id === prefer) ? prefer : prev && (prev.value === '' || same.some((x) => x.id === prev.value)) ? prev.value : same[0].id; /* 고른 값은 유지, 처음에는 그날 첫 대회 ([같은 날 하나 더]는 그 원본 대회) */ const full = same.length >= TOUR_PER_DAY;
+    box.innerHTML = `<span class="sub">이 날짜에 대회가 ${same.length}개 있습니다: ${same.map((x) => `'${esc(x.name)}'`).join(', ')} · ${full ? `같은 날짜에는 ${TOUR_PER_DAY}개까지라 더 만들 수 없습니다` : '이름을 다르게 지으면 하나 더 만들 수 있습니다'}</span>${full ? '' : `<label class="inline">참가자 <select name="copyFrom" style="width:auto"><option value="">가져오지 않음 (새로 받기)</option>${same.map((x) => `<option value="${esc(x.id)}" ${x.id === keep ? 'selected' : ''}>'${esc(x.name)}'에서 가져오기</option>`).join('')}</select></label>`}`;
   }
   /** 폼 → 대회 값 (틀리면 알리고 null) */
   function tourFormValue(f) {
@@ -3252,26 +3327,32 @@
     const venue = {}; for (const k of VENUE_FIELDS) venue[k] = String(fd.get('v_' + k) || '').trim();
     return { name, mode, teamCount, teamNames, venue, settings: clean };
   }
-  const TOUR_MSG = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', EXISTS: '그 날짜에는 이미 대회가 있습니다 · 목록에서 열어 수정하세요', CLOSED: '지난 날짜의 대회는 만들거나 뺄 수 없습니다', INVALID: '저장 서버가 대회를 받지 못했습니다 — 저장 서버(Apps Script)가 옛 버전이면 관리자가 새 버전으로 배포해야 합니다', NOPROXY: '저장 서버가 연결되지 않아 지금은 관리자만 만들 수 있습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' };
+  const TOUR_MSG = { AUTH: '대진표 비밀번호가 맞지 않습니다 · 다시 입력하세요', EXISTS: '같은 날짜에 같은 이름의 대회가 이미 있습니다 · 이름을 다르게 지어 주세요', OLDPROXY: '저장 서버(Apps Script)가 옛 버전이라 같은 날짜에 대회를 하나 더 만들 수 없습니다 · tools/gas-proxy/Code.gs 를 새 버전으로 배포한 뒤 다시 눌러 주세요', FULL: `같은 날짜에는 대회를 ${TOUR_PER_DAY}개까지 만들 수 있습니다 · 쓰지 않는 대회를 삭제하세요`, CLOSED: '지난 날짜의 대회는 만들거나 뺄 수 없습니다', INVALID: '저장 서버가 대회를 받지 못했습니다 — 저장 서버(Apps Script)가 옛 버전이면 관리자가 새 버전으로 배포해야 합니다', NOPROXY: '저장 서버가 연결되지 않아 지금은 관리자만 만들 수 있습니다', BUSY: '지금 저장이 몰려 있습니다 · 잠시 후 다시 시도하세요', NETWORK: '연결에 실패했습니다 · 다시 시도하세요', GITHUB: '저장하지 못했습니다 · 잠시 후 다시 시도하세요' };
   async function tourFormSubmit(f) {
     const v = tourFormValue(f); if (!v) return; const btn = f.querySelector('button[type=submit]');
     if (f.dataset.kind === 'edit') {
-      const doc = W.doc; const t = tourOf(doc); if (!t || wkClosed(doc)) return; if (!(await wkRequireAuth('tour'))) return;
+      const doc = W.doc; const t = tourOf(doc); if (!t || wkClosed(doc)) return;
+      if ((W.index?.tours || []).some((x) => x.date === doc.date && x.id !== doc.id && tourNameKey(x.name) === tourNameKey(v.name))) { toast('같은 날짜에 같은 이름의 대회가 있습니다 · 이름을 다르게 지어 주세요', 5000); f.querySelector('[name=name]')?.focus(); return; }
+      if (!(await wkRequireAuth('tour'))) return;
       if (v.mode === 'rotation') v.teamCount = t.teamCount; // 개인전은 팀 수를 쓰지 않는다 (숨은 칸 값 때문에 대진이 지워지지 않게)
       const shape = (s) => [s.startTime, s.endTime, s.matchMinutes, s.courts, JSON.stringify(s.courtsByHour || null)].join('|'); const teamShape = v.mode !== t.mode || (v.mode === 'team' && v.teamCount !== t.teamCount); const reset = teamShape || shape(v.settings) !== shape(doc.settings);
       if (reset && (doc.schedule || (t.teams && teamShape)) && !confirm(`시간·코트·방식·팀 수가 바뀌어 ${[doc.schedule ? '만든 대진과 점수' : '', t.teams && teamShape ? '팀 구성' : ''].filter(Boolean).join('·')}이(가) 지워집니다. 저장할까요?`)) return;
       btn.disabled = true; const ok = await wkSend({ op: 'tour-set', base: doc.rev, value: v }); btn.disabled = false; if (ok) { tourCloseForm(); toast('대회 정보를 저장했습니다'); } renderTournament(); return; // 거절되면 폼(입력한 값)을 그대로 둔다
     }
     const date = String(new FormData(f).get('date') || ''); if (!courtsDateOk(date, Date.now())) { toast('날짜를 확인하세요'); return; } if (wkClosed({ date })) { toast('지난 날짜에는 대회를 만들 수 없습니다'); return; }
-    if ((W.index?.tours || []).some((x) => x.date === date)) { toast(`${fmtDate(date)}에는 이미 대회가 있습니다 · 목록에서 열어 수정하세요`, 5000); return; }
+    const sameDay = (W.index?.tours || []).filter((x) => x.date === date); // 같은 날짜에 여러 대회: 이름이 달라야 한다 (저장 서버도 같은 규칙 — 같은 이름이면 EXISTS)
+    if (sameDay.some((x) => tourNameKey(x.name) === tourNameKey(v.name))) { toast(`${fmtDate(date)}에 같은 이름의 대회가 이미 있습니다 · 이름을 다르게 지어 주세요`, 5000); f.querySelector('[name=name]')?.focus(); return; }
+    if (sameDay.length >= TOUR_PER_DAY) { toast(TOUR_MSG.FULL, 5000); return; }
+    const copyFrom = String(new FormData(f).get('copyFrom') || ''); const copyOk = TOUR_ID_RE.test(copyFrom) && sameDay.some((x) => x.id === copyFrom); // 참가자 가져오기 (같은 날 대회에서만)
+    if (copyOk && [...W.pending, ...W.failed].some((op) => op.session === copyFrom)) { toast('참가자를 가져올 대회에 아직 저장하지 못한 변경이 있습니다 · 저장된 뒤(또는 "다시 시도" 후) 다시 눌러 주세요', 6000); return; }
     if (!wkCanWrite()) { toast(TOUR_MSG.NOPROXY); return; } if (!(await wkRequireAuth('tour'))) return;
     const label = btn.innerHTML; btn.disabled = true; btn.textContent = '만드는 중… (5초 정도)';
     try {
-      const res = await tourPostOp({ op: 'tour-create', value: { date, ...v } });
-      if (!res.ok && res.code === 'EXISTS' && res.doc && TOUR_ID_RE.test(String(res.doc.id || ''))) { tourIndexLocal(res.index, res.doc.tour ? res.doc : null); renderTournament(); if (confirm(`${fmtDate(date)}에는 이미 '${res.doc.tour?.name || '대회'}'가 있습니다. 그 대회를 열까요?`)) tourOpen(res.doc.id); return; }
-      if (!res.ok) { if (res.code === 'AUTH') wkForgetKey(); toast(res.detail && String(res.detail).startsWith('INDEX') ? '대회 파일은 만들었지만 목록에 넣지 못했습니다 · 같은 내용으로 다시 [대회 만들기]를 누르세요' : TOUR_MSG[res.code] || '만들지 못했습니다: ' + (res.code || '?'), 6000); return; }
+      const res = await tourPostOp({ op: 'tour-create', value: { date, ...v, multi: true, ...(copyOk ? { copyFrom } : {}) } });
+      if (!res.ok && res.code === 'EXISTS' && res.doc && TOUR_ID_RE.test(String(res.doc.id || ''))) { tourIndexLocal(res.index, res.doc.tour ? res.doc : null); renderTournament(); if (res.doc.tour && tourNameKey(res.doc.tour.name) !== tourNameKey(v.name)) { alert('저장 서버(Apps Script)가 옛 버전이라 같은 날짜에 대회를 하나 더 만들 수 없습니다.\n관리자가 tools/gas-proxy/Code.gs 를 새 버전으로 배포한 뒤 다시 눌러 주세요.'); return; } /* 이름이 다른데 EXISTS = 날짜마다 하나만 만들던 옛 서버 */ if (confirm(`${fmtDate(date)}에는 이미 '${res.doc.tour?.name || '대회'}'가 있습니다. 그 대회를 열까요?`)) tourOpen(res.doc.id); return; }
+      if (!res.ok) { if (res.code === 'AUTH') wkForgetKey(); toast(res.detail && String(res.detail).startsWith('INDEX') ? '대회 파일은 만들었지만 목록에 넣지 못했습니다 · 이름을 바꾸지 말고 그대로 다시 [대회 만들기]를 누르세요' : TOUR_MSG[res.code] || '만들지 못했습니다: ' + (res.code || '?'), 6000); return; }
       if (res.doc && !WK_MOCK) wkFresh[`weekly/sessions/${res.doc.id}.json`] = { v: JSON.parse(JSON.stringify(res.doc)), t: Date.now() };
-      tourIndexLocal(res.index, res.doc); toast(`'${v.name}' 대회를 만들었습니다 · 이제 참가 신청을 받으세요`, 5000); tourOpen(res.doc.id); updateCoverTour();
+      delete W.cache[res.doc.id]; tourIndexLocal(res.index, res.doc); toast(res.copied ? `'${v.name}' 대회를 만들었습니다 · 참가자 ${res.copied}명을 가져왔습니다` : `'${v.name}' 대회를 만들었습니다 · ${copyOk ? '가져올 참가자가 없어 새로 받습니다' : '이제 참가 신청을 받으세요'}`, 5000); tourOpen(res.doc.id); updateCoverTour();
     } finally { btn.disabled = false; btn.innerHTML = label; }
   }
   /** 대회 목록에서 빼기 (파일은 남는다). 지난 대회는 관리자만 */
@@ -3280,7 +3361,7 @@
     if (!confirm(`'${t.name}' 대회를 목록에서 뺄까요?${n ? `\n참가 ${n}명·대진·점수 기록은 저장소 파일에 그대로 남습니다.` : ''}`)) return;
     if (!(await wkRequireAuth('tour'))) return;
     const res = await tourPostOp({ op: 'tour-del', session: doc.id }); if (!res.ok) { if (res.code === 'AUTH') wkForgetKey(); toast(TOUR_MSG[res.code] || '빼지 못했습니다: ' + (res.code || '?'), 5000); return; }
-    if (res.index) tourIndexLocal(res.index, null); else if (W.index) W.index.tours = (W.index.tours || []).filter((x) => x.id !== doc.id);
+    delete W.cache[doc.id]; if (res.index) tourIndexLocal(res.index, null); else if (W.index) W.index.tours = (W.index.tours || []).filter((x) => x.id !== doc.id);
     W.failed = W.failed.filter((op) => op.session !== doc.id); W.pending = W.pending.filter((op) => op.session !== doc.id); if (res.doc && W.id === doc.id) wkAdopt(res.doc, res.rev); // 뺀 대회에 대한 옛 변경이 다시 보내져 되살아나지 않게
     toast(`'${t.name}' 대회를 목록에서 뺐습니다`); tourClose(); updateCoverTour();
   }
@@ -3308,14 +3389,22 @@
     const v = body.value && typeof body.value === 'object' ? body.value : {}; const date = String(v.date || '');
     if (!courtsDateOk(date, Date.now())) return { ok: false, code: 'INVALID' }; if (wkClosed({ date })) return { ok: false, code: 'CLOSED' };
     const meta = tourMeta({ name: v.name, mode: v.mode, teamCount: v.teamCount, teamNames: v.teamNames, venue: v.venue, teams: null }); const st = tourSettings(v.settings); if (!meta || !st) return { ok: false, code: 'INVALID' };
-    const id = date + 't'; const idx = await dataRead('weekly/index.json'); const listed = Array.isArray(idx?.tours) && idx.tours.some((x) => x && x.id === id);
-    let doc = null, fail = null, found = null;
-    const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur && (listed || (cur.tour && !cur.deleted))) { found = cur; return null; } doc = tourNewDoc(id, date, meta, st, cur ? cur.rev : 0, now); return doc; }, `대회 ${id} 만들기: ${meta.name}`); // 살아 있는 대회 파일이 이미 있으면 덮어쓰지 않는다 (목록만 빠졌으면 목록을 고친다 — Code.gs 와 같게)
-    if (found) { let index = null; if (!listed) await dataAdminUpdate('weekly/index.json', (c) => { index = tourIndexPut(c, tourIndexEntry(found), null, now); return index; }, `대회 ${id} 목록 복구`); fail = { ok: false, code: 'EXISTS', doc: found, index }; }
-    if (fail) return fail; if (!ok1 || !doc) return { ok: false, code: 'GITHUB' };
+    const readNow = async (p) => { let got = null, seen = false; await dataAdminUpdate(p, (cur) => { seen = true; got = cur ? JSON.parse(JSON.stringify(cur)) : null; return null; }, ''); if (!seen) throw new Error('READ'); return got; }; /* 읽지 못했으면(토큰 취소·조회 실패) '파일 없음'으로 넘기지 않고 멈춘다 */ // 쓰지 않고 지금 저장된 파일만 읽는다 (모의 저장소 / 관리자 토큰으로 원본 — Pages 사본은 1분쯤 늦다)
+    let idx; try { idx = await readNow('weekly/index.json'); } catch { return { ok: false, code: 'GITHUB' }; } const listedIds = new Set((Array.isArray(idx?.tours) ? idx.tours : []).filter((x) => x && typeof x.id === 'string').map((x) => x.id));
+    const ids = tourIdsOf(date); const slots = []; let scan = true; // 같은 날짜에 여러 대회 — Code.gs tourPost 와 같은 순서: 자리(<날짜>t, t2 … t9)를 차례로 읽고, 파일이 없고 뒤쪽 자리가 목록에도 없으면 멈춘다
+    for (let i = 0; i < ids.length; i++) { let d = null; if (scan) { try { d = await readNow(`weekly/sessions/${ids[i]}.json`); } catch { return { ok: false, code: 'GITHUB' }; } if (!d && !ids.slice(i + 1).some((x) => listedIds.has(x))) scan = false; } slots.push({ id: ids[i], listed: listedIds.has(ids[i]), doc: d && typeof d === 'object' ? d : null }); }
+    const pick = tourPickSlot(slots, meta.name);
+    let rIndex = null; if (pick.repair.length) await dataAdminUpdate('weekly/index.json', (c) => { let o = null; for (const d of pick.repair) { const r = tourIndexPut(o || c, tourIndexEntry(d), null, now); if (r) o = r; } rIndex = o; return o; }, `대회 목록 복구 (${date})`); // 살아 있는데 목록에서만 빠진 대회: 덮어쓰지 않고 목록을 고친다
+    if (pick.same) return { ok: false, code: 'EXISTS', doc: pick.same.doc, index: pick.same.listed ? null : rIndex }; // 같은 날 같은 이름의 대회가 이미 있다
+    if (!pick.free) return { ok: false, code: 'FULL' };
+    if (!WK_MOCK && W.index?.proxy && pick.free !== date + 't') { try { const r = await fetch(W.index.proxy, { method: 'POST', body: JSON.stringify({ v: 1, club: 'tennisweet', session: '2000-01-01', op: 'ping' }), redirect: 'follow' }); const j = await r.json(); if (j && j.ok && (j.v | 0) < PROXY_VERSION_NEED) return { ok: false, code: 'OLDPROXY' }; } catch {} } // 관리자 토큰 경로: 저장 서버가 옛 버전이면 둘째 자리부터는 만들지 않는다 (옛 서버는 t2 … 를 받지 못하고 목록에서 지운다). 서버에 닿지 않으면 막지 않는다
+    const id = pick.free; let att = null; const from = String(v.copyFrom || ''); if (from && from !== id) { const ss = slots.find((x) => x.id === from); if (ss && ss.doc && ss.doc.tour && !ss.doc.deleted) att = tourCopyAttendance(ss.doc.attendance, st); } // 참가자 가져오기 (같은 날 다른 대회에서)
+    let doc = null, found = null;
+    const ok1 = await dataAdminUpdate(`weekly/sessions/${id}.json`, (cur) => { if (cur && cur.tour && !cur.deleted) { found = cur; return null; } doc = tourNewDoc(id, date, meta, st, cur ? cur.rev : 0, now); if (att) doc.attendance = att; return doc; }, `대회 ${id} 만들기: ${meta.name}`); // 그사이 다른 기기가 같은 자리에 만들었으면 덮어쓰지 않는다
+    if (found) return { ok: false, code: 'BUSY' }; if (!ok1 || !doc) return { ok: false, code: 'GITHUB' };
     let index = null; const ok2 = await dataAdminUpdate('weekly/index.json', (c) => { index = tourIndexPut(c, tourIndexEntry(doc), null, now); return index; }, `대회 ${id} 목록 추가`);
     if (!ok2 && index) return { ok: false, code: 'GITHUB', detail: 'INDEX', doc };
-    await wkProxyRefresh(id); return { ok: true, rev: doc.rev, doc, index };
+    await wkProxyRefresh(id); return { ok: true, rev: doc.rev, doc, index, copied: att ? Object.keys(att).length : 0 };
   }
   const LIVE_ID = 'live';
   async function tournamentRefresh() {
@@ -3349,7 +3438,7 @@
   $('#tab-tournament')?.addEventListener('change', (e) => { const f = e.target.closest?.('#tour-form'); if (!f) return; const nm = e.target.name;
     if (nm === 'mode') f.classList.toggle('team', f.querySelector('[name=mode]:checked')?.value === 'team');
     if (nm === 'startTime' || nm === 'endTime') wkRenderCourtInputs(f, $('#tour-court-hours'));
-    if (nm === 'date') wkFillFromCourts({ form: f, box: $('#tour-court-hours') }); }); // 날짜를 고르면 그 날 코트 예약으로 시간·코트를 채운다
+    if (nm === 'date') { wkFillFromCourts({ form: f, box: $('#tour-court-hours') }); tourFormSameDay(f); } }); // 날짜를 고르면 그 날 코트 예약으로 시간·코트를 채우고, 그날 이미 있는 대회를 알린다
   $('#tab-tournament')?.addEventListener('click', async (e) => {
     if (e.target.closest('#tour-new')) { tourOpenForm('new'); renderTournament(); return; }
     if (e.target.closest('#tour-form-cancel')) { tourCloseForm(); renderTournament(); return; }
@@ -3378,7 +3467,7 @@
       enterViewOnly(published ? '' : '게시본(data/tournament.json)이 아직 없습니다. 관리자 페이지에서 만들어 게시하세요.');
       render();
       const want = (location.hash || '').replace('#', '');
-      const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
+      const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t[2-9]?)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } // 첫 화면 = 포스터 커버
       weeklyBoot(); tournamentRefresh();
       // 방문자: 게시본이 바뀌면 자동 갱신 (현장에서 관리자가 게시하면 곧 반영)
       let lastPub = published?.publishedAt || null;
@@ -3405,6 +3494,6 @@
     bannerAdmin(`이 브라우저의 작업본을 편집 중${published?.publishedAt ? ` · 현재 게시본 ${new Date(published.publishedAt).toLocaleString('ko-KR')}` : ''} · 바꾼 내용은 🚀 게시하기를 눌러야 모두에게 반영됩니다`);
     adminKey = await deriveKey(pw); await decryptAll();
     if (await syncTokenFromPublished(published)) toast('게시 토큰을 게시본에서 가져왔습니다 · 바로 게시할 수 있습니다');
-    render(); { const want = (location.hash || '').replace('#', ''); const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } } weeklyBoot(); tournamentRefresh();
+    render(); { const want = (location.hash || '').replace('#', ''); const tm = /^tournament\/(\d{4}-\d{2}-\d{2}t[2-9]?)$/.exec(want); if (tm) { T.open = tm[1]; showTab('tournament'); } else if (['weekly', 'courts', 'tournament', 'schedule', 'standings', 'players', 'units', 'setup', 'venue'].includes(want)) showTab(want); else { showTab('weekly'); showCover(true); } } weeklyBoot(); tournamentRefresh();
   })();
 })();
