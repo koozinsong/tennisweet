@@ -1,0 +1,135 @@
+{
+ "v": 1,
+ "id": "2026-11-26t3",
+ "date": "2026-11-26",
+ "status": "open",
+ "rev": 1,
+ "tour": {
+  "name": "2026년 동계 대회 (3)",
+  "mode": "rotation",
+  "teamCount": 2,
+  "teamNames": [
+   "1팀",
+   "2팀"
+  ],
+  "venue": {
+   "name": "",
+   "time": "",
+   "addr": "",
+   "phone": "",
+   "menu": "",
+   "note": ""
+  },
+  "teams": null
+ },
+ "settings": {
+  "startTime": "19:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtsByHour": {
+   "19": 2,
+   "20": 3,
+   "21": 3
+  },
+  "courtNamesByHour": {
+   "20": [
+    "1",
+    "2",
+    "3"
+   ],
+   "21": [
+    "1",
+    "2",
+    "3"
+   ]
+  }
+ },
+ "attendance": {
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "328ljva": {
+   "n": "이종민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t136ug1": {
+   "n": "김성모",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:3igyma": {
+   "n": "임영균",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": null,
+ "done": {},
+ "results": {},
+ "createdAt": "2026-11-22T09:15:51.428Z"
+}
