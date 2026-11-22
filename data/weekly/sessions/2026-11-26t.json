@@ -1,0 +1,291 @@
+{
+ "v": 1,
+ "id": "2026-11-26t",
+ "date": "2026-11-26",
+ "status": "open",
+ "rev": 82,
+ "tour": {
+  "name": "2026년 동계 대회",
+  "mode": "rotation",
+  "teamCount": 2,
+  "teamNames": [
+   "1팀",
+   "2팀"
+  ],
+  "venue": {
+   "name": "",
+   "time": "",
+   "addr": "",
+   "phone": "",
+   "menu": "",
+   "note": ""
+  },
+  "teams": null
+ },
+ "settings": {
+  "startTime": "20:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtNames": [
+   "1",
+   "2",
+   "3"
+  ]
+ },
+ "attendance": {
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "328ljva": {
+   "n": "이종민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t136ug1": {
+   "n": "김성모",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t4lcpvt": {
+   "n": "고서영",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "18:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:3igyma": {
+   "n": "임영균",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": {
+  "seed": 802038,
+  "gen": 5,
+  "fromSlot": 0,
+  "inputHash": "1qnycbi~fmx",
+  "at": "2026-11-22T06:59:18.660Z",
+  "by": "h0teikh",
+  "matches": [
+   {
+    "id": "s0c1",
+    "slot": 0,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:243v8q3"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:k45yesm"
+    ]
+   },
+   {
+    "id": "s0c2",
+    "slot": 0,
+    "court": 2,
+    "aIds": [
+     "p:t136ug1",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:g:3igyma",
+     "p:uzqomod"
+    ]
+   },
+   {
+    "id": "s0c3",
+    "slot": 0,
+    "court": 3,
+    "aIds": [
+     "p:g261xhp",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:328ljva",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s1c1",
+    "slot": 1,
+    "court": 1,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:lvcpucm"
+    ]
+   },
+   {
+    "id": "s1c2",
+    "slot": 1,
+    "court": 2,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s1c3",
+    "slot": 1,
+    "court": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:t136ug1",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:lvcpucm",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:328ljva",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:k45yesm",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s2c3",
+    "slot": 2,
+    "court": 3,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:t136ug1"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:t4lcpvt",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s3c2",
+    "slot": 3,
+    "court": 2,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:t136ug1"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s3c3",
+    "slot": 3,
+    "court": 3,
+    "aIds": [
+     "p:g:3igyma",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:lvcpucm"
+    ]
+   }
+  ]
+ },
+ "done": {
+  "s1c1": true
+ },
+ "results": {},
+ "createdAt": "2026-11-09T04:27:12.347Z",
+ "updatedAt": "2026-11-22T10:07:45.901Z"
+}

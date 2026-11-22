@@ -1,0 +1,329 @@
+{
+ "v": 1,
+ "id": "2026-10-22",
+ "date": "2026-10-22",
+ "status": "open",
+ "rev": 31,
+ "settings": {
+  "startTime": "18:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtsByHour": {
+   "18": 1,
+   "19": 1,
+   "20": 3,
+   "21": 3
+  },
+  "courtNamesByHour": {
+   "18": [
+    "2"
+   ],
+   "19": [
+    "2"
+   ],
+   "20": [
+    "1",
+    "2",
+    "3"
+   ],
+   "21": [
+    "1",
+    "2",
+    "3"
+   ]
+  }
+ },
+ "attendance": {
+  "g261xhp": {
+   "n": "김진모",
+   "g": "M",
+   "from": "19:00",
+   "until": "21:00"
+  },
+  "lvcpucm": {
+   "n": "박상용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "ibws5ld": {
+   "n": "박석환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "smnajd5": {
+   "n": "윤성민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "k45yesm": {
+   "n": "이정선",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "ev1tqiv": {
+   "n": "이현용",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "328ljva": {
+   "n": "이종민",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "243v8q3": {
+   "n": "김지선",
+   "g": "F",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "g:18g137s": {
+   "n": "성민지인",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "45sqltb": {
+   "n": "정배근",
+   "g": "M",
+   "from": "19:00",
+   "until": "22:00"
+  },
+  "rw9ebrx": {
+   "n": "이석우",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:1lkdwpx": {
+   "n": "다운지인",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": {
+  "seed": 580871,
+  "gen": 2,
+  "fromSlot": 0,
+  "inputHash": "ecr0dg",
+  "at": "2026-10-22T06:46:31.644Z",
+  "by": "t136ug1",
+  "matches": [
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:243v8q3",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s4c1",
+    "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:g:1lkdwpx",
+     "p:328ljva"
+    ]
+   },
+   {
+    "id": "s4c2",
+    "slot": 4,
+    "court": 2,
+    "aIds": [
+     "p:smnajd5",
+     "p:g:18g137s"
+    ],
+    "bIds": [
+     "p:ibws5ld",
+     "p:rw9ebrx"
+    ]
+   },
+   {
+    "id": "s4c3",
+    "slot": 4,
+    "court": 3,
+    "aIds": [
+     "p:g261xhp",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:ev1tqiv",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
+    "court": 1,
+    "aIds": [
+     "p:g:18g137s",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:328ljva",
+     "p:45sqltb"
+    ]
+   },
+   {
+    "id": "s5c2",
+    "slot": 5,
+    "court": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:t5tmwl5"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:g:1lkdwpx"
+    ]
+   },
+   {
+    "id": "s5c3",
+    "slot": 5,
+    "court": 3,
+    "aIds": [
+     "p:g261xhp",
+     "p:ibws5ld"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:ev1tqiv"
+    ]
+   },
+   {
+    "id": "s6c1",
+    "slot": 6,
+    "court": 1,
+    "aIds": [
+     "p:g:1lkdwpx",
+     "p:ev1tqiv"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:g:18g137s"
+    ]
+   },
+   {
+    "id": "s6c2",
+    "slot": 6,
+    "court": 2,
+    "aIds": [
+     "p:nba8nn1",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:smnajd5",
+     "p:328ljva"
+    ]
+   },
+   {
+    "id": "s6c3",
+    "slot": 6,
+    "court": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:lvcpucm"
+    ],
+    "bIds": [
+     "p:45sqltb",
+     "p:rw9ebrx"
+    ]
+   },
+   {
+    "id": "s7c1",
+    "slot": 7,
+    "court": 1,
+    "aIds": [
+     "p:k45yesm",
+     "p:nba8nn1"
+    ],
+    "bIds": [
+     "p:g:1lkdwpx",
+     "p:g:18g137s"
+    ]
+   },
+   {
+    "id": "s7c2",
+    "slot": 7,
+    "court": 2,
+    "aIds": [
+     "p:243v8q3",
+     "p:uzqomod"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:rw9ebrx"
+    ]
+   },
+   {
+    "id": "s7c3",
+    "slot": 7,
+    "court": 3,
+    "aIds": [
+     "p:ibws5ld",
+     "p:328ljva"
+    ],
+    "bIds": [
+     "p:smnajd5",
+     "p:lvcpucm"
+    ]
+   }
+  ]
+ },
+ "done": {},
+ "results": {},
+ "createdAt": "2026-10-19T08:59:14.193Z",
+ "updatedAt": "2026-10-22T07:07:59.578Z"
+}

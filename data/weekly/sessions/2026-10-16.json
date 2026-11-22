@@ -1,0 +1,304 @@
+{
+ "v": 1,
+ "id": "2026-10-16",
+ "date": "2026-10-16",
+ "status": "open",
+ "rev": 22,
+ "settings": {
+  "startTime": "18:00",
+  "endTime": "22:00",
+  "matchMinutes": 30,
+  "breakMinutes": 0,
+  "courts": 3,
+  "minWomenDoubles": 1,
+  "courtsByHour": {
+   "18": 1,
+   "19": 1,
+   "20": 3,
+   "21": 3
+  },
+  "courtNamesByHour": {
+   "18": [
+    "1"
+   ],
+   "19": [
+    "1"
+   ],
+   "20": [
+    "1",
+    "2",
+    "3"
+   ],
+   "21": [
+    "1",
+    "2",
+    "3"
+   ]
+  }
+ },
+ "attendance": {
+  "nba8nn1": {
+   "n": "윤성환",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "uzqomod": {
+   "n": "이상학",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "t5tmwl5": {
+   "n": "정다운",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "18qv5bz": {
+   "n": "신윤호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "df9dtam": {
+   "n": "성기호",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "6kn0dof": {
+   "n": "승철홍",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:acjvjb": {
+   "n": "다운님 지인",
+   "g": "F",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "g:ivqdga": {
+   "n": "테일러브릿지",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "g:2wjdu9": {
+   "n": "티커",
+   "g": "M",
+   "from": "18:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
+  },
+  "g:e97r1x": {
+   "n": "이겨이겨",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true,
+   "lv": 3.5
+  },
+  "g:emliyd": {
+   "n": "홀꼬루네",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "rw9ebrx": {
+   "n": "이석우",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00"
+  },
+  "g:pwhyy5": {
+   "n": "beombeom",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  },
+  "g:3u591u": {
+   "n": "하상",
+   "g": "M",
+   "from": "20:00",
+   "until": "22:00",
+   "guest": true
+  }
+ },
+ "schedule": {
+  "seed": 774560,
+  "gen": 7,
+  "fromSlot": 0,
+  "inputHash": "754l4",
+  "at": "2026-10-16T05:13:47.746Z",
+  "by": "t136ug1",
+  "matches": [
+   {
+    "id": "s4c1",
+    "slot": 4,
+    "court": 1,
+    "aIds": [
+     "p:g:2wjdu9",
+     "p:g:emliyd"
+    ],
+    "bIds": [
+     "p:g:ivqdga",
+     "p:g:e97r1x"
+    ]
+   },
+   {
+    "id": "s4c2",
+    "slot": 4,
+    "court": 2,
+    "aIds": [
+     "p:18qv5bz",
+     "p:rw9ebrx"
+    ],
+    "bIds": [
+     "p:g:acjvjb",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s4c3",
+    "slot": 4,
+    "court": 3,
+    "aIds": [
+     "p:g:pwhyy5",
+     "p:t5tmwl5"
+    ],
+    "bIds": [
+     "p:g:3u591u",
+     "p:6kn0dof"
+    ]
+   },
+   {
+    "id": "s5c1",
+    "slot": 5,
+    "court": 1,
+    "aIds": [
+     "p:uzqomod",
+     "p:g:ivqdga"
+    ],
+    "bIds": [
+     "p:g:acjvjb",
+     "p:g:e97r1x"
+    ]
+   },
+   {
+    "id": "s5c2",
+    "slot": 5,
+    "court": 2,
+    "aIds": [
+     "p:6kn0dof",
+     "p:g:2wjdu9"
+    ],
+    "bIds": [
+     "p:18qv5bz",
+     "p:g:3u591u"
+    ]
+   },
+   {
+    "id": "s5c3",
+    "slot": 5,
+    "court": 3,
+    "aIds": [
+     "p:g:pwhyy5",
+     "p:g:emliyd"
+    ],
+    "bIds": [
+     "p:t5tmwl5",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s6c1",
+    "slot": 6,
+    "court": 1,
+    "aIds": [
+     "p:t5tmwl5",
+     "p:g:emliyd"
+    ],
+    "bIds": [
+     "p:g:acjvjb",
+     "p:g:2wjdu9"
+    ]
+   },
+   {
+    "id": "s6c2",
+    "slot": 6,
+    "court": 2,
+    "aIds": [
+     "p:g:ivqdga",
+     "p:df9dtam"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:g:pwhyy5"
+    ]
+   },
+   {
+    "id": "s6c3",
+    "slot": 6,
+    "court": 3,
+    "aIds": [
+     "p:g:e97r1x",
+     "p:rw9ebrx"
+    ],
+    "bIds": [
+     "p:g:3u591u",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s7c1",
+    "slot": 7,
+    "court": 1,
+    "aIds": [
+     "p:g:acjvjb",
+     "p:g:ivqdga"
+    ],
+    "bIds": [
+     "p:g:3u591u",
+     "p:df9dtam"
+    ]
+   },
+   {
+    "id": "s7c2",
+    "slot": 7,
+    "court": 2,
+    "aIds": [
+     "p:18qv5bz",
+     "p:g:2wjdu9"
+    ],
+    "bIds": [
+     "p:uzqomod",
+     "p:g:e97r1x"
+    ]
+   },
+   {
+    "id": "s7c3",
+    "slot": 7,
+    "court": 3,
+    "aIds": [
+     "p:g:pwhyy5",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:rw9ebrx",
+     "p:g:emliyd"
+    ]
+   }
+  ]
+ },
+ "done": {},
+ "results": {},
+ "createdAt": "2026-10-16T01:40:34.742Z",
+ "updatedAt": "2026-10-16T05:13:48.818Z"
+}
