@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 120,
+ "rev": 121,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -123,11 +123,11 @@
   }
  },
  "schedule": {
-  "seed": 886206,
-  "gen": 2,
+  "seed": 139283,
+  "gen": 3,
   "fromSlot": 0,
   "inputHash": "1qdfeaj~fmx",
-  "at": "2026-11-24T22:50:08.367Z",
+  "at": "2026-11-24T22:52:17.446Z",
   "by": "t4lcpvt",
   "matches": [
    {
@@ -148,12 +148,12 @@
     "slot": 1,
     "court": 1,
     "aIds": [
-     "p:k45yesm",
-     "p:t5tmwl5"
+     "p:328ljva",
+     "p:lvcpucm"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:243v8q3"
+     "p:45sqltb",
+     "p:g:3igyma"
     ]
    },
    {
@@ -161,72 +161,7 @@
     "slot": 1,
     "court": 2,
     "aIds": [
-     "p:45sqltb",
-     "p:6kn0dof"
-    ],
-    "bIds": [
-     "p:g261xhp",
-     "p:t136ug1"
-    ]
-   },
-   {
-    "id": "s1c3",
-    "slot": 1,
-    "court": 3,
-    "aIds": [
-     "p:328ljva",
-     "p:uzqomod"
-    ],
-    "bIds": [
-     "p:g:3igyma",
-     "p:nba8nn1"
-    ]
-   },
-   {
-    "id": "s2c1",
-    "slot": 2,
-    "court": 1,
-    "aIds": [
-     "p:lvcpucm",
-     "p:45sqltb"
-    ],
-    "bIds": [
-     "p:328ljva",
-     "p:g:3igyma"
-    ]
-   },
-   {
-    "id": "s2c2",
-    "slot": 2,
-    "court": 2,
-    "aIds": [
-     "p:k45yesm",
-     "p:uzqomod"
-    ],
-    "bIds": [
      "p:243v8q3",
-     "p:6kn0dof"
-    ]
-   },
-   {
-    "id": "s2c3",
-    "slot": 2,
-    "court": 3,
-    "aIds": [
-     "p:g261xhp",
-     "p:ibws5ld"
-    ],
-    "bIds": [
-     "p:nba8nn1",
-     "p:t136ug1"
-    ]
-   },
-   {
-    "id": "s3c1",
-    "slot": 3,
-    "court": 1,
-    "aIds": [
-     "p:k45yesm",
      "p:t136ug1"
     ],
     "bIds": [
@@ -235,15 +170,80 @@
     ]
    },
    {
+    "id": "s1c3",
+    "slot": 1,
+    "court": 3,
+    "aIds": [
+     "p:uzqomod",
+     "p:g261xhp"
+    ],
+    "bIds": [
+     "p:6kn0dof",
+     "p:ibws5ld"
+    ]
+   },
+   {
+    "id": "s2c1",
+    "slot": 2,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:t5tmwl5"
+    ],
+    "bIds": [
+     "p:k45yesm",
+     "p:t4lcpvt"
+    ]
+   },
+   {
+    "id": "s2c2",
+    "slot": 2,
+    "court": 2,
+    "aIds": [
+     "p:uzqomod",
+     "p:45sqltb"
+    ],
+    "bIds": [
+     "p:g:3igyma",
+     "p:g261xhp"
+    ]
+   },
+   {
+    "id": "s2c3",
+    "slot": 2,
+    "court": 3,
+    "aIds": [
+     "p:328ljva",
+     "p:6kn0dof"
+    ],
+    "bIds": [
+     "p:t136ug1",
+     "p:nba8nn1"
+    ]
+   },
+   {
+    "id": "s3c1",
+    "slot": 3,
+    "court": 1,
+    "aIds": [
+     "p:243v8q3",
+     "p:g:3igyma"
+    ],
+    "bIds": [
+     "p:t4lcpvt",
+     "p:g261xhp"
+    ]
+   },
+   {
     "id": "s3c2",
     "slot": 3,
     "court": 2,
     "aIds": [
-     "p:243v8q3",
-     "p:45sqltb"
+     "p:k45yesm",
+     "p:nba8nn1"
     ],
     "bIds": [
-     "p:t4lcpvt",
+     "p:t5tmwl5",
      "p:lvcpucm"
     ]
    },
@@ -252,12 +252,12 @@
     "slot": 3,
     "court": 3,
     "aIds": [
-     "p:6kn0dof",
-     "p:g261xhp"
+     "p:45sqltb",
+     "p:ibws5ld"
     ],
     "bIds": [
-     "p:ibws5ld",
-     "p:g:3igyma"
+     "p:6kn0dof",
+     "p:t136ug1"
     ]
    },
    {
@@ -265,12 +265,12 @@
     "slot": 4,
     "court": 1,
     "aIds": [
-     "p:t5tmwl5",
+     "p:k45yesm",
      "p:328ljva"
     ],
     "bIds": [
-     "p:t4lcpvt",
-     "p:g261xhp"
+     "p:243v8q3",
+     "p:6kn0dof"
     ]
    },
    {
@@ -278,12 +278,12 @@
     "slot": 4,
     "court": 2,
     "aIds": [
-     "p:g:3igyma",
-     "p:uzqomod"
+     "p:ibws5ld",
+     "p:g261xhp"
     ],
     "bIds": [
-     "p:ibws5ld",
-     "p:t136ug1"
+     "p:nba8nn1",
+     "p:g:3igyma"
     ]
    },
    {
@@ -291,12 +291,12 @@
     "slot": 4,
     "court": 3,
     "aIds": [
-     "p:lvcpucm",
-     "p:6kn0dof"
+     "p:t136ug1",
+     "p:45sqltb"
     ],
     "bIds": [
-     "p:45sqltb",
-     "p:nba8nn1"
+     "p:lvcpucm",
+     "p:uzqomod"
     ]
    }
   ]
@@ -304,5 +304,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-24T22:50:09.603Z"
+ "updatedAt": "2026-11-24T22:52:19.256Z"
 }
