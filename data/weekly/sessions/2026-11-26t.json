@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 165,
+ "rev": 166,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -133,7 +133,7 @@
      "p:lvcpucm"
     ],
     "bIds": [
-     "p:t4lcpvt",
+     "p:243v8q3",
      "p:45sqltb"
     ]
    },
@@ -298,5 +298,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-25T20:35:52.255Z"
+ "updatedAt": "2026-11-25T20:38:28.415Z"
 }
