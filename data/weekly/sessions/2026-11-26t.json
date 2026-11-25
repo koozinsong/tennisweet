@@ -3,7 +3,7 @@
  "id": "2026-11-26t",
  "date": "2026-11-26",
  "status": "open",
- "rev": 170,
+ "rev": 171,
  "tour": {
   "name": "2026년 동계 대회",
   "mode": "rotation",
@@ -246,11 +246,11 @@
     "slot": 3,
     "court": 3,
     "aIds": [
-     "p:t136ug1",
+     "p:ibws5ld",
      "p:328ljva"
     ],
     "bIds": [
-     "p:ibws5ld",
+     "p:t136ug1",
      "p:45sqltb"
     ]
    },
@@ -298,5 +298,5 @@
  "done": {},
  "results": {},
  "createdAt": "2026-11-09T04:27:12.347Z",
- "updatedAt": "2026-11-25T20:40:52.959Z"
+ "updatedAt": "2026-11-25T20:41:43.691Z"
 }
